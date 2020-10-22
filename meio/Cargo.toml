@@ -1,0 +1,29 @@
+[package]
+name = "meio"
+version = "0.20.0"
+edition = "2018"
+authors = [
+    "Denis Kolodin <deniskolodin@gmail.com>",
+    "overfloat <rillrate@gmail.com>",
+]
+repository = "https://github.com/rate-technology/meio"
+homepage = "https://github.com/rate-technology/meio"
+documentation = "https://docs.rs/meio/"
+license = "MIT/Apache-2.0"
+readme = "README.md"
+keywords = ["async", "actors"]
+categories = ["concurrency"]
+description = "A compact actors framework for the async epoch in Rust & Tokio"
+
+[dependencies]
+anyhow = "1.0.33"
+async-trait = "0.1.41"
+derive_more = "0.99.11"
+futures = "0.3.6"
+log = "0.4.11"
+tokio = { version = "0.2.22", features = ["full"] }
+uuid = { version = "0.8.1", features = ["v4"] }
+
+[dev-dependencies]
+env_logger = "0.7.1"
+hyper = "0.13.8"
