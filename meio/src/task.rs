@@ -8,6 +8,7 @@ use std::time::Duration;
 use tokio::time::{interval, Instant};
 
 /// The lite task that sends ticks to a `Recipient`.
+#[derive(Debug)]
 pub struct HeartBeat {
     duration: Duration,
     recipient: ActionRecipient<Tick>,
@@ -27,6 +28,7 @@ impl HeartBeat {
 }
 
 /// `Tick` value that sent by `HeartBeat` lite task.
+#[derive(Debug)]
 pub struct Tick(pub Instant);
 
 impl Action for Tick {}
