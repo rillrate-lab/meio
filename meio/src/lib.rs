@@ -21,6 +21,7 @@ pub mod handlers;
 pub mod performers;
 pub mod recipients;
 pub mod signal;
+pub mod task;
 pub mod terminator;
 
 pub use actor_runtime::{Actor, Context};
