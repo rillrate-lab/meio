@@ -4,7 +4,7 @@ use crate::{
     Action, ActionHandler, ActionPerformer, ActionRecipient, Actor, Controller, Envelope, Id,
     Interaction, InteractionHandler, InteractionRecipient,
 };
-use anyhow::Error;
+use anyhow::{anyhow, Error};
 use derive_more::{Deref, DerefMut};
 use futures::channel::mpsc;
 use futures::{SinkExt, Stream, StreamExt};
@@ -89,7 +89,9 @@ impl<A: Actor> Address<A> {
         high_priority: bool,
     ) -> Result<(), Error> {
         if high_priority {
-            self.hp_msg_tx.send(msg).await.map_err(Error::from)
+            self.hp_msg_tx
+                .unbounded_send(msg)
+                .map_err(|_| anyhow!("can't send to a high-priority channel"))
         } else {
             self.msg_tx.send(msg).await.map_err(Error::from)
         }
