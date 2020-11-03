@@ -155,18 +155,32 @@ impl<A: Actor> ActorRuntime<A> {
                         break;
                     }
                 }
-                envelope = self.msg_rx.next() => {
-                    if let Some(mut envelope) = envelope {
+                hp_envelope = self.hp_msg_rx.next() => {
+                    if let Some(mut envelope) = hp_envelope {
+                        let handle_res = envelope.handle(&mut self.actor, &mut self.context).await;
+                        if let Err(err) = handle_res {
+                            log::error!("Handler for {:?} (high-priority) failed: {}", self.id, err);
+                        }
+                    } else {
+                        // Even if all `Address` dropped `Actor` can do something useful on
+                        // background. Than don't terminate actors without `Addresses`, because
+                        // it still has controllers.
+                        // Background tasks = something spawned that `Actors` waits for finishing.
+                        log::trace!("Messages stream of {:?} (high-priority) drained.", self.id);
+                    }
+                }
+                lp_envelope = self.msg_rx.next() => {
+                    if let Some(mut envelope) = lp_envelope {
                         let handle_res = envelope.handle(&mut self.actor, &mut self.context).await;
                         if let Err(err) = handle_res {
                             log::error!("Handler for {:?} failed: {}", self.id, err);
                         }
                     } else {
-                        log::trace!("Messages stream of {:?} drained.", self.id);
                         // Even if all `Address` dropped `Actor` can do something useful on
                         // background. Than don't terminate actors without `Addresses`, because
                         // it still has controllers.
                         // Background tasks = something spawned that `Actors` waits for finishing.
+                        log::trace!("Messages stream of {:?} drained.", self.id);
                     }
                 }
             }
