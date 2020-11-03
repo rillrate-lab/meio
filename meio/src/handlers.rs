@@ -65,6 +65,11 @@ trait Handler<A: Actor>: Send {
 pub trait Interaction: Send + 'static {
     /// The type of a response.
     type Output: Send + 'static;
+
+    /// Indicates that this message have to be sent with high-priority.
+    fn is_high_priority(&self) -> bool {
+        false
+    }
 }
 
 /// Type of `Handler` to process interaction in request-response style.
@@ -104,7 +109,12 @@ where
 
 /// `Action` type can be sent to an `Actor` that implements
 /// `ActionHandler` for that message type.
-pub trait Action: Send + 'static {}
+pub trait Action: Send + 'static {
+    /// Indicates that this message have to be sent with high-priority.
+    fn is_high_priority(&self) -> bool {
+        false
+    }
+}
 
 /// Type of `Handler` to process incoming messages in one-shot style.
 #[async_trait]

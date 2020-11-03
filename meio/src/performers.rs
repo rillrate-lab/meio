@@ -40,8 +40,9 @@ where
     I: Action,
 {
     async fn act(&mut self, input: I) -> Result<(), Error> {
+        let high_priority = input.is_high_priority();
         let envelope = Envelope::action(input);
-        self.send(envelope).await
+        self.send(envelope, high_priority).await
     }
 }
 
@@ -53,8 +54,9 @@ where
     I: Interaction,
 {
     async fn interact(&mut self, input: I) -> Result<I::Output, Error> {
+        let high_priority = input.is_high_priority();
         let (envelope, rx) = Envelope::interaction(input);
-        self.send(envelope).await?;
+        self.send(envelope, high_priority).await?;
         let res = rx.await??;
         Ok(res)
     }

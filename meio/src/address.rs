@@ -81,8 +81,18 @@ impl<A: Actor> Address<A> {
 
     /// **Internal method.** Use `action` or `interaction` instead.
     /// It sends `Message` wrapped with `Envelope` to `Actor`.
-    pub(crate) async fn send(&mut self, msg: Envelope<A>) -> Result<(), Error> {
-        self.msg_tx.send(msg).await.map_err(Error::from)
+    ///
+    /// `high_priority` flag inidicates that it have to be send with high priority.
+    pub(crate) async fn send(
+        &mut self,
+        msg: Envelope<A>,
+        high_priority: bool,
+    ) -> Result<(), Error> {
+        if high_priority {
+            self.hp_msg_tx.send(msg).await.map_err(Error::from)
+        } else {
+            self.msg_tx.send(msg).await.map_err(Error::from)
+        }
     }
 
     /// Forwards the stream into a flow of events to an `Actor`.
