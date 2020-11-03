@@ -21,7 +21,10 @@ pub struct Address<A: Actor> {
     #[deref]
     #[deref_mut]
     controller: Controller,
+    /// Ordinary priority messages sender
     msg_tx: mpsc::Sender<Envelope<A>>,
+    /// High-priority messages sender
+    hp_msg_tx: mpsc::UnboundedSender<Envelope<A>>,
 }
 
 impl<A: Actor> Into<Controller> for Address<A> {
@@ -35,6 +38,7 @@ impl<A: Actor> Clone for Address<A> {
         Self {
             controller: self.controller.clone(),
             msg_tx: self.msg_tx.clone(),
+            hp_msg_tx: self.hp_msg_tx.clone(),
         }
     }
 }
@@ -63,8 +67,16 @@ impl<A: Actor> Hash for Address<A> {
 }
 
 impl<A: Actor> Address<A> {
-    pub(crate) fn new(controller: Controller, msg_tx: mpsc::Sender<Envelope<A>>) -> Self {
-        Self { controller, msg_tx }
+    pub(crate) fn new(
+        controller: Controller,
+        msg_tx: mpsc::Sender<Envelope<A>>,
+        hp_msg_tx: mpsc::UnboundedSender<Envelope<A>>,
+    ) -> Self {
+        Self {
+            controller,
+            msg_tx,
+            hp_msg_tx,
+        }
     }
 
     /// **Internal method.** Use `action` or `interaction` instead.

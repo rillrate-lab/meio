@@ -19,7 +19,8 @@ fn spawn<A: Actor>(actor: A, supervisor: Option<impl Into<Controller>>) -> Addre
     let (controller, operator) = channel::pair(id, supervisor);
     let id = controller.id();
     let (msg_tx, msg_rx) = mpsc::channel(MESSAGES_CHANNEL_DEPTH);
-    let address = Address::new(controller, msg_tx);
+    let (hp_msg_tx, hp_msg_rx) = mpsc::unbounded();
+    let address = Address::new(controller, msg_tx, hp_msg_tx);
     let context = Context {
         address: address.clone(),
         terminator: Terminator::new(id.clone()),
@@ -30,6 +31,7 @@ fn spawn<A: Actor>(actor: A, supervisor: Option<impl Into<Controller>>) -> Addre
         context,
         operator,
         msg_rx,
+        hp_msg_rx,
     };
     tokio::spawn(runtime.entrypoint());
     address
@@ -116,6 +118,8 @@ pub struct ActorRuntime<A: Actor> {
     operator: Operator,
     /// `Receiver` that have to be used to receive incoming messages.
     msg_rx: mpsc::Receiver<Envelope<A>>,
+    /// High-priority receiver
+    hp_msg_rx: mpsc::UnboundedReceiver<Envelope<A>>,
 }
 
 impl<A: Actor> ActorRuntime<A> {
