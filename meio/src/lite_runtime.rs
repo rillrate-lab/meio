@@ -4,7 +4,7 @@ use crate::{channel, Controller, Id, Operator, Signal};
 use anyhow::Error;
 use async_trait::async_trait;
 use derive_more::{From, Into};
-use futures::{select, FutureExt, StreamExt};
+use futures::{select_biased, FutureExt, StreamExt};
 use tokio::sync::watch;
 use uuid::Uuid;
 
@@ -103,13 +103,7 @@ impl<L: LiteTask> LiteRuntime<L> {
         let mut routine = lite_task.routine(shutdown_rx.into()).fuse();
         let mut shutdown = Some(shutdown_tx);
         loop {
-            select! {
-                done = routine => {
-                    if let Err(err) = done {
-                        log::error!("LiteTask {:?} failed: {}", self.id, err);
-                    }
-                    break;
-                }
+            select_biased! {
                 event = self.operator.next() => {
                     log::trace!("Stop signal received: {:?} for task {:?}", event, self.id);
                     let signal = event.expect("task controller couldn't be closed");
@@ -131,6 +125,12 @@ impl<L: LiteTask> LiteRuntime<L> {
                         }
                         // Wait for `done` instead of `stop_signal` used for actors
                     }
+                }
+                done = routine => {
+                    if let Err(err) = done {
+                        log::error!("LiteTask {:?} failed: {}", self.id, err);
+                    }
+                    break;
                 }
             }
         }

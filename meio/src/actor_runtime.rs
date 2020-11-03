@@ -7,7 +7,7 @@ use crate::{
 use anyhow::Error;
 use async_trait::async_trait;
 use futures::channel::mpsc;
-use futures::{select, StreamExt};
+use futures::{select_biased, StreamExt};
 use uuid::Uuid;
 
 const MESSAGES_CHANNEL_DEPTH: usize = 32;
@@ -143,7 +143,18 @@ impl<A: Actor> ActorRuntime<A> {
 
     async fn routine(&mut self) {
         loop {
-            select! {
+            select_biased! {
+                event = self.operator.next() => {
+                    log::trace!("Stop signal received: {:?} for {:?}", event, self.id);
+                    // Because `Operator` contained an instance of the `Controller`.
+                    let signal = event.expect("actor controller couldn't be closed");
+                    let progress = self.actor.stop_signal(signal.into(), &mut self.context).await;
+                    if progress == TerminationProgress::SafeToStop {
+                        log::info!("Actor {:?} is completed.", self.id);
+                        self.msg_rx.close();
+                        break;
+                    }
+                }
                 envelope = self.msg_rx.next() => {
                     if let Some(mut envelope) = envelope {
                         let handle_res = envelope.handle(&mut self.actor, &mut self.context).await;
@@ -156,17 +167,6 @@ impl<A: Actor> ActorRuntime<A> {
                         // background. Than don't terminate actors without `Addresses`, because
                         // it still has controllers.
                         // Background tasks = something spawned that `Actors` waits for finishing.
-                    }
-                }
-                event = self.operator.next() => {
-                    log::trace!("Stop signal received: {:?} for {:?}", event, self.id);
-                    // Because `Operator` contained an instance of the `Controller`.
-                    let signal = event.expect("actor controller couldn't be closed");
-                    let progress = self.actor.stop_signal(signal.into(), &mut self.context).await;
-                    if progress == TerminationProgress::SafeToStop {
-                        log::info!("Actor {:?} is completed.", self.id);
-                        self.msg_rx.close();
-                        break;
                     }
                 }
             }
