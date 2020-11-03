@@ -41,6 +41,10 @@ pub enum WsClientStatus<P: Protocol> {
 
 impl<P: Protocol> Interaction for WsClientStatus<P> {
     type Output = ();
+
+    fn is_high_priority(&self) -> bool {
+        true
+    }
 }
 
 pub struct WsClient<P, A>
