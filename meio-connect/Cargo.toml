@@ -1,5 +1,5 @@
 [package]
-name = "meio-ws"
+name = "meio-connect"
 version = "0.22.1"
 authors = [
     "Denis Kolodin <deniskolodin@gmail.com>",
@@ -13,7 +13,7 @@ license = "MIT/Apache-2.0"
 readme = "README.md"
 keywords = ["async", "actors"]
 categories = ["concurrency"]
-description = "Set of web tasks for MEIO framework"
+description = "Set of connectors for MEIO framework"
 
 [dependencies]
 anyhow = "1.0.33"
