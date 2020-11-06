@@ -127,9 +127,10 @@ impl Terminator {
     }
 
     /// Adds a controller to the separate stage.
-    pub fn single_stage(&mut self, stage_id: &str, controller: impl Into<Controller>) {
-        let (_, stage) = self.new_stage(stage_id);
-        stage.insert(controller.into());
+    pub fn single_stage(&mut self, controller: impl Into<Controller>) {
+        let controller = controller.into();
+        let (_, stage) = self.new_stage(controller.id().as_ref());
+        stage.insert(controller);
     }
 
     /// Creates a new stage that can be marked as the default stage.

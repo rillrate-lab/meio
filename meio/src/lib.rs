@@ -84,6 +84,12 @@ impl Hash for Id {
     }
 }
 
+impl AsRef<str> for Id {
+    fn as_ref(&self) -> &str {
+        self.0.as_ref()
+    }
+}
+
 /// Returns a `Link` to an `Actor`.
 /// `Link` is a convenient concept for creating wrappers for
 /// `Address` that provides methods instead of using message types
