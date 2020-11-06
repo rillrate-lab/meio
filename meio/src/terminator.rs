@@ -1,7 +1,7 @@
 //! Contains utilities to manage supervised childs/tasks termination.
 
 use crate::{Controller, Id};
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
 
 /// The state of termination.
 #[derive(Debug, PartialEq, Eq)]
@@ -80,8 +80,8 @@ impl Stage {
 /// Chains multiple stages into a sequence.
 pub struct Terminator {
     related_id: Id,
-    default_stage: Option<usize>,
-    stages: VecDeque<Stage>,
+    named_stages: HashMap<&'static str, usize>,
+    stages: Vec<Stage>,
     stop_signal_received: bool,
     need_stop_signal: bool,
 }
@@ -91,8 +91,8 @@ impl Terminator {
     pub fn new(related_id: Id) -> Self {
         Self {
             related_id,
-            default_stage: None,
-            stages: VecDeque::new(),
+            named_stages: HashMap::new(),
+            stages: Vec::new(),
             stop_signal_received: false,
             need_stop_signal: true,
         }
@@ -104,37 +104,47 @@ impl Terminator {
         self.need_stop_signal = false;
     }
 
-    /// Returns the default stage.
-    /// Default stage is a container that should be used to put dynamical
-    /// tasks that created during actor's lifetime.
-    pub fn stage(&mut self) -> &mut Stage {
-        let idx = self.default_stage.expect("default stage not set");
-        self.stages
-            .get_mut(idx)
-            .expect("invalid index of the default stage")
+    /// Crates a named stage.
+    ///
+    /// Panics if stage already exists.
+    pub fn named_stage<T>(&mut self) {
+        let stage_id = std::any::type_name::<T>();
+        let (idx, _) = self.new_stage(stage_id);
+        self.named_stages
+            .insert(stage_id, idx)
+            .expect_none("duplicated named stage");
     }
 
-    // TODO: Put to tail!
+    /// Inserts a `Controller` into a named stage.
+    pub fn insert_named_stage<T>(&mut self, controller: impl Into<Controller>) {
+        let stage_id = std::any::type_name::<T>();
+        let idx = self
+            .named_stages
+            .get_mut(stage_id)
+            .expect("named stage not exists");
+        let stage = self.stages.get_mut(*idx).expect("wrong named stage index");
+        stage.insert(controller.into());
+    }
+
+    /// Adds a controller to the separate stage.
+    pub fn single_stage(&mut self, stage_id: &str, controller: impl Into<Controller>) {
+        let (_, stage) = self.new_stage(stage_id);
+        stage.insert(controller.into());
+    }
+
     /// Creates a new stage that can be marked as the default stage.
-    pub fn new_stage(&mut self, stage_id: &str, default: bool) -> &mut Stage {
-        if default {
-            // Points to the latest inserted element.
-            self.default_stage = Some(0);
-        } else {
-            // If `default_stage` was set than move it forward since
-            // one `Stage` will be added to the front of the list.
-            if let Some(default_stage) = self.default_stage.as_mut() {
-                *default_stage += 1;
-            }
-        }
+    fn new_stage(&mut self, stage_id: &str) -> (usize, &mut Stage) {
         let full_id = format!("{}.{}", self.related_id, stage_id);
         let term = Stage::new(full_id);
-        self.stages.push_front(term);
-        self.stages.get_mut(0).expect("stages list broken")
+        let idx = self.stages.len();
+        self.stages.push(term);
+        let stage = self.stages.get_mut(idx).expect("stages list broken");
+        (idx, stage)
     }
 
     fn try_terminate_next(&mut self) {
-        for stage in self.stages.iter_mut() {
+        // Terminate them in the reversed direction.
+        for stage in self.stages.iter_mut().rev() {
             if stage.is_terminating() {
                 if stage.is_drained() {
                     // Just go to the next stage
@@ -152,6 +162,7 @@ impl Terminator {
     /// with a child `Id`.
     pub fn track_child(&mut self, child: Id) {
         let mut consumed = false;
+        // Normal direction as the childs of latest stages will be terminated earlier.
         for term in self.stages.iter_mut() {
             if term.absorb(&child) {
                 consumed = true;

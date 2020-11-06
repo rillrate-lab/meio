@@ -11,6 +11,7 @@
 #![warn(missing_docs)]
 #![recursion_limit = "256"]
 #![feature(generators)]
+#![feature(option_expect_none)]
 
 mod actor_runtime;
 mod lite_runtime;
