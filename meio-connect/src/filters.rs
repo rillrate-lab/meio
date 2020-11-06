@@ -89,6 +89,7 @@ where
 pub struct WsRequest {
     pub addr: SocketAddr,
     pub websocket: WebSocket,
+    pub section: String,
 }
 
 impl Interaction for WsRequest {
@@ -96,31 +97,35 @@ impl Interaction for WsRequest {
 }
 
 impl WsRequest {
-    pub fn filter<A>(
-        section: &'static str,
-        method: &'static str,
-        actor: Address<A>,
-    ) -> BoxedFilter<(impl Reply,)>
+    pub fn filter<A>(namespace: &'static str, actor: Address<A>) -> BoxedFilter<(impl Reply,)>
     where
         A: Actor + InteractionHandler<WsRequest>,
     {
-        warp::path(section)
-            .and(warp::path(method))
+        warp::path(namespace)
+            .and(warp::path::param::<String>())
             .and(warp::ws())
             .and(warp::addr::remote())
-            .map(move |ws, addr| ws_handler(ws, addr, actor.clone()))
+            // TODO: Use `ws_handler` directly (don't wrap with a closure) if there is a
+            // filter that can add a cloneable value (actor's `Address`) to the request.
+            .map(move |section, ws, addr| ws_handler(section, ws, addr, actor.clone()))
             .boxed()
     }
 }
 
-fn ws_handler<A>(ws: Ws, addr: Option<SocketAddr>, actor: Address<A>) -> Box<dyn Reply>
+fn ws_handler<A>(
+    section: String,
+    ws: Ws,
+    addr: Option<SocketAddr>,
+    actor: Address<A>,
+) -> Box<dyn Reply>
 where
     A: Actor + InteractionHandler<WsRequest>,
 {
     match addr {
         Some(address) => {
-            let upgrade =
-                ws.on_upgrade(move |websocket| ws_entrypoint(address, websocket, actor.clone()));
+            let upgrade = ws.on_upgrade(move |websocket| {
+                ws_entrypoint(address, websocket, section, actor.clone())
+            });
             Box::new(upgrade)
         }
         None => {
@@ -130,11 +135,19 @@ where
     }
 }
 
-async fn ws_entrypoint<A>(addr: SocketAddr, websocket: WebSocket, mut actor: Address<A>)
-where
+async fn ws_entrypoint<A>(
+    addr: SocketAddr,
+    websocket: WebSocket,
+    section: String,
+    mut actor: Address<A>,
+) where
     A: Actor + InteractionHandler<WsRequest>,
 {
-    let msg = WsRequest { addr, websocket };
+    let msg = WsRequest {
+        addr,
+        websocket,
+        section,
+    };
     if let Err(err) = actor.interact(msg).await {
         log::error!("Can't send notification about ws connection: {}", err);
     }
