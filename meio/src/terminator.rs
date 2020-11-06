@@ -116,7 +116,7 @@ impl Terminator {
     }
 
     /// Inserts a `Controller` into a named stage.
-    pub fn insert_named_stage<A: Actor>(&mut self, address: Address<A>) {
+    pub fn insert_to_named_stage<A: Actor>(&mut self, address: Address<A>) {
         let stage_id = std::any::type_name::<A>();
         let idx = self
             .named_stages
