@@ -1,4 +1,5 @@
 use crate::{
+    filters::{Section, WsRequest},
     talker::{Talker, TalkerCompatible},
     Protocol, WsIncoming,
 };
@@ -18,8 +19,15 @@ struct WsInfo<P: Protocol> {
 /// This struct wraps a `WebSocket` connection
 /// and produces processors for every incoming connection.
 pub struct WsHandler<P: Protocol> {
+    addr: SocketAddr,
     info: Option<WsInfo<P>>,
     tx: mpsc::UnboundedSender<P::ToClient>,
+}
+
+impl<P: Protocol, T: Section> From<WsRequest<T>> for WsHandler<P> {
+    fn from(request: WsRequest<T>) -> Self {
+        Self::new(request.addr, request.websocket)
+    }
 }
 
 impl<P: Protocol> WsHandler<P> {
@@ -31,9 +39,14 @@ impl<P: Protocol> WsHandler<P> {
             rx,
         };
         Self {
+            addr,
             info: Some(info),
             tx,
         }
+    }
+
+    pub fn addr(&self) -> SocketAddr {
+        self.addr
     }
 
     pub fn worker<A>(&mut self, address: Address<A>) -> WsProcessor<P, A>
