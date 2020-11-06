@@ -6,6 +6,7 @@ use meio::{
 };
 use std::convert::Infallible;
 use std::net::SocketAddr;
+use std::str::FromStr;
 use warp::{
     filters::BoxedFilter,
     http::StatusCode,
@@ -84,25 +85,31 @@ where
     address.interact(msg).await.to_reply()
 }
 
+/// `Section` of the path.
+pub trait Section: FromStr + Send + 'static {}
+
+impl<T> Section for T where T: FromStr + Send + 'static {}
+
 /// This struct received by an `Actor` when a client connected.
 #[derive(Debug)]
-pub struct WsRequest {
+pub struct WsRequest<T> {
     pub addr: SocketAddr,
     pub websocket: WebSocket,
-    pub section: String,
+    pub section: T,
 }
 
-impl Interaction for WsRequest {
+impl<T: Section> Interaction for WsRequest<T> {
+    // TODO: Maybe support `not found` responses (etc.) or use an error for that.
     type Output = ();
 }
 
-impl WsRequest {
+impl<T: Section> WsRequest<T> {
     pub fn filter<A>(namespace: &'static str, actor: Address<A>) -> BoxedFilter<(impl Reply,)>
     where
-        A: Actor + InteractionHandler<WsRequest>,
+        A: Actor + InteractionHandler<WsRequest<T>>,
     {
         warp::path(namespace)
-            .and(warp::path::param::<String>())
+            .and(warp::path::param::<T>())
             .and(warp::ws())
             .and(warp::addr::remote())
             // TODO: Use `ws_handler` directly (don't wrap with a closure) if there is a
@@ -112,14 +119,15 @@ impl WsRequest {
     }
 }
 
-fn ws_handler<A>(
-    section: String,
+fn ws_handler<A, T>(
+    section: T,
     ws: Ws,
     addr: Option<SocketAddr>,
     actor: Address<A>,
 ) -> Box<dyn Reply>
 where
-    A: Actor + InteractionHandler<WsRequest>,
+    T: Section,
+    A: Actor + InteractionHandler<WsRequest<T>>,
 {
     match addr {
         Some(address) => {
@@ -135,13 +143,14 @@ where
     }
 }
 
-async fn ws_entrypoint<A>(
+async fn ws_entrypoint<A, T>(
     addr: SocketAddr,
     websocket: WebSocket,
-    section: String,
+    section: T,
     mut actor: Address<A>,
 ) where
-    A: Actor + InteractionHandler<WsRequest>,
+    T: Section,
+    A: Actor + InteractionHandler<WsRequest<T>>,
 {
     let msg = WsRequest {
         addr,
