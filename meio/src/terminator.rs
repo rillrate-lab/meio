@@ -104,7 +104,9 @@ impl Terminator {
         self.need_stop_signal = false;
     }
 
-    /// Crates a named stage.
+    /// Crates a named stage and register it in the termination order.
+    ///
+    /// # Panics
     ///
     /// Panics if stage already exists.
     pub fn named_stage<A: Actor>(&mut self) {
@@ -116,6 +118,10 @@ impl Terminator {
     }
 
     /// Inserts a `Controller` into a named stage.
+    ///
+    /// # Panics
+    ///
+    /// Panics is the stage is not exists (not created with `named_stage` before).
     pub fn insert_to_named_stage<A: Actor>(&mut self, address: Address<A>) {
         let stage_id = std::any::type_name::<A>();
         let idx = self
@@ -127,8 +133,8 @@ impl Terminator {
     }
 
     /// Adds a controller to the separate stage.
-    pub fn single_stage(&mut self, controller: impl Into<Controller>) {
-        let controller = controller.into();
+    pub fn insert_to_single_stage<C: Into<Controller>>(&mut self, pre_controller: C) {
+        let controller = pre_controller.into();
         let (_, stage) = self.new_stage(controller.id().as_ref());
         stage.insert(controller);
     }
