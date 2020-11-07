@@ -19,6 +19,7 @@ mod lite_runtime;
 pub mod address;
 pub mod channel;
 pub mod handlers;
+mod macros;
 pub mod performers;
 pub mod recipients;
 pub mod signal;
