@@ -13,7 +13,7 @@ macro_rules! link_interaction {
         }
 
         impl $link {
-            pub async fn $func(&mut self, $($arg: $arg_t,)*) -> Result<$res, Error> {
+            pub async fn $func(&mut self, $($arg: $arg_t,)*) -> Result<$res, anyhow::Error> {
                 let msg = $msg { $($arg,)* };
                 self.address.interact(msg).await
             }
