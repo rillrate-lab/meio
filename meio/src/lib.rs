@@ -16,25 +16,23 @@
 mod actor_runtime;
 mod lite_runtime;
 
-pub mod address;
 pub mod channel;
 pub mod handlers;
-mod macros;
-pub mod performers;
-pub mod recipients;
+pub mod linkage;
 pub mod signal;
 pub mod task;
 pub mod terminator;
 
 pub use actor_runtime::{Actor, Context};
-pub use address::Address;
 pub use channel::{Controller, Status, Supervisor};
 use channel::{Operator, Signal};
 use handlers::Envelope;
 pub use handlers::{Action, ActionHandler, Interaction, InteractionHandler};
+pub use linkage::address::Address;
+pub use linkage::link::Link;
+pub use linkage::performers::{ActionPerformer, InteractionPerformer};
+pub use linkage::recipients::{ActionRecipient, InteractionRecipient};
 pub use lite_runtime::{LiteStatus, LiteTask, ShutdownReceiver};
-pub use performers::{ActionPerformer, InteractionPerformer};
-pub use recipients::{ActionRecipient, InteractionRecipient};
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
@@ -91,45 +89,6 @@ impl AsRef<str> for Id {
     }
 }
 
-/// Returns a `Link` to an `Actor`.
-/// `Link` is a convenient concept for creating wrappers for
-/// `Address` that provides methods instead of using message types
-/// directly. It allows also to use private message types opaquely.
-pub trait Link<T> {
-    /// Gets a `Link` to an `Actor`.
-    fn link(&self) -> T;
-}
-
-impl<T, A> Link<T> for Address<A>
-where
-    T: From<Address<A>>,
-    A: Actor,
-{
-    fn link(&self) -> T {
-        T::from(self.clone())
-    }
-}
-
-impl<T, I> Link<T> for ActionRecipient<I>
-where
-    T: From<ActionRecipient<I>>,
-    I: Action,
-{
-    fn link(&self) -> T {
-        T::from(self.clone())
-    }
-}
-
-impl<T, I> Link<T> for InteractionRecipient<I>
-where
-    T: From<InteractionRecipient<I>>,
-    I: Interaction,
-{
-    fn link(&self) -> T {
-        T::from(self.clone())
-    }
-}
-
 // %%%%%%%%%%%%%%%%%%%%%% TESTS %%%%%%%%%%%%%%%%%%%%%
 
 #[cfg(test)]
@@ -141,16 +100,51 @@ mod tests {
     use std::time::Duration;
     use tokio::time::delay_for;
 
-    struct MyActor;
+    #[derive(Debug)]
+    pub struct MyActor;
 
+    #[derive(Debug)]
     struct MsgOne;
 
     impl Action for MsgOne {}
 
+    #[derive(Debug)]
     struct MsgTwo;
 
     impl Interaction for MsgTwo {
         type Output = u8;
+    }
+
+    mod link {
+        use super::*;
+        use derive_more::{Deref, DerefMut, From};
+
+        #[derive(Debug, From)]
+        pub struct MyLink {
+            address: Address<MyActor>,
+        }
+
+        pub(super) struct LinkSignal;
+
+        impl Action for LinkSignal {}
+
+        impl MyLink {
+            pub async fn send_signal(&mut self) -> Result<(), Error> {
+                self.address.act(LinkSignal).await
+            }
+        }
+
+        /// Two important points about links (the example you can see in the test below):
+        ///
+        /// 1. You can have different links/views to the `Actor`.
+        ///
+        /// 2. And if `DerefMut` implemented you can use the `Link`
+        /// as an ordinary `Address` instance.
+        ///
+        #[derive(Debug, From, Deref, DerefMut)]
+        pub struct MyAlternativeLink {
+            address: Address<MyActor>,
+        }
     }
 
     #[async_trait]
@@ -184,6 +178,18 @@ mod tests {
             _ctx: &mut Context<Self>,
         ) -> Result<(), Error> {
             log::info!("Received CtrlC");
+            Ok(())
+        }
+    }
+
+    #[async_trait]
+    impl ActionHandler<link::LinkSignal> for MyActor {
+        async fn handle(
+            &mut self,
+            _: link::LinkSignal,
+            _ctx: &mut Context<Self>,
+        ) -> Result<(), Error> {
+            log::info!("Received LinkSignal");
             Ok(())
         }
     }
@@ -223,6 +229,18 @@ mod tests {
         // If you activeate this line the test will wait for the `Ctrl+C` signal.
         //address.attach(signal::CtrlC::stream()).await?;
         address.shutdown();
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_link() -> Result<(), Error> {
+        env_logger::try_init().ok();
+        let address = MyActor.start(Supervisor::None);
+        let mut link: link::MyLink = address.link();
+        link.send_signal().await?;
+        let mut alternative_link: link::MyAlternativeLink = address.link();
+        alternative_link.shutdown();
+        alternative_link.join().await;
         Ok(())
     }
 }
