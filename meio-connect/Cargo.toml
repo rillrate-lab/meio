@@ -1,6 +1,6 @@
 [package]
 name = "meio-connect"
-version = "0.24.0"
+version = "0.24.1"
 authors = [
     "Denis Kolodin <deniskolodin@gmail.com>",
     "overfloat <rillrate@gmail.com>",
