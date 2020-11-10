@@ -1,6 +1,6 @@
 [package]
 name = "meio-connect"
-version = "0.23.0"
+version = "0.24.0"
 authors = [
     "Denis Kolodin <deniskolodin@gmail.com>",
     "overfloat <rillrate@gmail.com>",
@@ -21,7 +21,7 @@ async-trait = "0.1.41"
 async-tungstenite = { version = "0.9.3", features = ["tokio-runtime"] }
 futures = "0.3.6"
 log = "0.4.11"
-meio = { version = "0.23.0", path = "../meio" }
+meio = { version = "0.24.0", path = "../meio" }
 serde = "1.0.117"
 tokio = "0.2.22"
 tungstenite = "0.11.1"
