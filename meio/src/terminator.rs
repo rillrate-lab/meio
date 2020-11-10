@@ -18,7 +18,7 @@ pub struct Stage {
     terminating: bool,
     supervised: HashMap<Id, Controller>,
     // All stages have to be terminated if the `Stage` with `vital` flag drained.
-    //vital: bool,
+    vital: bool,
 }
 
 impl Stage {
@@ -28,7 +28,7 @@ impl Stage {
             stage_id,
             terminating: false,
             supervised: HashMap::new(),
-            //vital: false,
+            vital: false,
         }
     }
 
@@ -42,6 +42,11 @@ impl Stage {
         self.supervised.is_empty()
     }
 
+    /// The `Stage` is vital and stop the `Actor` if its drained.
+    pub fn is_vital(&self) -> bool {
+        self.vital
+    }
+
     /// Is `Stage` completely finished?
     pub fn is_done(&self) -> bool {
         self.is_terminating() && self.is_drained()
@@ -50,6 +55,11 @@ impl Stage {
     /// Is it terminating because `Shutdown` signal received yet.
     pub fn is_terminating(&self) -> bool {
         self.terminating
+    }
+
+    /// Makes the `Stage` vital and equate its completion to a stop signal receiving.
+    pub fn make_vital(&mut self) {
+        self.vital = true;
     }
 
     /// Inserts a `Controller` to spervise it. The method requires a
@@ -126,7 +136,7 @@ impl Terminator {
     /// # Panics
     ///
     /// Panics is the stage is not exists (not created with `named_stage` before).
-    pub fn insert_to_named_stage<A: Actor>(&mut self, address: Address<A>) {
+    pub fn insert_to_named_stage<A: Actor>(&mut self, address: Address<A>) -> &mut Stage {
         let stage_id = std::any::type_name::<A>();
         let idx = self
             .named_stages
@@ -134,6 +144,7 @@ impl Terminator {
             .expect("named stage not exists");
         let stage = self.stages.get_mut(*idx).expect("wrong named stage index");
         stage.insert(address.controller());
+        stage
     }
 
     /// Adds a controller to the separate stage.
@@ -174,9 +185,12 @@ impl Terminator {
     pub fn track_child(&mut self, child: Id) {
         let mut consumed = false;
         // Check the in the reversed direction, because the latest will be terminated earlier.
-        for state in self.stages.iter_mut().rev() {
-            if state.absorb(&child) {
+        for stage in self.stages.iter_mut().rev() {
+            if stage.absorb(&child) {
                 consumed = true;
+                if stage.is_vital() && stage.is_drained() {
+                    self.stop_signal_received = true;
+                }
                 break;
             }
         }
