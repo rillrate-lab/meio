@@ -17,7 +17,7 @@ pub struct Stage {
     stage_id: String,
     terminating: bool,
     supervised: HashMap<Id, Controller>,
-    // All stages have to be terminated if the `Stage` with `vital` flag drained.
+    /// All stages have to be terminated if the `Stage` with `vital` flag drained.
     vital: bool,
 }
 
@@ -58,6 +58,9 @@ impl Stage {
     }
 
     /// Makes the `Stage` vital and equate its completion to a stop signal receiving.
+    ///
+    /// If many children actors have to be `vital` together than put them all into
+    /// a separate named stage.
     pub fn make_vital(&mut self) {
         self.vital = true;
     }
