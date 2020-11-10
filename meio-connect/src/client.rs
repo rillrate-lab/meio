@@ -161,7 +161,7 @@ where
                     // TODO: Refactor this loop...
                     loop {
                         select! {
-                            timeout = delay => {
+                            _timeout = delay => {
                                 break;
                             }
                             status = signal_rx.next() => {
