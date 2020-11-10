@@ -189,6 +189,7 @@ impl Terminator {
             if stage.absorb(&child) {
                 consumed = true;
                 if stage.is_vital() && stage.is_drained() {
+                    log::debug!("Vital Stage {} drained. Begin termination.", stage.stage_id);
                     self.stop_signal_received = true;
                 }
                 break;
