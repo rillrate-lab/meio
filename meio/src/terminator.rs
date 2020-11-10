@@ -17,6 +17,8 @@ pub struct Stage {
     stage_id: String,
     terminating: bool,
     supervised: HashMap<Id, Controller>,
+    // All stages have to be terminated if the `Stage` with `vital` flag drained.
+    //vital: bool,
 }
 
 impl Stage {
@@ -26,6 +28,7 @@ impl Stage {
             stage_id,
             terminating: false,
             supervised: HashMap::new(),
+            //vital: false,
         }
     }
 
@@ -109,12 +112,13 @@ impl Terminator {
     /// # Panics
     ///
     /// Panics if stage already exists.
-    pub fn named_stage<A: Actor>(&mut self) {
+    pub fn named_stage<A: Actor>(&mut self) -> &mut Stage {
         let stage_id = std::any::type_name::<A>();
-        let (idx, _) = self.new_stage(stage_id);
+        let next_idx = self.stages.len();
         self.named_stages
-            .insert(stage_id, idx)
+            .insert(stage_id, next_idx)
             .expect_none("duplicated named stage");
+        self.new_stage(stage_id)
     }
 
     /// Inserts a `Controller` into a named stage.
@@ -133,20 +137,20 @@ impl Terminator {
     }
 
     /// Adds a controller to the separate stage.
-    pub fn insert_to_single_stage<C: Into<Controller>>(&mut self, pre_controller: C) {
+    pub fn insert_to_single_stage<C: Into<Controller>>(&mut self, pre_controller: C) -> &mut Stage {
         let controller = pre_controller.into();
-        let (_, stage) = self.new_stage(controller.id().as_ref());
+        let stage = self.new_stage(controller.id().as_ref());
         stage.insert(controller);
+        stage
     }
 
     /// Creates a new stage that can be marked as the default stage.
-    fn new_stage(&mut self, stage_id: &str) -> (usize, &mut Stage) {
+    fn new_stage(&mut self, stage_id: &str) -> &mut Stage {
         let full_id = format!("{}.{}", self.related_id, stage_id);
         let term = Stage::new(full_id);
-        let idx = self.stages.len();
         self.stages.push(term);
-        let stage = self.stages.get_mut(idx).expect("stages list broken");
-        (idx, stage)
+        let stage = self.stages.last_mut().expect("stages list broken");
+        stage
     }
 
     fn try_terminate_next(&mut self) {
@@ -169,9 +173,9 @@ impl Terminator {
     /// with a child `Id`.
     pub fn track_child(&mut self, child: Id) {
         let mut consumed = false;
-        // Normal direction as the childs of latest stages will be terminated earlier.
-        for term in self.stages.iter_mut() {
-            if term.absorb(&child) {
+        // Check the in the reversed direction, because the latest will be terminated earlier.
+        for state in self.stages.iter_mut().rev() {
+            if state.absorb(&child) {
                 consumed = true;
                 break;
             }
