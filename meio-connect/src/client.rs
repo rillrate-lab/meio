@@ -16,6 +16,7 @@ use meio::{
 };
 use std::marker::PhantomData;
 use std::time::{Duration, Instant};
+use thiserror::Error;
 use tokio::net::TcpStream;
 use tokio::sync::watch;
 use tokio::time::delay_for;
@@ -36,7 +37,17 @@ impl<T: ProtocolData> WsSender<T> {
 #[derive(Debug)]
 pub enum WsClientStatus<P: Protocol> {
     Connected { sender: WsSender<P::ToServer> },
-    Failed(String),
+    Failed { reason: WsFailReason },
+}
+
+#[derive(Error, Debug, Clone)]
+pub enum WsFailReason {
+    #[error("closed by server")]
+    ClosedByServer,
+    #[error("connection failed")]
+    ConnectionFailed,
+    #[error("server not available")]
+    ServerNotAvailable,
 }
 
 impl<P: Protocol> Interaction for WsClientStatus<P> {
@@ -114,7 +125,8 @@ where
             log::trace!("Ws client conencting to: {}", self.url);
             let res = connect_async(&self.url).await;
             let mut last_success = Instant::now();
-            let last_err;
+            let fail_reason;
+            let original_err: Error;
             match res {
                 Ok((wss, _resp)) => {
                     log::debug!("Client connected successfully to: {}", self.url);
@@ -135,22 +147,27 @@ where
                                 return Ok(());
                             } else {
                                 log::error!("Server closed a connection");
-                                last_err = anyhow::anyhow!("Server closed a connection");
+                                fail_reason = WsFailReason::ClosedByServer;
+                                original_err = WsFailReason::ClosedByServer.into();
                             }
                         }
                         Err(err) => {
                             log::error!("Ws connecion to {} failed: {}", self.url, err);
-                            last_err = Error::from(err);
+                            fail_reason = WsFailReason::ConnectionFailed;
+                            original_err = err.into();
                         }
                     }
                 }
                 Err(err) => {
                     log::error!("Can't connect to {}: {}", self.url, err);
-                    last_err = Error::from(err);
+                    fail_reason = WsFailReason::ServerNotAvailable;
+                    original_err = err.into();
                 }
             }
             self.address
-                .interact(WsClientStatus::Failed(last_err.to_string()))
+                .interact(WsClientStatus::Failed {
+                    reason: fail_reason.clone(),
+                })
                 .await?;
             if let Some(dur) = self.repeat_interval.clone() {
                 let elapsed = last_success.elapsed();
@@ -181,7 +198,7 @@ where
                 log::debug!("Next attempt to connect to: {}", self.url);
             } else {
                 // No reconnection required by user
-                return Err(last_err);
+                return Err(original_err);
             }
         }
         Ok(())
