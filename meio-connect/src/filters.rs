@@ -1,9 +1,5 @@
 use anyhow::Error;
-use async_trait::async_trait;
-use meio::{
-    Actor, Address, Interaction, InteractionHandler, InteractionPerformer, LiteTask,
-    ShutdownReceiver,
-};
+use meio::{Actor, Address, Interaction, InteractionHandler, InteractionPerformer};
 use std::convert::Infallible;
 use std::net::SocketAddr;
 use std::str::FromStr;
@@ -12,7 +8,7 @@ use warp::{
     http::StatusCode,
     path::Tail,
     ws::{WebSocket, Ws},
-    Filter, Reply, Server,
+    Filter, Reply,
 };
 
 pub trait ToReply {
@@ -159,41 +155,5 @@ async fn ws_entrypoint<A, T>(
     };
     if let Err(err) = actor.interact(msg).await {
         log::error!("Can't send notification about ws connection: {}", err);
-    }
-}
-
-// TODO: Move this struct to another module
-pub struct WebServer<F> {
-    addr: SocketAddr,
-    server: Server<F>,
-}
-
-impl<F> WebServer<F>
-where
-    F: Filter + Clone + Send + Sync + 'static,
-    F::Extract: Reply,
-{
-    pub fn new(addr: SocketAddr, routes: F) -> Self {
-        let server = warp::serve(routes);
-        Self { addr, server }
-    }
-}
-
-#[async_trait]
-impl<F> LiteTask for WebServer<F>
-where
-    F: Filter + Clone + Send + Sync + 'static,
-    F::Extract: Reply,
-{
-    fn name(&self) -> String {
-        format!("WebServer({})", self.addr)
-    }
-
-    async fn routine(self, signal: ShutdownReceiver) -> Result<(), Error> {
-        self.server
-            .bind_with_graceful_shutdown(self.addr, signal.just_done())
-            .1
-            .await;
-        Ok(())
     }
 }

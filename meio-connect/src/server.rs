@@ -8,7 +8,42 @@ use async_trait::async_trait;
 use futures::channel::mpsc;
 use meio::{ActionHandler, Actor, Address, LiteTask, ShutdownReceiver};
 use std::net::SocketAddr;
-use warp::ws::WebSocket;
+use warp::{ws::WebSocket, Filter, Reply, Server};
+
+pub struct WebServer<F> {
+    addr: SocketAddr,
+    server: Server<F>,
+}
+
+impl<F> WebServer<F>
+where
+    F: Filter + Clone + Send + Sync + 'static,
+    F::Extract: Reply,
+{
+    pub fn new(addr: SocketAddr, routes: F) -> Self {
+        let server = warp::serve(routes);
+        Self { addr, server }
+    }
+}
+
+#[async_trait]
+impl<F> LiteTask for WebServer<F>
+where
+    F: Filter + Clone + Send + Sync + 'static,
+    F::Extract: Reply,
+{
+    fn name(&self) -> String {
+        format!("WebServer({})", self.addr)
+    }
+
+    async fn routine(self, signal: ShutdownReceiver) -> Result<(), Error> {
+        self.server
+            .bind_with_graceful_shutdown(self.addr, signal.just_done())
+            .1
+            .await;
+        Ok(())
+    }
+}
 
 struct WsInfo<P: Protocol> {
     addr: SocketAddr,
