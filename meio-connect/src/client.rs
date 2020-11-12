@@ -149,10 +149,10 @@ where
                     last_err = Error::from(err);
                 }
             }
+            self.address
+                .interact(WsClientStatus::Failed(last_err.to_string()))
+                .await?;
             if let Some(dur) = self.repeat_interval.clone() {
-                self.address
-                    .interact(WsClientStatus::Failed(last_err.to_string()))
-                    .await?;
                 let elapsed = last_success.elapsed();
                 if elapsed < dur {
                     let remained = dur - elapsed;
