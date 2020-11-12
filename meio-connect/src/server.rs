@@ -38,7 +38,7 @@ where
 
     async fn routine(self, signal: ShutdownReceiver) -> Result<(), Error> {
         self.server
-            .bind_with_graceful_shutdown(self.addr, signal.just_done())
+            .try_bind_with_graceful_shutdown(self.addr, signal.just_done())?
             .1
             .await;
         Ok(())
