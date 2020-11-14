@@ -116,6 +116,10 @@ impl Terminator {
 
     /// Resets flag that stop is not required and wait for
     /// child actors only.
+    #[deprecated(
+        since = "0.24.0",
+        note = "Use `make_vital` methods for specific `Stage`s instead."
+    )]
     pub fn stop_not_required(&mut self) {
         self.need_stop_signal = false;
     }
