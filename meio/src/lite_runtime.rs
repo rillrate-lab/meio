@@ -60,6 +60,8 @@ impl LiteStatus {
 }
 
 /// Minimalistic actor that hasn't `Address`.
+///
+/// **Recommended** to implement sequences or intensive loops (routines).
 #[async_trait]
 pub trait LiteTask: Sized + Send + 'static {
     /// Returns unique name of the `LiteTask`.

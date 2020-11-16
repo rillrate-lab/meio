@@ -39,6 +39,8 @@ fn spawn<A: Actor>(actor: A, supervisor: Option<impl Into<Controller>>) -> Addre
 
 /// The main trait. Your structs have to implement it to
 /// be compatible with `ActorRuntime` and `Address` system.
+///
+/// **Recommended** to implement reactive activities.
 #[async_trait]
 pub trait Actor: Sized + Send + 'static {
     /// Returns unique name of the `Actor`.
