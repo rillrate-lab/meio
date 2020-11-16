@@ -1,6 +1,6 @@
 //! Contains utilities to manage supervised childs/tasks termination.
 
-use crate::{Actor, Controller, Id};
+use crate::{Controller, Id};
 use std::collections::HashMap;
 
 /// The state of termination.
@@ -129,8 +129,8 @@ impl Terminator {
     /// # Panics
     ///
     /// Panics if stage already exists.
-    pub fn named_stage<A: Actor>(&mut self) -> &mut Stage {
-        let stage_id = std::any::type_name::<A>();
+    pub fn named_stage<T>(&mut self) -> &mut Stage {
+        let stage_id = std::any::type_name::<T>();
         let next_idx = self.stages.len();
         self.named_stages
             .insert(stage_id, next_idx)
@@ -143,11 +143,11 @@ impl Terminator {
     /// # Panics
     ///
     /// Panics is the stage is not exists (not created with `named_stage` before).
-    pub fn insert_to_named_stage<A: Actor, C: Into<Controller>>(
+    pub fn insert_to_named_stage<T, C: Into<Controller>>(
         &mut self,
         pre_controller: C,
     ) -> &mut Stage {
-        let stage_id = std::any::type_name::<A>();
+        let stage_id = std::any::type_name::<T>();
         let idx = self
             .named_stages
             .get_mut(stage_id)
