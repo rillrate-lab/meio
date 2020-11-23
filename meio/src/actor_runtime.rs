@@ -67,16 +67,7 @@ pub trait Actor: Sized + Send + 'static {
         Ok(())
     }
 
-    /// Called on every potential shutdown signal received.
-    async fn stop_signal(
-        &mut self,
-        child: Option<Id>,
-        ctx: &mut Context<Self>,
-    ) -> TerminationProgress {
-        ctx.terminator().track_child_or_stop_signal(child)
-    }
-
-    /// Called when actor teminating.
+    /// Called when an `Actor` teminated.
     /// This method doesn't have a result to don't allow you to
     /// use `?` operator that can interrupt termination and resources
     /// releasing process.
@@ -150,7 +141,8 @@ impl<A: Actor> ActorRuntime<A> {
                     log::trace!("Stop signal received: {:?} for {:?}", event, self.id);
                     // Because `Operator` contained an instance of the `Controller`.
                     let signal = event.expect("actor controller couldn't be closed");
-                    let progress = self.actor.stop_signal(signal.into(), &mut self.context).await;
+                    let child = signal.into();
+                    let progress = self.context.terminator().track_child_or_stop_signal(child);
                     if progress == TerminationProgress::SafeToStop {
                         log::info!("Actor {:?} is completed.", self.id);
                         self.msg_rx.close();
