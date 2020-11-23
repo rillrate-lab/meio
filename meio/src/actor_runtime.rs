@@ -67,6 +67,7 @@ pub trait Actor: Sized + Send + 'static {
         Ok(())
     }
 
+    /*
     /// Called when an `Actor` interrupted (received `Shutdown` signal).
     async fn interrupted(&mut self) -> Result<(), Error> {
         Ok(())
@@ -83,6 +84,7 @@ pub trait Actor: Sized + Send + 'static {
     /// If you have optional fields filled during initialization,
     /// don't `unwrap` them, because they can be `None`.
     async fn terminate(&mut self) /* NO RESULT! IMPORTANT! */ {}
+    */
 }
 
 /// `Context` of a `ActorRuntime` that contains `Address` and `Receiver`.
@@ -131,7 +133,7 @@ impl<A: Actor> ActorRuntime<A> {
             self.routine().await;
         }
         // Terminate even if it hadn't initialized properly.
-        self.actor.terminate().await;
+        //self.actor.terminate().await;
         log::info!("Actor finished: {:?}", self.id);
         // It's important to finalize `Operator` after `terminate` call,
         // because that can contain some activities for parent `Actor`.
@@ -146,13 +148,7 @@ impl<A: Actor> ActorRuntime<A> {
                     log::trace!("Stop signal received: {:?} for {:?}", event, self.id);
                     // Because `Operator` contained an instance of the `Controller`.
                     let signal = event.expect("actor controller couldn't be closed");
-                    let child: Option<Id> = signal.into();
-                    if child.is_none() {
-                        let interrupt_res = self.actor.interrupted().await;
-                        if let Err(err) = interrupt_res {
-                            log::error!("Interruption of {:?} failed with: {}", self.id, err);
-                        }
-                    }
+                    let child = signal.into();
                     let progress = self.context.terminator().track_child_or_stop_signal(child);
                     if progress == TerminationProgress::SafeToStop {
                         log::info!("Actor {:?} is completed.", self.id);
