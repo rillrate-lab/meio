@@ -18,6 +18,7 @@ mod lite_runtime;
 
 pub mod channel;
 pub mod handlers;
+pub mod interrupter;
 pub mod linkage;
 pub mod signal;
 pub mod task;
