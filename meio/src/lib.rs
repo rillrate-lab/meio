@@ -9,7 +9,7 @@
 //! `async` method of your type.
 
 #![warn(missing_docs)]
-#![recursion_limit = "256"]
+#![recursion_limit = "512"]
 #![feature(generators)]
 #![feature(option_expect_none)]
 
