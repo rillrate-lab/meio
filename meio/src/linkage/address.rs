@@ -2,7 +2,7 @@
 
 use crate::{
     Action, ActionHandler, ActionPerformer, ActionRecipient, Actor, Controller, Envelope, Id,
-    Interaction, InteractionHandler, InteractionRecipient,
+    Interaction, InteractionHandler, InteractionRecipient, Interrupted,
 };
 use anyhow::{anyhow, Error};
 use derive_more::{Deref, DerefMut};
@@ -150,5 +150,13 @@ impl<A: Actor> Address<A> {
     /// Gives a `Controller` of that entity.
     pub fn controller(&self) -> Controller {
         self.controller.clone()
+    }
+
+    /// Sends an `Interrupted` signal.
+    pub async fn interrupt(&mut self) -> Result<(), Error>
+    where
+        A: ActionHandler<Interrupted>,
+    {
+        self.act(Interrupted).await
     }
 }
