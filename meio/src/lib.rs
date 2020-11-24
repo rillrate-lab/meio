@@ -97,8 +97,8 @@ mod tests {
     use anyhow::Error;
     use async_trait::async_trait;
     use futures::stream;
-    use std::time::Duration;
-    use tokio::time::delay_for;
+    //use std::time::Duration;
+    //use tokio::time::delay_for;
 
     #[derive(Debug)]
     pub struct MyActor;
@@ -149,9 +149,11 @@ mod tests {
 
     #[async_trait]
     impl Actor for MyActor {
+        /* TODO: Fix in the future releases.
         async fn terminate(&mut self) {
             delay_for(Duration::from_secs(3)).await;
         }
+        */
     }
 
     #[async_trait]
