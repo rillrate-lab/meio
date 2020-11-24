@@ -19,6 +19,20 @@ impl Action for Awake {
     }
 }
 
+/// The event to ask an `Actor` to interrupt its activity.
+pub struct Interrupt {}
+
+impl Interrupt {
+    pub(crate) fn new() -> Self {
+        Self {}
+    }
+}
+
+impl Action for Interrupt {
+    fn is_high_priority(&self) -> bool {
+        true
+    }
+}
 /*
  * struct Supervisor {
  *   address?

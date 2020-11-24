@@ -1,8 +1,8 @@
 //! This module contains `Address` to interact with an `Actor`.
 
 use crate::{
-    Action, ActionHandler, ActionPerformer, ActionRecipient, Actor, Controller, Envelope, Id,
-    Interaction, InteractionHandler, InteractionRecipient,
+    lifecycle::Interrupt, Action, ActionHandler, ActionPerformer, ActionRecipient, Actor,
+    Controller, Envelope, Id, Interaction, InteractionHandler, InteractionRecipient,
 };
 use anyhow::{anyhow, Error};
 use derive_more::{Deref, DerefMut};
@@ -162,5 +162,13 @@ impl<A: Actor> Address<A> {
     /// Gives a `Controller` of that entity.
     pub fn controller(&self) -> Controller {
         self.controller.clone()
+    }
+
+    /// Sends an `Interrrupt` event.
+    pub fn interrupt(&mut self) -> Result<(), Error>
+    where
+        A: ActionHandler<Interrupt>,
+    {
+        self.send_hp_direct(Interrupt::new())
     }
 }
