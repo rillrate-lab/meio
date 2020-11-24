@@ -1,8 +1,8 @@
 //! This module contains `Actor` trait and the runtime to execute it.
 
 use crate::{
-    channel, Address, Controller, Envelope, Id, Operator, Supervisor, TerminationProgress,
-    Terminator,
+    channel, Address, Controller, Envelope, Id, LiteTask, Operator, Supervisor,
+    TerminationProgress, Terminator,
 };
 use anyhow::Error;
 use async_trait::async_trait;
@@ -66,25 +66,6 @@ pub trait Actor: Sized + Send + 'static {
     async fn initialize(&mut self, _ctx: &mut Context<Self>) -> Result<(), Error> {
         Ok(())
     }
-
-    /*
-    /// Called when an `Actor` interrupted (received `Shutdown` signal).
-    async fn interrupted(&mut self) -> Result<(), Error> {
-        Ok(())
-    }
-
-    /// Called when an `Actor` teminated.
-    /// This method doesn't have a result to don't allow you to
-    /// use `?` operator that can interrupt termination and resources
-    /// releasing process.
-    /// You should also terminate workers here.
-    ///
-    /// This method will be called even if initialization failed.
-    ///
-    /// If you have optional fields filled during initialization,
-    /// don't `unwrap` them, because they can be `None`.
-    async fn terminate(&mut self) /* NO RESULT! IMPORTANT! */ {}
-    */
 }
 
 /// `Context` of a `ActorRuntime` that contains `Address` and `Receiver`.
@@ -99,8 +80,18 @@ impl<A: Actor> Context<A> {
         &mut self.address
     }
 
+    /// Starts and binds an `Actor`.
+    pub fn bind_actor<T: Actor>(&self, actor: T) -> Address<T> {
+        T::start(actor, self.supervisor())
+    }
+
+    /// Starts and binds an `Actor`.
+    pub fn bind_task<T: LiteTask>(&self, task: T) -> Controller {
+        T::start(task, self.supervisor())
+    }
+
     /// Returns a `Supervisor` link of the `Actor`.
-    pub fn bind(&mut self) -> Supervisor {
+    fn supervisor(&self) -> Supervisor {
         Some(self.address.controller())
     }
 
