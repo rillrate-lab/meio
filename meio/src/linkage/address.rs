@@ -79,6 +79,18 @@ impl<A: Actor> Address<A> {
         }
     }
 
+    /// Sends a service message using the high-priority queue.
+    pub(crate) fn send_hp_direct<T>(&mut self, msg: T) -> Result<(), Error>
+    where
+        T: Action,
+        A: ActionHandler<T>,
+    {
+        let envelope = Envelope::action(msg);
+        self.hp_msg_tx
+            .unbounded_send(envelope)
+            .map_err(|_| anyhow!("can't send a high-priority service message"))
+    }
+
     /// **Internal method.** Use `action` or `interaction` instead.
     /// It sends `Message` wrapped with `Envelope` to `Actor`.
     ///

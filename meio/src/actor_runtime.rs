@@ -1,8 +1,8 @@
 //! This module contains `Actor` trait and the runtime to execute it.
 
 use crate::{
-    channel, lifecycle::Awake, ActionHandler, ActionPerformer, Address, Controller, Envelope, Id,
-    LiteTask, Operator, Supervisor, TerminationProgress, Terminator,
+    channel, lifecycle::Awake, ActionHandler, Address, Controller, Envelope, Id, LiteTask,
+    Operator, Supervisor, TerminationProgress, Terminator,
 };
 use anyhow::Error;
 use async_trait::async_trait;
@@ -12,15 +12,27 @@ use uuid::Uuid;
 
 const MESSAGES_CHANNEL_DEPTH: usize = 32;
 
+/// Spawns a standalone `Actor` that has no `Supervisor`.
+pub fn standalone<A>(actor: A) -> Result<Address<A>, Error>
+where
+    A: Actor + ActionHandler<Awake>,
+{
+    spawn(actor, Supervisor::None)
+}
+
 /// Spawns `Actor` in `ActorRuntime`.
-fn spawn<A: Actor>(actor: A, supervisor: Option<impl Into<Controller>>) -> Address<A> {
+fn spawn<A>(actor: A, supervisor: Option<impl Into<Controller>>) -> Result<Address<A>, Error>
+where
+    A: Actor + ActionHandler<Awake>,
+{
     let id = Id::of_actor(&actor);
     let supervisor = supervisor.map(Into::into);
     let (controller, operator) = channel::pair(id, supervisor);
     let id = controller.id();
     let (msg_tx, msg_rx) = mpsc::channel(MESSAGES_CHANNEL_DEPTH);
     let (hp_msg_tx, hp_msg_rx) = mpsc::unbounded();
-    let address = Address::new(controller, msg_tx, hp_msg_tx);
+    let mut address = Address::new(controller, msg_tx, hp_msg_tx);
+    address.send_hp_direct(Awake::new())?;
     let context = Context {
         address: address.clone(),
         terminator: Terminator::new(id.clone()),
@@ -34,7 +46,7 @@ fn spawn<A: Actor>(actor: A, supervisor: Option<impl Into<Controller>>) -> Addre
         hp_msg_rx,
     };
     tokio::spawn(runtime.entrypoint());
-    address
+    Ok(address)
 }
 
 /// The main trait. Your structs have to implement it to
@@ -48,15 +60,6 @@ pub trait Actor: Sized + Send + 'static {
     fn name(&self) -> String {
         let uuid = Uuid::new_v4();
         format!("Actor:{}({})", std::any::type_name::<Self>(), uuid)
-    }
-
-    // TODO: Move this method to `Context::standalone` or somwhere else
-    /// Starts an actor
-    fn start<T>(self, supervisor: Option<T>) -> Address<Self>
-    where
-        T: Into<Controller> + Send,
-    {
-        spawn(self, supervisor)
     }
 }
 
@@ -73,13 +76,11 @@ impl<A: Actor> Context<A> {
     }
 
     /// Starts and binds an `Actor`.
-    pub async fn bind_actor<T>(&self, actor: T) -> Result<Address<T>, Error>
+    pub fn bind_actor<T>(&self, actor: T) -> Result<Address<T>, Error>
     where
         T: Actor + ActionHandler<Awake>,
     {
-        let mut address = T::start(actor, self.supervisor());
-        address.act(Awake::new()).await?;
-        Ok(address)
+        spawn(actor, self.supervisor())
     }
 
     /// Starts and binds an `Actor`.

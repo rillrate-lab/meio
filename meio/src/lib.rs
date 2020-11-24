@@ -24,12 +24,11 @@ pub mod signal;
 pub mod task;
 pub mod terminator;
 
-pub use actor_runtime::{Actor, Context};
+pub use actor_runtime::{standalone, Actor, Context};
 pub use channel::{Controller, Status, Supervisor};
 use channel::{Operator, Signal};
 use handlers::Envelope;
 pub use handlers::{Action, ActionHandler, Interaction, InteractionHandler};
-pub use lifecycle::Awake;
 pub use linkage::address::Address;
 pub use linkage::link::Link;
 pub use linkage::performers::{ActionPerformer, InteractionPerformer};
@@ -104,6 +103,17 @@ mod tests {
 
     #[derive(Debug)]
     pub struct MyActor;
+
+    #[async_trait]
+    impl ActionHandler<lifecycle::Awake> for MyActor {
+        async fn handle(
+            &mut self,
+            _event: lifecycle::Awake,
+            _ctx: &mut Context<Self>,
+        ) -> Result<(), Error> {
+            Ok(())
+        }
+    }
 
     #[derive(Debug)]
     struct MsgOne;
@@ -201,7 +211,7 @@ mod tests {
     #[tokio::test]
     async fn start_and_terminate() -> Result<(), Error> {
         env_logger::try_init().ok();
-        let mut address = MyActor.start(Supervisor::None);
+        let mut address = standalone(MyActor)?;
         address.act(MsgOne).await?;
         let res = address.interact(MsgTwo).await?;
         assert_eq!(res, 1);
@@ -213,7 +223,7 @@ mod tests {
     #[tokio::test]
     async fn test_recipient() -> Result<(), Error> {
         env_logger::try_init().ok();
-        let mut address = MyActor.start(Supervisor::None);
+        let mut address = standalone(MyActor)?;
         let action_recipient = address.action_recipient();
         action_recipient.clone().act(MsgOne).await?;
         let interaction_recipient = address.interaction_recipient();
@@ -227,7 +237,7 @@ mod tests {
     #[tokio::test]
     async fn test_attach() -> Result<(), Error> {
         env_logger::try_init().ok();
-        let mut address = MyActor.start(Supervisor::None);
+        let mut address = standalone(MyActor)?;
         let stream = stream::iter(vec![MsgOne, MsgOne, MsgOne]);
         address.attach(stream).await?;
         // If you activeate this line the test will wait for the `Ctrl+C` signal.
@@ -239,7 +249,7 @@ mod tests {
     #[tokio::test]
     async fn test_link() -> Result<(), Error> {
         env_logger::try_init().ok();
-        let address = MyActor.start(Supervisor::None);
+        let address = standalone(MyActor)?;
         let mut link: link::MyLink = address.link();
         link.send_signal().await?;
         let mut alternative_link: link::MyAlternativeLink = address.link();

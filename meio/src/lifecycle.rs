@@ -3,7 +3,7 @@
 use crate::Action;
 
 /// This message sent by a `Supervisor` to a spawned child actor.
-pub struct Awake {
+pub struct Awake /* TODO: Add `Supervisor` type parameter to support different spawners */ {
     // TODO: Add `Supervisor`
 }
 
