@@ -1,8 +1,8 @@
 //! This module contains `Actor` trait and the runtime to execute it.
 
 use crate::{
-    channel, Address, Controller, Envelope, Id, LiteTask, Operator, Supervisor,
-    TerminationProgress, Terminator,
+    channel, lifecycle::Awake, ActionHandler, ActionPerformer, Address, Controller, Envelope, Id,
+    LiteTask, Operator, Supervisor, TerminationProgress, Terminator,
 };
 use anyhow::Error;
 use async_trait::async_trait;
@@ -58,15 +58,6 @@ pub trait Actor: Sized + Send + 'static {
     {
         spawn(self, supervisor)
     }
-
-    /// Called when actor initializing.
-    /// You should spawn workers here if needed.
-    ///
-    /// Don't worry if this method failed. `terminate` will
-    /// be called in any case and you can finalize all workers there.
-    async fn initialize(&mut self, _ctx: &mut Context<Self>) -> Result<(), Error> {
-        Ok(())
-    }
 }
 
 /// `Context` of a `ActorRuntime` that contains `Address` and `Receiver`.
@@ -82,8 +73,13 @@ impl<A: Actor> Context<A> {
     }
 
     /// Starts and binds an `Actor`.
-    pub fn bind_actor<T: Actor>(&self, actor: T) -> Address<T> {
-        T::start(actor, self.supervisor())
+    pub async fn bind_actor<T>(&self, actor: T) -> Result<Address<T>, Error>
+    where
+        T: Actor + ActionHandler<Awake>,
+    {
+        let mut address = T::start(actor, self.supervisor());
+        address.act(Awake::new()).await?;
+        Ok(address)
     }
 
     /// Starts and binds an `Actor`.
@@ -118,14 +114,7 @@ impl<A: Actor> ActorRuntime<A> {
     /// The `entrypoint` of the `ActorRuntime` that calls `routine` method.
     async fn entrypoint(mut self) {
         self.operator.initialize();
-        log::info!("Starting actor: {:?}", self.id);
-        if let Err(err) = self.actor.initialize(&mut self.context).await {
-            log::error!("Initialization failed: {:?}", err);
-        } else {
-            self.routine().await;
-        }
-        // Terminate even if it hadn't initialized properly.
-        //self.actor.terminate().await;
+        self.routine().await;
         log::info!("Actor finished: {:?}", self.id);
         // It's important to finalize `Operator` after `terminate` call,
         // because that can contain some activities for parent `Actor`.
