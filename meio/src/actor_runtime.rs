@@ -50,6 +50,7 @@ pub trait Actor: Sized + Send + 'static {
         format!("Actor:{}({})", std::any::type_name::<Self>(), uuid)
     }
 
+    // TODO: Move this method to `Context::standalone` or somwhere else
     /// Starts an actor
     fn start<T>(self, supervisor: Option<T>) -> Address<Self>
     where

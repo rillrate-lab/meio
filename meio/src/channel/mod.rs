@@ -11,6 +11,8 @@ use crate::Id;
 use futures::channel::mpsc;
 use tokio::sync::watch;
 
+// TODO: Make it private when `Context::standalone` will appear,
+// because sub-actors already spawned by methods of the `Context`.
 /// Alias for using `Supervisor::None` for `spawn` calling.
 pub type Supervisor = Option<Controller>;
 
