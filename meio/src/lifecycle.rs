@@ -33,6 +33,21 @@ impl Action for Interrupt {
         true
     }
 }
+
+/// Notifies when `Actor`'s activity is completed.
+pub struct Done {}
+
+impl Done {
+    pub(crate) fn new() -> Self {
+        Self {}
+    }
+}
+
+impl Action for Done {
+    fn is_high_priority(&self) -> bool {
+        true
+    }
+}
 /*
  * struct Supervisor {
  *   address?

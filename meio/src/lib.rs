@@ -31,6 +31,7 @@ use handlers::Envelope;
 pub use handlers::{Action, ActionHandler, Interaction, InteractionHandler};
 pub use linkage::address::Address;
 pub use linkage::link::Link;
+pub use linkage::notifier::Notifier;
 pub use linkage::performers::{ActionPerformer, InteractionPerformer};
 pub use linkage::recipients::{ActionRecipient, InteractionRecipient};
 pub use lite_runtime::{LiteStatus, LiteTask, ShutdownReceiver};

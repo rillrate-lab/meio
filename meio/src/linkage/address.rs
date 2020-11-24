@@ -2,7 +2,7 @@
 
 use crate::{
     lifecycle::Interrupt, Action, ActionHandler, ActionPerformer, ActionRecipient, Actor,
-    Controller, Envelope, Id, Interaction, InteractionHandler, InteractionRecipient,
+    Controller, Envelope, Id, Interaction, InteractionHandler, InteractionRecipient, Notifier,
 };
 use anyhow::{anyhow, Error};
 use derive_more::{Deref, DerefMut};
@@ -170,5 +170,14 @@ impl<A: Actor> Address<A> {
         A: ActionHandler<Interrupt>,
     {
         self.send_hp_direct(Interrupt::new())
+    }
+
+    /// Creates the notifier that will use a provided message for notifications.
+    pub fn notifier<I>(&self, message: I) -> Notifier<I>
+    where
+        A: ActionHandler<I>,
+        I: Action + Clone,
+    {
+        Notifier::new(self.action_recipient(), message)
     }
 }

@@ -2,5 +2,6 @@
 
 pub mod address;
 pub mod link;
+pub mod notifier;
 pub mod performers;
 pub mod recipients;
