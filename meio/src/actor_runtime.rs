@@ -1,8 +1,10 @@
 //! This module contains `Actor` trait and the runtime to execute it.
 
 use crate::{
-    channel, lifecycle::Awake, ActionHandler, Address, Controller, Envelope, Id, LiteTask,
-    Operator, Supervisor, TerminationProgress, Terminator,
+    channel,
+    lifecycle::{self, Awake, Done},
+    ActionHandler, Address, Controller, Envelope, Id, LiteTask, Operator, TerminationProgress,
+    Terminator,
 };
 use anyhow::Error;
 use async_trait::async_trait;
@@ -12,27 +14,64 @@ use uuid::Uuid;
 
 const MESSAGES_CHANNEL_DEPTH: usize = 32;
 
+// TODO: Move system somewhere
+enum System {}
+
+impl Actor for System {}
+
+#[async_trait]
+impl ActionHandler<lifecycle::Awake> for System {
+    async fn handle(
+        &mut self,
+        _event: lifecycle::Awake,
+        _ctx: &mut Context<Self>,
+    ) -> Result<(), Error> {
+        unreachable!()
+    }
+}
+
+#[async_trait]
+impl ActionHandler<lifecycle::Done> for System {
+    async fn handle(
+        &mut self,
+        _event: lifecycle::Done,
+        _ctx: &mut Context<Self>,
+    ) -> Result<(), Error> {
+        unreachable!()
+    }
+}
+
 /// Spawns a standalone `Actor` that has no `Supervisor`.
 pub fn standalone<A>(actor: A) -> Result<Address<A>, Error>
 where
     A: Actor + ActionHandler<Awake>,
 {
-    spawn(actor, Supervisor::None)
+    spawn(actor, Option::<Address<System>>::None)
 }
 
 /// Spawns `Actor` in `ActorRuntime`.
-fn spawn<A>(actor: A, supervisor: Option<impl Into<Controller>>) -> Result<Address<A>, Error>
+fn spawn<A, S>(actor: A, opt_supervisor: Option<Address<S>>) -> Result<Address<A>, Error>
 where
     A: Actor + ActionHandler<Awake>,
+    S: Actor + ActionHandler<Done>,
 {
     let id = Id::of_actor(&actor);
-    let supervisor = supervisor.map(Into::into);
+    let supervisor = opt_supervisor.clone().map(Into::into);
     let (controller, operator) = channel::pair(id, supervisor);
     let id = controller.id();
     let (msg_tx, msg_rx) = mpsc::channel(MESSAGES_CHANNEL_DEPTH);
     let (hp_msg_tx, hp_msg_rx) = mpsc::unbounded();
     let mut address = Address::new(controller, msg_tx, hp_msg_tx);
     address.send_hp_direct(Awake::new())?;
+    let done_notifier: Option<Box<dyn DoneNotifier>> = {
+        match opt_supervisor {
+            None => None,
+            Some(mut addr) => {
+                let done_notifier = move || addr.send_hp_direct(Done::new());
+                Some(Box::new(done_notifier))
+            }
+        }
+    };
     let context = Context {
         address: address.clone(),
         terminator: Terminator::new(id.clone()),
@@ -42,11 +81,26 @@ where
         actor,
         context,
         operator,
+        done_notifier,
         msg_rx,
         hp_msg_rx,
     };
     tokio::spawn(runtime.entrypoint());
     Ok(address)
+}
+
+trait DoneNotifier: Send {
+    fn notify_done(&mut self) -> Result<(), Error>;
+}
+
+impl<T> DoneNotifier for T
+where
+    T: FnMut() -> Result<(), Error>,
+    T: Send,
+{
+    fn notify_done(&mut self) -> Result<(), Error> {
+        (self)()
+    }
 }
 
 /// The main trait. Your structs have to implement it to
@@ -79,18 +133,14 @@ impl<A: Actor> Context<A> {
     pub fn bind_actor<T>(&self, actor: T) -> Result<Address<T>, Error>
     where
         T: Actor + ActionHandler<Awake>,
+        A: ActionHandler<Done>,
     {
-        spawn(actor, self.supervisor())
+        spawn(actor, Some(self.address.clone()))
     }
 
     /// Starts and binds an `Actor`.
     pub fn bind_task<T: LiteTask>(&self, task: T) -> Controller {
-        T::start(task, self.supervisor())
-    }
-
-    /// Returns a `Supervisor` link of the `Actor`.
-    fn supervisor(&self) -> Supervisor {
-        Some(self.address.controller())
+        T::start(task, Some(self.address.controller()))
     }
 
     /// Returns a reference to an `Address`.
@@ -99,12 +149,15 @@ impl<A: Actor> Context<A> {
     }
 }
 
+// TODO: Maybe add `S: Supervisor` parameter to
+// avoid using blind notifiers, etc?
 /// `ActorRuntime` for `Actor`.
 pub struct ActorRuntime<A: Actor> {
     id: Id,
     actor: A,
     context: Context<A>,
     operator: Operator,
+    done_notifier: Option<Box<dyn DoneNotifier>>,
     /// `Receiver` that have to be used to receive incoming messages.
     msg_rx: mpsc::Receiver<Envelope<A>>,
     /// High-priority receiver
@@ -120,6 +173,9 @@ impl<A: Actor> ActorRuntime<A> {
         // It's important to finalize `Operator` after `terminate` call,
         // because that can contain some activities for parent `Actor`.
         // Unregistering ids for example.
+        if let Some(notifier) = self.done_notifier.as_mut() {
+            notifier.notify_done();
+        }
         self.operator.finalize();
     }
 
