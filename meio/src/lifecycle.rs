@@ -19,7 +19,7 @@ where
 }
 
 impl dyn LifecycleNotifier {
-    pub fn once<A, M>(address: &Address<A>, msg: M) -> Box<dyn LifecycleNotifier>
+    pub fn once<A, M>(address: &Address<A>, msg: M) -> Box<Self>
     where
         A: Actor + ActionHandler<M>,
         M: Action,
@@ -36,6 +36,10 @@ impl dyn LifecycleNotifier {
             }
         };
         Box::new(notifier)
+    }
+
+    pub fn ignore() -> Box<Self> {
+        Box::new(|| Ok(()))
     }
 }
 

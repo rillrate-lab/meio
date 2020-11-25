@@ -66,10 +66,10 @@ where
     let awake_notifier = LifecycleNotifier::once(&address, Awake::new());
     let done_notifier = {
         match opt_supervisor {
-            None => None,
+            None => LifecycleNotifier::ignore(),
             Some(ref addr) => {
                 let event = Done::new(id.clone());
-                Some(LifecycleNotifier::once(addr, event))
+                LifecycleNotifier::once(addr, event)
             }
         }
     };
@@ -150,10 +150,7 @@ pub struct ActorRuntime<A: Actor> {
     context: Context<A>,
     operator: Operator,
     awake_notifier: Box<dyn LifecycleNotifier>,
-    // TODO: Try to skip `Option` wrapper here.
-    // It can be possible when the pair of `Controller` and `Operator`
-    // will be removed from the `Address` type.
-    done_notifier: Option<Box<dyn LifecycleNotifier>>,
+    done_notifier: Box<dyn LifecycleNotifier>,
     /// `Receiver` that have to be used to receive incoming messages.
     msg_rx: mpsc::Receiver<Envelope<A>>,
     /// High-priority receiver
@@ -176,14 +173,12 @@ impl<A: Actor> ActorRuntime<A> {
         // It's important to finalize `Operator` after `terminate` call,
         // because that can contain some activities for parent `Actor`.
         // Unregistering ids for example.
-        if let Some(done_notifier) = self.done_notifier.as_mut() {
-            if let Err(err) = done_notifier.notify() {
-                log::error!(
-                    "Can't send done notification from the actor {:?}: {}",
-                    self.id,
-                    err
-                );
-            }
+        if let Err(err) = self.done_notifier.notify() {
+            log::error!(
+                "Can't send done notification from the actor {:?}: {}",
+                self.id,
+                err
+            );
         }
         self.operator.finalize();
     }
