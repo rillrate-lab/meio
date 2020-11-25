@@ -160,14 +160,26 @@ impl<A: Actor> ActorRuntime<A> {
     /// The `entrypoint` of the `ActorRuntime` that calls `routine` method.
     async fn entrypoint(mut self) {
         self.operator.initialize();
-        self.awake_notifier.notify();
+        if let Err(err) = self.awake_notifier.notify() {
+            log::error!(
+                "Can't send awake notification to the actor {:?}: {}",
+                self.id,
+                err
+            );
+        }
         self.routine().await;
         log::info!("Actor finished: {:?}", self.id);
         // It's important to finalize `Operator` after `terminate` call,
         // because that can contain some activities for parent `Actor`.
         // Unregistering ids for example.
         if let Some(done_notifier) = self.done_notifier.as_mut() {
-            done_notifier.notify();
+            if let Err(err) = done_notifier.notify() {
+                log::error!(
+                    "Can't send done notification from the actor {:?}: {}",
+                    self.id,
+                    err
+                );
+            }
         }
         self.operator.finalize();
     }
