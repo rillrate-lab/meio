@@ -111,6 +111,7 @@ impl<L: LiteTask> LiteRuntime<L> {
         let mut shutdown = Some(shutdown_tx);
         loop {
             select_biased! {
+                /*
                 event = self.operator.next() => {
                     log::trace!("Stop signal received: {:?} for task {:?}", event, self.id);
                     if let Some(signal) = event {
@@ -136,6 +137,7 @@ impl<L: LiteTask> LiteRuntime<L> {
                         // Wait for `done` instead of `stop_signal` used for actors
                     }
                 }
+                */
                 done = routine => {
                     if let Err(err) = done {
                         log::error!("LiteTask {:?} failed: {}", self.id, err);
