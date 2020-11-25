@@ -1,6 +1,10 @@
 //! This module contains `LiteTask` trait and the runtime to execute it.
 
-use crate::{channel, Controller, Id, Operator, Signal};
+use crate::{
+    channel,
+    lifecycle::{LifecycleNotifier, TaskDone},
+    ActionHandler, Actor, Address, Controller, Id, Operator, Signal,
+};
 use anyhow::Error;
 use async_trait::async_trait;
 use derive_more::{From, Into};
@@ -29,15 +33,21 @@ impl ShutdownReceiver {
 }
 
 /// Spawns `Lite` task and return `Controller` to manage that.
-fn task<L: LiteTask>(lite_task: L, supervisor: Option<impl Into<Controller>>) -> Controller {
+pub(crate) fn task<L, S>(lite_task: L, supervisor: Address<S>) -> Controller
+where
+    L: LiteTask,
+    S: Actor + ActionHandler<TaskDone<L>>,
+{
     let id = Id::of_task(&lite_task);
-    let supervisor = supervisor.map(Into::into);
-    let (controller, operator) = channel::pair(id, supervisor);
+    let (controller, operator) = channel::pair(id, Some(supervisor.controller()));
     let id = controller.id();
+    let event = TaskDone::new(id.clone());
+    let done_notifier = LifecycleNotifier::once(&supervisor, event);
     let runtime = LiteRuntime {
         id,
         lite_task: Some(lite_task),
         operator,
+        done_notifier,
     };
     tokio::spawn(runtime.entrypoint());
     controller
@@ -71,14 +81,6 @@ pub trait LiteTask: Sized + Send + 'static {
         format!("Task:{}({})", std::any::type_name::<Self>(), uuid)
     }
 
-    /// Starts a lite task.
-    fn start<T>(self, supervisor: Option<T>) -> Controller
-    where
-        T: Into<Controller> + Send,
-    {
-        task(self, supervisor)
-    }
-
     /// Routine of the task that can contain loops.
     /// It can taks into accout provided receiver to implement graceful interruption.
     async fn routine(self, signal: ShutdownReceiver) -> Result<(), Error>;
@@ -88,6 +90,7 @@ struct LiteRuntime<L: LiteTask> {
     id: Id,
     lite_task: Option<L>,
     operator: Operator, // aka Context here
+    done_notifier: Box<dyn LifecycleNotifier>,
 }
 
 impl<L: LiteTask> LiteRuntime<L> {
@@ -96,6 +99,8 @@ impl<L: LiteTask> LiteRuntime<L> {
         log::info!("Starting task: {:?}", self.id);
         self.routine().await;
         log::info!("Task finished: {:?}", self.id);
+        // TODO: Dry errors printing for notifiers for tasks and actors
+        self.done_notifier.notify();
         self.operator.finalize();
     }
 

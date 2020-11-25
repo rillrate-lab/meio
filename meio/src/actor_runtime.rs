@@ -2,7 +2,7 @@
 
 use crate::{
     channel,
-    lifecycle::{self, Awake, Done, LifecycleNotifier},
+    lifecycle::{self, Awake, Done, LifecycleNotifier, TaskDone},
     ActionHandler, Address, Controller, Envelope, Id, LiteTask, Operator, TerminationProgress,
     Terminator,
 };
@@ -51,6 +51,8 @@ where
 }
 
 /// Spawns `Actor` in `ActorRuntime`.
+// TODO: No `Option`! Use `static Address<System>` instead.
+// It can be possible when `Controller` and `Operator` will be removed.
 fn spawn<A, S>(actor: A, opt_supervisor: Option<Address<S>>) -> Address<A>
 where
     A: Actor + ActionHandler<Awake<S>>,
@@ -127,8 +129,12 @@ impl<A: Actor> Context<A> {
     }
 
     /// Starts and binds an `Actor`.
-    pub fn bind_task<T: LiteTask>(&self, task: T) -> Controller {
-        T::start(task, Some(self.address.controller()))
+    pub fn bind_task<T>(&self, task: T) -> Controller
+    where
+        T: LiteTask,
+        A: ActionHandler<TaskDone<T>>,
+    {
+        crate::lite_runtime::task(task, self.address.clone())
     }
 
     /// Returns a reference to an `Address`.
