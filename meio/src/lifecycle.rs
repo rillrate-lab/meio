@@ -61,15 +61,19 @@ impl<T: Actor> Action for Awake<T> {
 
 /// The event to ask an `Actor` to interrupt its activity.
 #[derive(Debug)]
-pub struct Interrupt {}
+pub struct Interrupt<T: Actor> {
+    _origin: PhantomData<T>,
+}
 
-impl Interrupt {
+impl<T: Actor> Interrupt<T> {
     pub(crate) fn new() -> Self {
-        Self {}
+        Self {
+            _origin: PhantomData,
+        }
     }
 }
 
-impl Action for Interrupt {
+impl<T: Actor> Action for Interrupt<T> {
     fn is_high_priority(&self) -> bool {
         true
     }

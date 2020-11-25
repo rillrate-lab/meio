@@ -1,7 +1,7 @@
 //! This module contains `Address` to interact with an `Actor`.
 
 use crate::{
-    lifecycle::Interrupt, Action, ActionHandler, ActionPerformer, ActionRecipient, Actor,
+    lifecycle::Interrupt, Action, ActionHandler, ActionPerformer, ActionRecipient, Actor, Context,
     Controller, Envelope, Id, Interaction, InteractionHandler, InteractionRecipient, Notifier,
 };
 use anyhow::{anyhow, Error};
@@ -165,9 +165,13 @@ impl<A: Actor> Address<A> {
     }
 
     /// Sends an `Interrrupt` event.
-    pub fn interrupt(&mut self) -> Result<(), Error>
+    ///
+    /// It required a `Context` parameter just to restrict using it in
+    /// methods other from handlers.
+    pub fn interrupt<T>(&mut self, _ctx: &Context<T>) -> Result<(), Error>
     where
-        A: ActionHandler<Interrupt>,
+        A: ActionHandler<Interrupt<T>>,
+        T: Actor,
     {
         self.send_hp_direct(Interrupt::new())
     }
