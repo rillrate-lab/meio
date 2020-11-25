@@ -1,7 +1,8 @@
 //! Contains message of the `Actor`'s lifecycle.
 
-use crate::{Action, Id};
-use anyhow::Error;
+use crate::{Action, ActionHandler, Actor, Address, Id};
+use anyhow::{anyhow, Error};
+use std::marker::PhantomData;
 
 pub(crate) trait LifecycleNotifier: Send {
     fn notify(&mut self) -> Result<(), Error>;
@@ -14,6 +15,27 @@ where
 {
     fn notify(&mut self) -> Result<(), Error> {
         (self)()
+    }
+}
+
+impl dyn LifecycleNotifier {
+    pub fn once<A, M>(address: &Address<A>, msg: M) -> Box<dyn LifecycleNotifier>
+    where
+        A: Actor + ActionHandler<M>,
+        M: Action,
+    {
+        let mut addr = address.clone();
+        let mut msg = Some(msg);
+        let notifier = move || {
+            if let Some(msg) = msg.take() {
+                addr.send_hp_direct(msg)
+            } else {
+                Err(anyhow!(
+                    "Attempt to send the second notification that can be sent once only."
+                ))
+            }
+        };
+        Box::new(notifier)
     }
 }
 
@@ -52,19 +74,22 @@ impl Action for Interrupt {
 }
 
 /// Notifies when `Actor`'s activity is completed.
-// TODO: Don't allow to clone!
-#[derive(Debug, Clone)]
-pub struct Done {
+#[derive(Debug)]
+pub struct Done<T: Actor> {
     id: Id,
+    _origin: PhantomData<T>,
 }
 
-impl Done {
+impl<T: Actor> Done<T> {
     pub(crate) fn new(id: Id) -> Self {
-        Self { id }
+        Self {
+            id,
+            _origin: PhantomData,
+        }
     }
 }
 
-impl Action for Done {
+impl<T: Actor> Action for Done<T> {
     fn is_high_priority(&self) -> bool {
         true
     }

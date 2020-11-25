@@ -31,10 +31,10 @@ impl ActionHandler<lifecycle::Awake> for System {
 }
 
 #[async_trait]
-impl ActionHandler<lifecycle::Done> for System {
+impl<T: Actor> ActionHandler<lifecycle::Done<T>> for System {
     async fn handle(
         &mut self,
-        _event: lifecycle::Done,
+        _event: lifecycle::Done<T>,
         _ctx: &mut Context<Self>,
     ) -> Result<(), Error> {
         unreachable!()
@@ -53,7 +53,7 @@ where
 fn spawn<A, S>(actor: A, opt_supervisor: Option<Address<S>>) -> Address<A>
 where
     A: Actor + ActionHandler<Awake>,
-    S: Actor + ActionHandler<Done>,
+    S: Actor + ActionHandler<Done<A>>,
 {
     let id = Id::of_actor(&actor);
     let supervisor = opt_supervisor.clone().map(Into::into);
@@ -62,15 +62,13 @@ where
     let (msg_tx, msg_rx) = mpsc::channel(MESSAGES_CHANNEL_DEPTH);
     let (hp_msg_tx, hp_msg_rx) = mpsc::unbounded();
     let address = Address::new(controller, msg_tx, hp_msg_tx);
-    let mut awake_address = address.clone();
-    let awake_notifier = Box::new(move || awake_address.send_hp_direct(Awake::new()));
-    let done_notifier: Option<Box<dyn LifecycleNotifier>> = {
+    let awake_notifier = LifecycleNotifier::once(&address, Awake::new());
+    let done_notifier = {
         match opt_supervisor {
             None => None,
-            Some(mut addr) => {
+            Some(ref addr) => {
                 let event = Done::new(id.clone());
-                let done_notifier = move || addr.send_hp_direct(event.clone());
-                Some(Box::new(done_notifier))
+                Some(LifecycleNotifier::once(addr, event))
             }
         }
     };
@@ -122,7 +120,7 @@ impl<A: Actor> Context<A> {
     pub fn bind_actor<T>(&self, actor: T) -> Address<T>
     where
         T: Actor + ActionHandler<Awake>,
-        A: ActionHandler<Done>,
+        A: ActionHandler<Done<T>>,
     {
         spawn(actor, Some(self.address.clone()))
     }
