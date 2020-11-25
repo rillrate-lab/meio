@@ -113,15 +113,18 @@ impl<L: LiteTask> LiteRuntime<L> {
             select_biased! {
                 event = self.operator.next() => {
                     log::trace!("Stop signal received: {:?} for task {:?}", event, self.id);
-                    let signal = event.expect("task controller couldn't be closed");
-                    match signal {
-                        Signal::Shutdown => {
-                            // Ok
+                    if let Some(signal) = event {
+                        match signal {
+                            Signal::Shutdown => {
+                                // Ok
+                            }
+                            Signal::Finished { .. } => {
+                                // Because tasks don't terminate them:
+                                panic!("Tasks don't support supervised childs.");
+                            }
                         }
-                        Signal::Finished { .. } => {
-                            // Because tasks don't terminate them:
-                            panic!("Tasks don't support supervised childs.");
-                        }
+                    } else {
+                        log::error!("task controller couldn't be closed");
                     }
                     // TODO: Check that origin is none!
                     if let Some(tx) = shutdown.take() {
