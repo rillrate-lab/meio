@@ -41,17 +41,19 @@ impl dyn LifecycleNotifier {
 
 /// This message sent by a `Supervisor` to a spawned child actor.
 #[derive(Debug)]
-pub struct Awake /* TODO: Add `Supervisor` type parameter to support different spawners */ {
-    // TODO: Add `Supervisor`
+pub struct Awake<T: Actor> {
+    _origin: PhantomData<T>,
 }
 
-impl Awake {
+impl<T: Actor> Awake<T> {
     pub(crate) fn new() -> Self {
-        Self {}
+        Self {
+            _origin: PhantomData,
+        }
     }
 }
 
-impl Action for Awake {
+impl<T: Actor> Action for Awake<T> {
     fn is_high_priority(&self) -> bool {
         true
     }

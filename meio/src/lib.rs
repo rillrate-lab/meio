@@ -24,7 +24,7 @@ pub mod signal;
 pub mod task;
 pub mod terminator;
 
-pub use actor_runtime::{standalone, Actor, Context};
+pub use actor_runtime::{standalone, Actor, Context, System};
 pub use channel::{Controller, Status, Supervisor};
 use channel::{Operator, Signal};
 use handlers::Envelope;
@@ -106,10 +106,10 @@ mod tests {
     pub struct MyActor;
 
     #[async_trait]
-    impl ActionHandler<lifecycle::Awake> for MyActor {
+    impl ActionHandler<lifecycle::Awake<System>> for MyActor {
         async fn handle(
             &mut self,
-            _event: lifecycle::Awake,
+            _event: lifecycle::Awake<System>,
             _ctx: &mut Context<Self>,
         ) -> Result<(), Error> {
             Ok(())

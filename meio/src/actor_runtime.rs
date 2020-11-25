@@ -15,15 +15,16 @@ use uuid::Uuid;
 const MESSAGES_CHANNEL_DEPTH: usize = 32;
 
 // TODO: Move system somewhere
-enum System {}
+/// Virtual actor that represents the system/environment.
+pub enum System {}
 
 impl Actor for System {}
 
 #[async_trait]
-impl ActionHandler<lifecycle::Awake> for System {
+impl ActionHandler<lifecycle::Awake<Self>> for System {
     async fn handle(
         &mut self,
-        _event: lifecycle::Awake,
+        _event: lifecycle::Awake<Self>,
         _ctx: &mut Context<Self>,
     ) -> Result<(), Error> {
         unreachable!()
@@ -44,7 +45,7 @@ impl<T: Actor> ActionHandler<lifecycle::Done<T>> for System {
 /// Spawns a standalone `Actor` that has no `Supervisor`.
 pub fn standalone<A>(actor: A) -> Address<A>
 where
-    A: Actor + ActionHandler<Awake>,
+    A: Actor + ActionHandler<Awake<System>>,
 {
     spawn(actor, Option::<Address<System>>::None)
 }
@@ -52,7 +53,7 @@ where
 /// Spawns `Actor` in `ActorRuntime`.
 fn spawn<A, S>(actor: A, opt_supervisor: Option<Address<S>>) -> Address<A>
 where
-    A: Actor + ActionHandler<Awake>,
+    A: Actor + ActionHandler<Awake<S>>,
     S: Actor + ActionHandler<Done<A>>,
 {
     let id = Id::of_actor(&actor);
@@ -119,7 +120,7 @@ impl<A: Actor> Context<A> {
     /// Starts and binds an `Actor`.
     pub fn bind_actor<T>(&self, actor: T) -> Address<T>
     where
-        T: Actor + ActionHandler<Awake>,
+        T: Actor + ActionHandler<Awake<A>>,
         A: ActionHandler<Done<T>>,
     {
         spawn(actor, Some(self.address.clone()))
