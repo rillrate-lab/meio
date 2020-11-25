@@ -42,7 +42,7 @@ impl ActionHandler<lifecycle::Done> for System {
 }
 
 /// Spawns a standalone `Actor` that has no `Supervisor`.
-pub fn standalone<A>(actor: A) -> Result<Address<A>, Error>
+pub fn standalone<A>(actor: A) -> Address<A>
 where
     A: Actor + ActionHandler<Awake>,
 {
@@ -50,7 +50,7 @@ where
 }
 
 /// Spawns `Actor` in `ActorRuntime`.
-fn spawn<A, S>(actor: A, opt_supervisor: Option<Address<S>>) -> Result<Address<A>, Error>
+fn spawn<A, S>(actor: A, opt_supervisor: Option<Address<S>>) -> Address<A>
 where
     A: Actor + ActionHandler<Awake>,
     S: Actor + ActionHandler<Done>,
@@ -88,7 +88,7 @@ where
         hp_msg_rx,
     };
     tokio::spawn(runtime.entrypoint());
-    Ok(address)
+    address
 }
 
 /// The main trait. Your structs have to implement it to
@@ -118,7 +118,7 @@ impl<A: Actor> Context<A> {
     }
 
     /// Starts and binds an `Actor`.
-    pub fn bind_actor<T>(&self, actor: T) -> Result<Address<T>, Error>
+    pub fn bind_actor<T>(&self, actor: T) -> Address<T>
     where
         T: Actor + ActionHandler<Awake>,
         A: ActionHandler<Done>,
