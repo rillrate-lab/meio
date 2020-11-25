@@ -1,6 +1,21 @@
 //! Contains message of the `Actor`'s lifecycle.
 
 use crate::Action;
+use anyhow::Error;
+
+pub(crate) trait LifecycleNotifier: Send {
+    fn notify(&mut self) -> Result<(), Error>;
+}
+
+impl<T> LifecycleNotifier for T
+where
+    T: FnMut() -> Result<(), Error>,
+    T: Send,
+{
+    fn notify(&mut self) -> Result<(), Error> {
+        (self)()
+    }
+}
 
 /// This message sent by a `Supervisor` to a spawned child actor.
 pub struct Awake /* TODO: Add `Supervisor` type parameter to support different spawners */ {

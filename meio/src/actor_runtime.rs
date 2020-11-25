@@ -2,7 +2,7 @@
 
 use crate::{
     channel,
-    lifecycle::{self, Awake, Done},
+    lifecycle::{self, Awake, Done, LifecycleNotifier},
     ActionHandler, Address, Controller, Envelope, Id, LiteTask, Operator, TerminationProgress,
     Terminator,
 };
@@ -61,9 +61,10 @@ where
     let id = controller.id();
     let (msg_tx, msg_rx) = mpsc::channel(MESSAGES_CHANNEL_DEPTH);
     let (hp_msg_tx, hp_msg_rx) = mpsc::unbounded();
-    let mut address = Address::new(controller, msg_tx, hp_msg_tx);
-    address.send_hp_direct(Awake::new())?;
-    let done_notifier: Option<Box<dyn DoneNotifier>> = {
+    let address = Address::new(controller, msg_tx, hp_msg_tx);
+    let mut awake_address = address.clone();
+    let awake_notifier = Box::new(move || awake_address.send_hp_direct(Awake::new()));
+    let done_notifier: Option<Box<dyn LifecycleNotifier>> = {
         match opt_supervisor {
             None => None,
             Some(mut addr) => {
@@ -81,26 +82,13 @@ where
         actor,
         context,
         operator,
+        awake_notifier,
         done_notifier,
         msg_rx,
         hp_msg_rx,
     };
     tokio::spawn(runtime.entrypoint());
     Ok(address)
-}
-
-trait DoneNotifier: Send {
-    fn notify_done(&mut self) -> Result<(), Error>;
-}
-
-impl<T> DoneNotifier for T
-where
-    T: FnMut() -> Result<(), Error>,
-    T: Send,
-{
-    fn notify_done(&mut self) -> Result<(), Error> {
-        (self)()
-    }
 }
 
 /// The main trait. Your structs have to implement it to
@@ -157,7 +145,11 @@ pub struct ActorRuntime<A: Actor> {
     actor: A,
     context: Context<A>,
     operator: Operator,
-    done_notifier: Option<Box<dyn DoneNotifier>>,
+    awake_notifier: Box<dyn LifecycleNotifier>,
+    // TODO: Try to skip `Option` wrapper here.
+    // It can be possible when the pair of `Controller` and `Operator`
+    // will be removed from the `Address` type.
+    done_notifier: Option<Box<dyn LifecycleNotifier>>,
     /// `Receiver` that have to be used to receive incoming messages.
     msg_rx: mpsc::Receiver<Envelope<A>>,
     /// High-priority receiver
@@ -168,13 +160,14 @@ impl<A: Actor> ActorRuntime<A> {
     /// The `entrypoint` of the `ActorRuntime` that calls `routine` method.
     async fn entrypoint(mut self) {
         self.operator.initialize();
+        self.awake_notifier.notify();
         self.routine().await;
         log::info!("Actor finished: {:?}", self.id);
         // It's important to finalize `Operator` after `terminate` call,
         // because that can contain some activities for parent `Actor`.
         // Unregistering ids for example.
-        if let Some(notifier) = self.done_notifier.as_mut() {
-            notifier.notify_done();
+        if let Some(done_notifier) = self.done_notifier.as_mut() {
+            done_notifier.notify();
         }
         self.operator.finalize();
     }
