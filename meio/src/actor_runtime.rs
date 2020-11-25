@@ -132,6 +132,10 @@ impl<A: Actor> Context<A> {
     }
 
     /// Returns a reference to an `Address`.
+    #[deprecated(
+        since = "0.25.0",
+        note = "Track lifetimes explicitly with `Awake`, `Interrupt`, `Done` events."
+    )]
     pub fn terminator(&mut self) -> &mut Terminator {
         &mut self.terminator
     }

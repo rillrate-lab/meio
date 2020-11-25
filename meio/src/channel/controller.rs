@@ -66,6 +66,7 @@ impl Controller {
     }
 
     /// Start shutdown process for the `Actor`.
+    #[deprecated(since = "0.25.0", note = "Use `Address::interrupt` call instead.")]
     pub fn shutdown(&mut self) {
         let operation = Signal::Shutdown;
         self.send_op(operation);
