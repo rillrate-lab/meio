@@ -1,6 +1,6 @@
 //! Contains message of the `Actor`'s lifecycle.
 
-use crate::Action;
+use crate::{Action, Id};
 use anyhow::Error;
 
 pub(crate) trait LifecycleNotifier: Send {
@@ -18,6 +18,7 @@ where
 }
 
 /// This message sent by a `Supervisor` to a spawned child actor.
+#[derive(Debug)]
 pub struct Awake /* TODO: Add `Supervisor` type parameter to support different spawners */ {
     // TODO: Add `Supervisor`
 }
@@ -35,6 +36,7 @@ impl Action for Awake {
 }
 
 /// The event to ask an `Actor` to interrupt its activity.
+#[derive(Debug)]
 pub struct Interrupt {}
 
 impl Interrupt {
@@ -50,11 +52,15 @@ impl Action for Interrupt {
 }
 
 /// Notifies when `Actor`'s activity is completed.
-pub struct Done {}
+// TODO: Don't allow to clone!
+#[derive(Debug, Clone)]
+pub struct Done {
+    id: Id,
+}
 
 impl Done {
-    pub(crate) fn new() -> Self {
-        Self {}
+    pub(crate) fn new(id: Id) -> Self {
+        Self { id }
     }
 }
 

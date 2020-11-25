@@ -68,7 +68,8 @@ where
         match opt_supervisor {
             None => None,
             Some(mut addr) => {
-                let done_notifier = move || addr.send_hp_direct(Done::new());
+                let event = Done::new(id.clone());
+                let done_notifier = move || addr.send_hp_direct(event.clone());
                 Some(Box::new(done_notifier))
             }
         }
