@@ -1,6 +1,6 @@
 //! Contains message of the `Actor`'s lifecycle.
 
-use crate::{Action, ActionHandler, Actor, Address, Id};
+use crate::{Action, ActionHandler, Actor, Address, Id, LiteTask};
 use anyhow::{anyhow, Error};
 use std::marker::PhantomData;
 
@@ -104,6 +104,29 @@ impl<T: Actor> Action for Done<T> {
         true
     }
 }
+
+/// Notifies when `LiteTask` is finished.
+#[derive(Debug)]
+pub struct TaskDone<T: LiteTask> {
+    id: Id,
+    _origin: PhantomData<T>,
+}
+
+impl<T: LiteTask> TaskDone<T> {
+    pub(crate) fn new(id: Id) -> Self {
+        Self {
+            id,
+            _origin: PhantomData,
+        }
+    }
+}
+
+impl<T: LiteTask> Action for TaskDone<T> {
+    fn is_high_priority(&self) -> bool {
+        true
+    }
+}
+
 /*
  * struct Supervisor {
  *   address?
