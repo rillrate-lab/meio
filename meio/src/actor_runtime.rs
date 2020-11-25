@@ -65,7 +65,7 @@ where
     let (msg_tx, msg_rx) = mpsc::channel(MESSAGES_CHANNEL_DEPTH);
     let (hp_msg_tx, hp_msg_rx) = mpsc::unbounded();
     let address = Address::new(controller, msg_tx, hp_msg_tx);
-    let awake_notifier = LifecycleNotifier::once(&address, Awake::new());
+    let awake_envelope = Envelope::action(Awake::new());
     let done_notifier = {
         match opt_supervisor {
             None => LifecycleNotifier::ignore(),
@@ -85,7 +85,7 @@ where
         actor,
         context,
         operator,
-        awake_notifier,
+        awake_envelope: Some(awake_envelope),
         done_notifier,
         msg_rx,
         hp_msg_rx,
@@ -164,7 +164,7 @@ pub struct ActorRuntime<A: Actor> {
     actor: A,
     context: Context<A>,
     operator: Operator,
-    awake_notifier: Box<dyn LifecycleNotifier>,
+    awake_envelope: Option<Envelope<A>>,
     done_notifier: Box<dyn LifecycleNotifier>,
     /// `Receiver` that have to be used to receive incoming messages.
     msg_rx: mpsc::Receiver<Envelope<A>>,
@@ -176,14 +176,25 @@ impl<A: Actor> ActorRuntime<A> {
     /// The `entrypoint` of the `ActorRuntime` that calls `routine` method.
     async fn entrypoint(mut self) {
         self.operator.initialize();
-        if let Err(err) = self.awake_notifier.notify() {
-            log::error!(
-                "Can't send awake notification to the actor {:?}: {}",
-                self.id,
-                err
-            );
+        let mut awake_envelope = self
+            .awake_envelope
+            .take()
+            .expect("awake envelope has to be set in spawn method!");
+        let awake_res = awake_envelope
+            .handle(&mut self.actor, &mut self.context)
+            .await;
+        match awake_res {
+            Ok(_) => {
+                self.routine().await;
+            }
+            Err(err) => {
+                log::error!(
+                    "Can't call awake notification handler of the actor {:?}: {}",
+                    self.id,
+                    err
+                );
+            }
         }
-        self.routine().await;
         log::info!("Actor finished: {:?}", self.id);
         // It's important to finalize `Operator` after `terminate` call,
         // because that can contain some activities for parent `Actor`.
