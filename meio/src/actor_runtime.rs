@@ -76,6 +76,7 @@ where
         }
     };
     let context = Context {
+        alive: true,
         address: address.clone(),
         terminator: Terminator::new(id.clone()),
     };
@@ -109,6 +110,7 @@ pub trait Actor: Sized + Send + 'static {
 
 /// `Context` of a `ActorRuntime` that contains `Address` and `Receiver`.
 pub struct Context<A: Actor> {
+    alive: bool,
     address: Address<A>,
     terminator: Terminator,
 }
@@ -137,6 +139,7 @@ impl<A: Actor> Context<A> {
         crate::lite_runtime::task(task, self.address.clone())
     }
 
+    /*
     /// Returns a reference to an `Address`.
     #[deprecated(
         since = "0.25.0",
@@ -144,6 +147,12 @@ impl<A: Actor> Context<A> {
     )]
     pub fn terminator(&mut self) -> &mut Terminator {
         &mut self.terminator
+    }
+    */
+
+    /// Stops the runtime of the `Actor` on one message will be processed after this call.
+    pub fn stop(&mut self) {
+        self.alive = false;
     }
 }
 
@@ -190,14 +199,14 @@ impl<A: Actor> ActorRuntime<A> {
     }
 
     async fn routine(&mut self) {
-        loop {
+        while self.context.alive {
             select_biased! {
                 event = self.operator.next() => {
                     log::trace!("Stop signal received: {:?} for {:?}", event, self.id);
                     // Because `Operator` contained an instance of the `Controller`.
                     let signal = event.expect("actor controller couldn't be closed");
                     let child = signal.into();
-                    let progress = self.context.terminator().track_child_or_stop_signal(child);
+                    let progress = self.context.terminator.track_child_or_stop_signal(child);
                     if progress == TerminationProgress::SafeToStop {
                         log::info!("Actor {:?} is completed.", self.id);
                         self.msg_rx.close();
