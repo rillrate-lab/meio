@@ -5,6 +5,7 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 
 pub(crate) enum Operation<A: Actor> {
+    DoneWithEnvelope { id: Id, envelope: Envelope<A> },
     Envelope { envelope: Envelope<A> },
 }
 

@@ -11,31 +11,27 @@ use std::marker::PhantomData;
 
 struct Stage {
     terminating: bool,
-    map: HashMap<Id, Box<dyn LifecycleNotifier>>,
+    ids: HashSet<Id>,
 }
 
 impl Default for Stage {
     fn default() -> Self {
         Self {
             terminating: false,
-            map: HashMap::new(),
+            ids: HashSet::new(),
         }
     }
 }
 
 impl Stage {
     fn is_finished(&self) -> bool {
-        self.terminating && self.map.is_empty()
+        self.terminating && self.ids.is_empty()
     }
+}
 
-    fn terminate(&mut self) {
-        if !self.terminating {
-            self.terminating = true;
-            for notifier in self.map.values_mut() {
-                notifier.notify();
-            }
-        }
-    }
+struct Record {
+    type_name: &'static str,
+    notifier: Box<dyn LifecycleNotifier>,
 }
 
 // TODO: Rename to Terminator again
@@ -43,6 +39,7 @@ pub(crate) struct LifetimeTracker<T: Actor> {
     terminating: bool,
     prioritized: Vec<&'static str>,
     stages: HashMap<&'static str, Stage>,
+    records: HashMap<Id, Record>,
     _actor: PhantomData<T>,
 }
 
@@ -54,6 +51,7 @@ impl<T: Actor> LifetimeTracker<T> {
             // TODO: with_capacity 0 ?
             prioritized: Vec::new(),
             stages: HashMap::new(),
+            records: HashMap::new(),
             _actor: PhantomData,
         }
     }
@@ -69,17 +67,22 @@ impl<T: Actor> LifetimeTracker<T> {
         let type_name = type_name::<A>();
         let stage = self.stages.entry(type_name).or_default();
         let id = controller.id();
+        stage.ids.insert(id.clone());
         let notifier = LifecycleNotifier::once(controller, Interrupt::new());
-        stage.map.insert(id, notifier);
+        let record = Record {
+            type_name,
+            notifier,
+        };
+        self.records.insert(id, record);
     }
 
-    pub fn remove<A: Actor>(&mut self, id: &TypedId<A>) {
-        let type_name = type_name::<A>();
-        let notifier = self
-            .stages
-            .get_mut(type_name)
-            .and_then(|stage| stage.map.remove(&id.id));
-        if notifier.is_some() && self.terminating {
+    pub fn remove(&mut self, id: &Id) {
+        if let Some(record) = self.records.remove(id) {
+            if let Some(stage) = self.stages.get_mut(record.type_name) {
+                stage.ids.remove(id);
+            }
+        }
+        if self.terminating {
             self.try_terminate_next();
         }
     }
@@ -93,23 +96,27 @@ impl<T: Actor> LifetimeTracker<T> {
         self.stages.values().all(Stage::is_finished)
     }
 
+    fn stage_sequence(&self) -> Vec<&'static str> {
+        let stages_to_term: HashSet<_> = self.stages.keys().cloned().collect();
+        let prior_set: HashSet<_> = self.prioritized.iter().cloned().collect();
+        let remained = stages_to_term.difference(&prior_set);
+        let mut sequence = self.prioritized.clone();
+        sequence.extend(remained);
+        sequence
+    }
+
     fn try_terminate_next(&mut self) {
         self.terminating = true;
-        let mut remained_stages: HashSet<&'static str> = self.stages.keys().cloned().collect();
-        for stage_name in self.prioritized.iter() {
-            remained_stages.remove(stage_name);
+        for stage_name in self.stage_sequence() {
             if let Some(stage) = self.stages.get_mut(stage_name) {
-                stage.terminate();
-                if !stage.is_finished() {
-                    return;
+                stage.terminating = true;
+                for id in stage.ids.iter() {
+                    if let Some(record) = self.records.get_mut(id) {
+                        record.notifier.notify();
+                    }
                 }
-            }
-        }
-        for stage_name in remained_stages.drain() {
-            if let Some(stage) = self.stages.get_mut(stage_name) {
-                stage.terminate();
                 if !stage.is_finished() {
-                    return;
+                    break;
                 }
             }
         }

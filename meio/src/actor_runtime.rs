@@ -240,14 +240,24 @@ impl<A: Actor> ActorRuntime<A> {
                 }
                 */
                 hp_operation = self.hp_msg_rx.next() => {
-                    // TODO: Track `Operation::InterruptWithEnvelope` events!
-                    // TODO: Use Interrupt meta to remove a task from tracker and call stop when
-                    // nothing remained.
-                    let hp_envelope = hp_operation.map(|Operation::Envelope { envelope }| envelope);
-                    if let Some(mut envelope) = hp_envelope {
-                        let handle_res = envelope.handle(&mut self.actor, &mut self.context).await;
+                    if let Some(mut operation) = hp_operation {
+                        let mut hp_envelope;
+                        match operation {
+                            Operation::Envelope { envelope } => {
+                                hp_envelope = envelope;
+                            }
+                            Operation::DoneWithEnvelope { id, envelope } => {
+                                hp_envelope = envelope;
+                                self.context.lifetime_tracker.remove(&id);
+                            }
+                        }
+                        let handle_res = hp_envelope.handle(&mut self.actor, &mut self.context).await;
                         if let Err(err) = handle_res {
                             log::error!("Handler for {:?} (high-priority) failed: {}", self.id, err);
+                        }
+                        if self.context.lifetime_tracker.is_finished() {
+
+                            self.context.stop();
                         }
                     } else {
                         // Even if all `Address` dropped `Actor` can do something useful on
