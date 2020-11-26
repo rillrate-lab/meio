@@ -2,8 +2,80 @@
 
 use crate::{Action, ActionHandler, Actor, Address, Context, Id, LiteTask, TypedId};
 use anyhow::{anyhow, Error};
-use std::collections::HashMap;
+use std::any::{type_name, Any};
+use std::collections::{HashMap, HashSet};
 use std::marker::PhantomData;
+
+pub struct LifetimeTrackerOf<T> {
+    terminating: bool,
+    prioritized: Vec<&'static str>,
+    vital: HashSet<&'static str>,
+    type_to_map: HashMap<&'static str, HashMap<Id, Box<dyn Any>>>,
+    _actor: PhantomData<T>,
+}
+
+impl<T: Actor> LifetimeTrackerOf<T> {
+    // TODO: Make the constructor private
+    pub fn new() -> Self {
+        Self {
+            terminating: false,
+            // TODO: with_capacity 0 ?
+            prioritized: Vec::new(),
+            vital: HashSet::new(),
+            type_to_map: HashMap::new(),
+            _actor: PhantomData,
+        }
+    }
+
+    pub fn insert<A: Actor>(&mut self, address: Address<A>) {
+        let type_name = type_name::<A>();
+        let map = self.type_to_map.entry(type_name).or_default();
+        let id = address.id().id;
+        let boxed = Box::new(address);
+        map.insert(id, boxed);
+    }
+
+    pub fn remove<A: Actor>(&mut self, id: &TypedId<A>) -> Option<Box<Address<A>>> {
+        let type_name = type_name::<A>();
+        self.type_to_map
+            .get_mut(type_name)?
+            .remove(&id.id)
+            .and_then(|boxed| boxed.downcast().ok())
+    }
+
+    pub fn track<A: Actor>(&mut self, id: &TypedId<A>, ctx: &mut Context<T>) {
+        // TODO: Start termination if it's vital!
+
+        // TODO: Just remove if it's not in terminating process
+    }
+
+    pub fn prioritize_termination<A>(&mut self) {
+        let type_name = type_name::<A>();
+        self.prioritized.push(type_name);
+    }
+
+    pub fn mark_vital<A>(&mut self) {
+        let type_name = type_name::<A>();
+        self.vital.insert(type_name);
+    }
+
+    fn is_ready_to_stop(&self) -> bool {
+        self.type_to_map.values().all(HashMap::is_empty)
+    }
+
+    fn try_terminate_next(&mut self, ctx: &mut Context<T>) {
+        if self.is_ready_to_stop() {
+            ctx.stop();
+        } else {
+            todo!("terminate the next stage in a queue, or others using set diff to get others...");
+        }
+    }
+
+    pub fn start_termination(&mut self, ctx: &mut Context<T>) {
+        self.terminating = true;
+        self.try_terminate_next(ctx);
+    }
+}
 
 /// Tracks the `Address`es by `Id`s.
 pub struct LifetimeTracker<A: Actor> {
