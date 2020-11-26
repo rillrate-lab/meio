@@ -96,9 +96,9 @@ struct LiteRuntime<L: LiteTask> {
 impl<L: LiteTask> LiteRuntime<L> {
     async fn entrypoint(mut self) {
         self.operator.initialize();
-        log::info!("Starting task: {:?}", self.id);
+        log::info!("LiteTask started: {:?}", self.id);
         self.routine().await;
-        log::info!("Task finished: {:?}", self.id);
+        log::info!("LiteTask finished: {:?}", self.id);
         // TODO: Dry errors printing for notifiers for tasks and actors
         self.done_notifier.notify();
         self.operator.finalize();

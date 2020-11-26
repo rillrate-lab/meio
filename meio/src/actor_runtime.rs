@@ -175,6 +175,7 @@ impl<A: Actor> ActorRuntime<A> {
     /// The `entrypoint` of the `ActorRuntime` that calls `routine` method.
     async fn entrypoint(mut self) {
         self.operator.initialize();
+        log::info!("Actor started: {:?}", self.id);
         let mut awake_envelope = self
             .awake_envelope
             .take()

@@ -37,11 +37,13 @@ pub use linkage::recipients::{ActionRecipient, InteractionRecipient};
 pub use lite_runtime::{LiteStatus, LiteTask, ShutdownReceiver};
 use std::fmt;
 use std::hash::{Hash, Hasher};
+use std::marker::PhantomData;
 use std::sync::Arc;
 //pub use terminator::{Stage, TerminationProgress, Terminator};
 
 /// Unique Id of Actor's runtime that used to identify
 /// all senders for that actor.
+// TODO: Rename to `GenericId`
 #[derive(Clone)]
 pub struct Id(Arc<String>);
 
@@ -88,6 +90,23 @@ impl Hash for Id {
 impl AsRef<str> for Id {
     fn as_ref(&self) -> &str {
         self.0.as_ref()
+    }
+}
+
+/// Typed if of the task or actor.
+// TODO: Rename to Id
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TypedId<T> {
+    id: Id,
+    _origin: PhantomData<T>,
+}
+
+impl<T> TypedId<T> {
+    fn new(id: Id) -> Self {
+        Self {
+            id,
+            _origin: PhantomData,
+        }
     }
 }
 

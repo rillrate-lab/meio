@@ -3,6 +3,7 @@
 use crate::{
     lifecycle::Interrupt, Action, ActionHandler, ActionPerformer, ActionRecipient, Actor, Context,
     Controller, Envelope, Id, Interaction, InteractionHandler, InteractionRecipient, Notifier,
+    TypedId,
 };
 use anyhow::{anyhow, Error};
 use derive_more::{Deref, DerefMut};
@@ -77,6 +78,11 @@ impl<A: Actor> Address<A> {
             msg_tx,
             hp_msg_tx,
         }
+    }
+
+    /// Returns a typed id of the `Actor`.
+    pub fn id(&self) -> TypedId<Self> {
+        TypedId::new(self.controller.id())
     }
 
     /// Sends a service message using the high-priority queue.
