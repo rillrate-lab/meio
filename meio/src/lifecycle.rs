@@ -72,6 +72,10 @@ impl<T: Actor> LifetimeTracker<T> {
         }
     }
 
+    pub fn is_terminating(&self) -> bool {
+        self.terminating
+    }
+
     pub fn insert<A: Actor>(&mut self, address: Address<A>)
     where
         A: Actor + ActionHandler<Interrupt<T>>,
