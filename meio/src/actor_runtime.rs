@@ -69,7 +69,7 @@ where
         match opt_supervisor {
             None => LifecycleNotifier::ignore(),
             Some(ref addr) => {
-                let event = Done::new(id.clone());
+                let event = Done::new(address.id());
                 LifecycleNotifier::once(addr, event)
             }
         }

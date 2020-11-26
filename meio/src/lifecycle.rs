@@ -122,16 +122,12 @@ impl<T: Actor> Action for Interrupt<T> {
 /// Notifies when `Actor`'s activity is completed.
 #[derive(Debug)]
 pub struct Done<T: Actor> {
-    pub id: Id,
-    _origin: PhantomData<T>,
+    pub id: TypedId<T>,
 }
 
 impl<T: Actor> Done<T> {
-    pub(crate) fn new(id: Id) -> Self {
-        Self {
-            id,
-            _origin: PhantomData,
-        }
+    pub(crate) fn new(id: TypedId<T>) -> Self {
+        Self { id }
     }
 }
 
