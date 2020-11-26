@@ -3,8 +3,7 @@
 use crate::{
     channel,
     lifecycle::{self, Awake, Done, LifecycleNotifier, TaskDone},
-    ActionHandler, Address, Controller, Envelope, Id, LiteTask, Operator, TerminationProgress,
-    Terminator,
+    ActionHandler, Address, Controller, Envelope, Id, LiteTask, Operator,
 };
 use anyhow::Error;
 use async_trait::async_trait;
@@ -78,7 +77,7 @@ where
     let context = Context {
         alive: true,
         address: address.clone(),
-        terminator: Terminator::new(id.clone()),
+        //terminator: Terminator::new(id.clone()),
     };
     let runtime = ActorRuntime {
         id,
@@ -112,7 +111,7 @@ pub trait Actor: Sized + Send + 'static {
 pub struct Context<A: Actor> {
     alive: bool,
     address: Address<A>,
-    terminator: Terminator,
+    //terminator: Terminator,
 }
 
 impl<A: Actor> Context<A> {

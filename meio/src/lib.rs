@@ -22,7 +22,7 @@ pub mod lifecycle;
 pub mod linkage;
 pub mod signal;
 pub mod task;
-pub mod terminator;
+//pub mod terminator;
 
 pub use actor_runtime::{standalone, Actor, Context, System};
 pub use channel::{Controller, Status, Supervisor};
@@ -38,7 +38,7 @@ pub use lite_runtime::{LiteStatus, LiteTask, ShutdownReceiver};
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
-pub use terminator::{Stage, TerminationProgress, Terminator};
+//pub use terminator::{Stage, TerminationProgress, Terminator};
 
 /// Unique Id of Actor's runtime that used to identify
 /// all senders for that actor.
