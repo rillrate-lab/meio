@@ -29,6 +29,7 @@ pub use channel::{Controller, Status, Supervisor};
 use channel::{Operator, Signal};
 use handlers::Envelope;
 pub use handlers::{Action, ActionHandler, Interaction, InteractionHandler};
+pub use lifecycle::LifetimeTracker;
 pub use linkage::address::Address;
 pub use linkage::link::Link;
 pub use linkage::notifier::Notifier;
