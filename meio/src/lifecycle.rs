@@ -1,8 +1,33 @@
 //! Contains message of the `Actor`'s lifecycle.
 
-use crate::{Action, ActionHandler, Actor, Address, Id, LiteTask};
+use crate::{Action, ActionHandler, Actor, Address, Id, LiteTask, TypedId};
 use anyhow::{anyhow, Error};
+use std::collections::HashMap;
 use std::marker::PhantomData;
+
+/// Tracks the `Address`es by `Id`s.
+pub struct LifetimeTracker<A: Actor> {
+    map: HashMap<TypedId<A>, Address<A>>,
+}
+
+impl<A: Actor> LifetimeTracker<A> {
+    /// Creates a new tracker.
+    pub fn new() -> Self {
+        Self {
+            map: HashMap::new(),
+        }
+    }
+
+    /// Inserts an `Address` to the `Tracker`.
+    pub fn insert(&mut self, address: Address<A>) {
+        self.map.insert(address.id(), address);
+    }
+
+    /// Tries to remove the `Address` from the `Tracker`.
+    pub fn remove(&mut self, id: &TypedId<A>) -> Option<Address<A>> {
+        self.map.remove(&id)
+    }
+}
 
 pub(crate) trait LifecycleNotifier: Send {
     fn notify(&mut self) -> Result<(), Error>;

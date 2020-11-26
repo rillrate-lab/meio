@@ -81,7 +81,7 @@ impl<A: Actor> Address<A> {
     }
 
     /// Returns a typed id of the `Actor`.
-    pub fn id(&self) -> TypedId<Self> {
+    pub fn id(&self) -> TypedId<A> {
         TypedId::new(self.controller.id())
     }
 

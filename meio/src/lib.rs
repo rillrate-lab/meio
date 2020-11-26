@@ -73,7 +73,7 @@ impl fmt::Debug for Id {
     }
 }
 
-impl PartialEq<Id> for Id {
+impl PartialEq<Self> for Id {
     fn eq(&self, other: &Self) -> bool {
         Arc::ptr_eq(&self.0, &other.0)
     }
@@ -95,7 +95,7 @@ impl AsRef<str> for Id {
 
 /// Typed if of the task or actor.
 // TODO: Rename to Id
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone)]
 pub struct TypedId<T> {
     id: Id,
     _origin: PhantomData<T>,
@@ -107,6 +107,20 @@ impl<T> TypedId<T> {
             id,
             _origin: PhantomData,
         }
+    }
+}
+
+impl<T> PartialEq<Self> for TypedId<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.id.eq(&other.id)
+    }
+}
+
+impl<T> Eq for TypedId<T> {}
+
+impl<T> Hash for TypedId<T> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
     }
 }
 
