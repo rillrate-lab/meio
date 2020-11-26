@@ -1,7 +1,7 @@
 //! `Controller` in importat part of the all interaction with
 //! actors and tasks. It's also a part of the `Address`.
 
-use crate::{Id, Signal};
+use crate::{Actor, Context, Id, Signal};
 use futures::channel::mpsc;
 use std::fmt;
 use std::hash::{Hash, Hasher};
@@ -73,6 +73,13 @@ impl Controller {
         self.send_op(operation);
     }
     */
+
+    pub fn interrupt_by<T>(&mut self, ctx: &Context<T>)
+    where
+        T: Actor,
+    {
+        log::error!("LiteTask interruption is not implemented yet!");
+    }
 
     /// Waits when the `Actor` will be terminated.
     pub async fn join(&mut self) {
