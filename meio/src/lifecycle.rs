@@ -9,7 +9,7 @@ use std::collections::{HashMap, HashSet};
 use std::marker::PhantomData;
 
 struct Record {
-    address: Box<dyn Any>,
+    address: Box<dyn Any + Send + 'static>,
     notifier: Box<dyn LifecycleNotifier>,
 }
 
