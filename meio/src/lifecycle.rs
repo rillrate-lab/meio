@@ -44,9 +44,12 @@ impl<T: Actor> LifetimeTrackerOf<T> {
     }
 
     pub fn track<A: Actor>(&mut self, id: &TypedId<A>, ctx: &mut Context<T>) {
-        // TODO: Start termination if it's vital!
-
-        // TODO: Just remove if it's not in terminating process
+        let addr = self.remove(id);
+        let type_name = type_name::<A>();
+        if addr.is_some() && self.vital.contains(type_name) {
+            self.terminating = true;
+        }
+        self.try_terminate_next(ctx);
     }
 
     pub fn prioritize_termination<A>(&mut self) {
@@ -67,6 +70,9 @@ impl<T: Actor> LifetimeTrackerOf<T> {
         if self.is_ready_to_stop() {
             ctx.stop();
         } else {
+            for level in self.prioritized.iter() {
+                todo!();
+            }
             todo!("terminate the next stage in a queue, or others using set diff to get others...");
         }
     }
