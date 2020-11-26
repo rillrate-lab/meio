@@ -8,26 +8,9 @@ use std::any::{type_name, Any};
 use std::collections::{HashMap, HashSet};
 use std::marker::PhantomData;
 
-struct Record {
-    address: Box<dyn Any + Send + 'static>,
-    notifier: Box<dyn LifecycleNotifier>,
-}
-
-impl Record {
-    fn new<T, A>(address: Address<A>) -> Self
-    where
-        A: Actor + ActionHandler<Interrupt<T>>,
-        T: Actor,
-    {
-        let notifier = LifecycleNotifier::once(&address, Interrupt::new());
-        let address = Box::new(address.clone());
-        Self { address, notifier }
-    }
-}
-
 struct Stage {
     terminating: bool,
-    map: HashMap<Id, Record>,
+    map: HashMap<Id, Box<dyn LifecycleNotifier>>,
 }
 
 impl Default for Stage {
@@ -43,8 +26,8 @@ impl Stage {
     fn terminated(&mut self) -> bool {
         if !self.terminating {
             self.terminating = true;
-            for record in self.map.values_mut() {
-                record.notifier.notify();
+            for notifier in self.map.values_mut() {
+                notifier.notify();
             }
         }
         self.map.is_empty()
@@ -83,23 +66,17 @@ impl<T: Actor> LifetimeTracker<T> {
         let type_name = type_name::<A>();
         let stage = self.stages.entry(type_name).or_default();
         let id = address.id().id;
-        let record = Record::new(address);
-        stage.map.insert(id, record);
+        let notifier = LifecycleNotifier::once(address, Interrupt::new());
+        stage.map.insert(id, notifier);
     }
 
-    pub fn remove<A: Actor>(&mut self, id: &TypedId<A>) -> Option<Box<Address<A>>> {
+    pub fn remove<A: Actor>(&mut self, id: &TypedId<A>, ctx: &mut Context<T>) {
         let type_name = type_name::<A>();
-        self.stages
-            .get_mut(type_name)?
-            .map
-            .remove(&id.id)
-            .and_then(|record| record.address.downcast().ok())
-    }
-
-    pub fn track<A: Actor>(&mut self, id: &TypedId<A>, ctx: &mut Context<T>) {
-        let type_name = type_name::<A>();
-        let addr = self.remove(id);
-        if addr.is_some() && self.vital.contains(type_name) {
+        let notifier = self
+            .stages
+            .get_mut(type_name)
+            .and_then(|stage| stage.map.remove(&id.id));
+        if notifier.is_some() && self.vital.contains(type_name) {
             self.try_terminate_next(ctx);
         }
     }
@@ -155,16 +132,15 @@ where
 }
 
 impl dyn LifecycleNotifier {
-    pub fn once<A, M>(address: &Address<A>, msg: M) -> Box<Self>
+    pub fn once<A, M>(mut address: Address<A>, msg: M) -> Box<Self>
     where
         A: Actor + ActionHandler<M>,
         M: Action,
     {
-        let mut addr = address.clone();
         let mut msg = Some(msg);
         let notifier = move || {
             if let Some(msg) = msg.take() {
-                addr.send_hp_direct(msg)
+                address.send_hp_direct(msg)
             } else {
                 Err(anyhow!(
                     "Attempt to send the second notification that can be sent once only."

@@ -68,7 +68,7 @@ where
     let done_notifier = {
         match opt_supervisor {
             None => LifecycleNotifier::ignore(),
-            Some(ref addr) => {
+            Some(addr) => {
                 let event = Done::new(address.id());
                 LifecycleNotifier::once(addr, event)
             }

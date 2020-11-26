@@ -42,7 +42,7 @@ where
     let (controller, operator) = channel::pair(id, Some(supervisor.controller()));
     let id = controller.id();
     let event = TaskDone::new(id.clone());
-    let done_notifier = LifecycleNotifier::once(&supervisor, event);
+    let done_notifier = LifecycleNotifier::once(supervisor, event);
     let runtime = LiteRuntime {
         id,
         lite_task: Some(lite_task),
