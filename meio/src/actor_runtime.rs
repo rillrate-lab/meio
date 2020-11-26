@@ -212,6 +212,7 @@ impl<A: Actor> ActorRuntime<A> {
     async fn routine(&mut self) {
         while self.context.alive {
             select_biased! {
+                /*
                 event = self.operator.next() => {
                     log::trace!("Stop signal received: {:?} for {:?}", event, self.id);
                     // Because `Operator` contained an instance of the `Controller`.
@@ -224,6 +225,7 @@ impl<A: Actor> ActorRuntime<A> {
                         break;
                     }
                 }
+                */
                 hp_envelope = self.hp_msg_rx.next() => {
                     if let Some(mut envelope) = hp_envelope {
                         let handle_res = envelope.handle(&mut self.actor, &mut self.context).await;
