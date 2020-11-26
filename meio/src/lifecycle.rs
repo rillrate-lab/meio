@@ -1,6 +1,6 @@
 //! Contains message of the `Actor`'s lifecycle.
 
-use crate::{Action, ActionHandler, Actor, Address, Id, LiteTask, TypedId};
+use crate::{Action, ActionHandler, Actor, Address, Context, Id, LiteTask, TypedId};
 use anyhow::{anyhow, Error};
 use std::collections::HashMap;
 use std::marker::PhantomData;
@@ -26,6 +26,17 @@ impl<A: Actor> LifetimeTracker<A> {
     /// Tries to remove the `Address` from the `Tracker`.
     pub fn remove(&mut self, id: &TypedId<A>) -> Option<Address<A>> {
         self.map.remove(&id)
+    }
+
+    /// Sends `Interrupt` message to all addresses in a set.
+    pub fn interrupt_all_by<T>(&mut self, ctx: &Context<T>)
+    where
+        A: ActionHandler<Interrupt<T>>,
+        T: Actor,
+    {
+        for addr in self.map.values_mut() {
+            addr.interrupt_by(ctx);
+        }
     }
 }
 
