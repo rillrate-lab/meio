@@ -1,20 +1,65 @@
 //! Contains message of the `Actor`'s lifecycle.
 
-use crate::{Action, ActionHandler, Actor, Address, Context, Id, LiteTask, TypedId};
+use crate::{
+    Action, ActionHandler, ActionRecipient, Actor, Address, Context, Id, LiteTask, TypedId,
+};
 use anyhow::{anyhow, Error};
 use std::any::{type_name, Any};
 use std::collections::{HashMap, HashSet};
 use std::marker::PhantomData;
 
-pub struct LifetimeTrackerOf<T> {
+struct Record {
+    address: Box<dyn Any>,
+    notifier: Box<dyn LifecycleNotifier>,
+}
+
+impl Record {
+    fn new<T, A>(address: Address<A>) -> Self
+    where
+        A: Actor + ActionHandler<Interrupt<T>>,
+        T: Actor,
+    {
+        let notifier = LifecycleNotifier::once(&address, Interrupt::new());
+        let address = Box::new(address.clone());
+        Self { address, notifier }
+    }
+}
+
+struct Stage {
+    terminating: bool,
+    map: HashMap<Id, Record>,
+}
+
+impl Default for Stage {
+    fn default() -> Self {
+        Self {
+            terminating: false,
+            map: HashMap::new(),
+        }
+    }
+}
+
+impl Stage {
+    fn terminated(&mut self) -> bool {
+        if !self.terminating {
+            self.terminating = true;
+            for record in self.map.values_mut() {
+                record.notifier.notify();
+            }
+        }
+        self.map.is_empty()
+    }
+}
+
+pub struct LifetimeTracker<T: Actor> {
     terminating: bool,
     prioritized: Vec<&'static str>,
     vital: HashSet<&'static str>,
-    type_to_map: HashMap<&'static str, HashMap<Id, Box<dyn Any>>>,
+    stages: HashMap<&'static str, Stage>,
     _actor: PhantomData<T>,
 }
 
-impl<T: Actor> LifetimeTrackerOf<T> {
+impl<T: Actor> LifetimeTracker<T> {
     // TODO: Make the constructor private
     pub fn new() -> Self {
         Self {
@@ -22,34 +67,37 @@ impl<T: Actor> LifetimeTrackerOf<T> {
             // TODO: with_capacity 0 ?
             prioritized: Vec::new(),
             vital: HashSet::new(),
-            type_to_map: HashMap::new(),
+            stages: HashMap::new(),
             _actor: PhantomData,
         }
     }
 
-    pub fn insert<A: Actor>(&mut self, address: Address<A>) {
+    pub fn insert<A: Actor>(&mut self, address: Address<A>)
+    where
+        A: Actor + ActionHandler<Interrupt<T>>,
+    {
         let type_name = type_name::<A>();
-        let map = self.type_to_map.entry(type_name).or_default();
+        let stage = self.stages.entry(type_name).or_default();
         let id = address.id().id;
-        let boxed = Box::new(address);
-        map.insert(id, boxed);
+        let record = Record::new(address);
+        stage.map.insert(id, record);
     }
 
     pub fn remove<A: Actor>(&mut self, id: &TypedId<A>) -> Option<Box<Address<A>>> {
         let type_name = type_name::<A>();
-        self.type_to_map
+        self.stages
             .get_mut(type_name)?
+            .map
             .remove(&id.id)
-            .and_then(|boxed| boxed.downcast().ok())
+            .and_then(|record| record.address.downcast().ok())
     }
 
     pub fn track<A: Actor>(&mut self, id: &TypedId<A>, ctx: &mut Context<T>) {
-        let addr = self.remove(id);
         let type_name = type_name::<A>();
+        let addr = self.remove(id);
         if addr.is_some() && self.vital.contains(type_name) {
-            self.terminating = true;
+            self.try_terminate_next(ctx);
         }
-        self.try_terminate_next(ctx);
     }
 
     pub fn prioritize_termination<A>(&mut self) {
@@ -62,64 +110,29 @@ impl<T: Actor> LifetimeTrackerOf<T> {
         self.vital.insert(type_name);
     }
 
-    fn is_ready_to_stop(&self) -> bool {
-        self.type_to_map.values().all(HashMap::is_empty)
-    }
-
     fn try_terminate_next(&mut self, ctx: &mut Context<T>) {
-        if self.is_ready_to_stop() {
-            ctx.stop();
-        } else {
-            for level in self.prioritized.iter() {
-                todo!();
+        self.terminating = true;
+        let mut remained_stages: HashSet<&'static str> = self.stages.keys().cloned().collect();
+        for stage_name in self.prioritized.iter() {
+            remained_stages.remove(stage_name);
+            if let Some(stage) = self.stages.get_mut(stage_name) {
+                if !stage.terminated() {
+                    return;
+                }
             }
-            todo!("terminate the next stage in a queue, or others using set diff to get others...");
         }
+        for stage_name in remained_stages.drain() {
+            if let Some(stage) = self.stages.get_mut(stage_name) {
+                if !stage.terminated() {
+                    return;
+                }
+            }
+        }
+        ctx.stop();
     }
 
     pub fn start_termination(&mut self, ctx: &mut Context<T>) {
-        self.terminating = true;
         self.try_terminate_next(ctx);
-    }
-}
-
-/// Tracks the `Address`es by `Id`s.
-pub struct LifetimeTracker<A: Actor> {
-    map: HashMap<TypedId<A>, Address<A>>,
-}
-
-impl<A: Actor> LifetimeTracker<A> {
-    /// Creates a new tracker.
-    pub fn new() -> Self {
-        Self {
-            map: HashMap::new(),
-        }
-    }
-
-    /// Inserts an `Address` to the `Tracker`.
-    pub fn insert(&mut self, address: Address<A>) {
-        self.map.insert(address.id(), address);
-    }
-
-    /// Tries to remove the `Address` from the `Tracker`.
-    pub fn remove(&mut self, id: &TypedId<A>) -> Option<Address<A>> {
-        self.map.remove(&id)
-    }
-
-    /// Checks the map is empty.
-    pub fn is_empty(&self) -> bool {
-        self.map.is_empty()
-    }
-
-    /// Sends `Interrupt` message to all addresses in a set.
-    pub fn interrupt_all_by<T>(&mut self, ctx: &Context<T>)
-    where
-        A: ActionHandler<Interrupt<T>>,
-        T: Actor,
-    {
-        for addr in self.map.values_mut() {
-            addr.interrupt_by(ctx);
-        }
     }
 }
 
