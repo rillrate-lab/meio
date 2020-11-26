@@ -1,9 +1,11 @@
 //! This module contains `Actor` trait and the runtime to execute it.
 
+// TODO: Fix imports
 use crate::{
     channel,
     lifecycle::{self, Awake, Done, Interrupt, LifecycleNotifier, LifetimeTracker, TaskDone},
-    ActionHandler, Address, Controller, Envelope, Id, LiteTask, Operator,
+    linkage::controller::{Controller, Operation},
+    ActionHandler, Address, Envelope, Id, LiteTask, Operator,
 };
 use anyhow::Error;
 use async_trait::async_trait;
@@ -52,21 +54,20 @@ where
 /// Spawns `Actor` in `ActorRuntime`.
 // TODO: No `Option`! Use `static Address<System>` instead.
 // It can be possible when `Controller` and `Operator` will be removed.
-fn spawn<A, S>(actor: A, opt_supervisor: Option<Address<S>>) -> Address<A>
+fn spawn<A, S>(actor: A, supervisor: Option<Address<S>>) -> Address<A>
 where
     A: Actor + ActionHandler<Awake<S>>,
     S: Actor + ActionHandler<Done<A>>,
 {
     let id = Id::of_actor(&actor);
-    let supervisor = opt_supervisor.clone().map(Into::into);
-    let (controller, operator) = channel::pair(id, supervisor);
+    let (hp_msg_tx, hp_msg_rx) = mpsc::unbounded();
+    let controller = Controller::new(id, hp_msg_tx);
     let id = controller.id();
     let (msg_tx, msg_rx) = mpsc::channel(MESSAGES_CHANNEL_DEPTH);
-    let (hp_msg_tx, hp_msg_rx) = mpsc::unbounded();
-    let address = Address::new(controller, msg_tx, hp_msg_tx);
+    let address = Address::new(controller, msg_tx);
     let awake_envelope = Envelope::action(Awake::new());
     let done_notifier = {
-        match opt_supervisor {
+        match supervisor {
             None => LifecycleNotifier::ignore(),
             Some(addr) => {
                 let event = Done::new(address.id());
@@ -84,7 +85,6 @@ where
         id,
         actor,
         context,
-        operator,
         awake_envelope: Some(awake_envelope),
         done_notifier,
         msg_rx,
@@ -133,6 +133,7 @@ impl<A: Actor> Context<A> {
         address
     }
 
+    /* TODO: Fix
     /// Starts and binds an `Actor`.
     pub fn bind_task<T>(&mut self, task: T) -> Controller
     where
@@ -142,6 +143,7 @@ impl<A: Actor> Context<A> {
         // TODO: Add `Controller`
         crate::lite_runtime::task(task, self.address.clone())
     }
+    */
 
     /*
     /// Returns a reference to an `Address`.
@@ -174,19 +176,18 @@ pub struct ActorRuntime<A: Actor> {
     id: Id,
     actor: A,
     context: Context<A>,
-    operator: Operator,
     awake_envelope: Option<Envelope<A>>,
     done_notifier: Box<dyn LifecycleNotifier>,
     /// `Receiver` that have to be used to receive incoming messages.
     msg_rx: mpsc::Receiver<Envelope<A>>,
     /// High-priority receiver
-    hp_msg_rx: mpsc::UnboundedReceiver<Envelope<A>>,
+    hp_msg_rx: mpsc::UnboundedReceiver<Operation<A>>,
 }
 
 impl<A: Actor> ActorRuntime<A> {
     /// The `entrypoint` of the `ActorRuntime` that calls `routine` method.
     async fn entrypoint(mut self) {
-        self.operator.initialize();
+        //self.operator.initialize();
         log::info!("Actor started: {:?}", self.id);
         let mut awake_envelope = self
             .awake_envelope
@@ -218,7 +219,7 @@ impl<A: Actor> ActorRuntime<A> {
                 err
             );
         }
-        self.operator.finalize();
+        //self.operator.finalize();
     }
 
     async fn routine(&mut self) {
@@ -238,10 +239,11 @@ impl<A: Actor> ActorRuntime<A> {
                     }
                 }
                 */
-                hp_envelope = self.hp_msg_rx.next() => {
+                hp_operation = self.hp_msg_rx.next() => {
                     // TODO: Track `Operation::InterruptWithEnvelope` events!
                     // TODO: Use Interrupt meta to remove a task from tracker and call stop when
                     // nothing remained.
+                    let hp_envelope = hp_operation.map(|Operation::Envelope { envelope }| envelope);
                     if let Some(mut envelope) = hp_envelope {
                         let handle_res = envelope.handle(&mut self.actor, &mut self.context).await;
                         if let Err(err) = handle_res {

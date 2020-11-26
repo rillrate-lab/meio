@@ -143,7 +143,7 @@ impl dyn LifecycleNotifier {
         let mut msg = Some(msg);
         let notifier = move || {
             if let Some(msg) = msg.take() {
-                address.send_hp_direct(msg)
+                address.send_hp(msg)
             } else {
                 Err(anyhow!(
                     "Attempt to send the second notification that can be sent once only."

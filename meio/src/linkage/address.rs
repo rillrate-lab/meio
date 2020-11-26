@@ -1,9 +1,9 @@
 //! This module contains `Address` to interact with an `Actor`.
 
+use super::controller::Controller;
 use crate::{
     lifecycle::Interrupt, Action, ActionHandler, ActionPerformer, ActionRecipient, Actor, Context,
-    Controller, Envelope, Id, Interaction, InteractionHandler, InteractionRecipient, Notifier,
-    TypedId,
+    Envelope, Id, Interaction, InteractionHandler, InteractionRecipient, Notifier, TypedId,
 };
 use anyhow::{anyhow, Error};
 use derive_more::{Deref, DerefMut};
@@ -21,15 +21,13 @@ use tokio::task::JoinHandle;
 pub struct Address<A: Actor> {
     #[deref]
     #[deref_mut]
-    controller: Controller,
+    controller: Controller<A>,
     /// Ordinary priority messages sender
     msg_tx: mpsc::Sender<Envelope<A>>,
-    /// High-priority messages sender
-    hp_msg_tx: mpsc::UnboundedSender<Envelope<A>>,
 }
 
-impl<A: Actor> Into<Controller> for Address<A> {
-    fn into(self) -> Controller {
+impl<A: Actor> Into<Controller<A>> for Address<A> {
+    fn into(self) -> Controller<A> {
         self.controller
     }
 }
@@ -39,7 +37,6 @@ impl<A: Actor> Clone for Address<A> {
         Self {
             controller: self.controller.clone(),
             msg_tx: self.msg_tx.clone(),
-            hp_msg_tx: self.hp_msg_tx.clone(),
         }
     }
 }
@@ -68,33 +65,13 @@ impl<A: Actor> Hash for Address<A> {
 }
 
 impl<A: Actor> Address<A> {
-    pub(crate) fn new(
-        controller: Controller,
-        msg_tx: mpsc::Sender<Envelope<A>>,
-        hp_msg_tx: mpsc::UnboundedSender<Envelope<A>>,
-    ) -> Self {
-        Self {
-            controller,
-            msg_tx,
-            hp_msg_tx,
-        }
+    pub(crate) fn new(controller: Controller<A>, msg_tx: mpsc::Sender<Envelope<A>>) -> Self {
+        Self { controller, msg_tx }
     }
 
     /// Returns a typed id of the `Actor`.
     pub fn id(&self) -> TypedId<A> {
         TypedId::new(self.controller.id())
-    }
-
-    /// Sends a service message using the high-priority queue.
-    pub(crate) fn send_hp_direct<T>(&mut self, msg: T) -> Result<(), Error>
-    where
-        T: Action,
-        A: ActionHandler<T>,
-    {
-        let envelope = Envelope::action(msg);
-        self.hp_msg_tx
-            .unbounded_send(envelope)
-            .map_err(|_| anyhow!("can't send a high-priority service message"))
     }
 
     /// **Internal method.** Use `action` or `interaction` instead.
@@ -107,9 +84,7 @@ impl<A: Actor> Address<A> {
         high_priority: bool,
     ) -> Result<(), Error> {
         if high_priority {
-            self.hp_msg_tx
-                .unbounded_send(msg)
-                .map_err(|_| anyhow!("can't send to a high-priority channel"))
+            self.controller.send_hp_direct(msg)
         } else {
             self.msg_tx.send(msg).await.map_err(Error::from)
         }
@@ -166,20 +141,8 @@ impl<A: Actor> Address<A> {
     }
 
     /// Gives a `Controller` of that entity.
-    pub fn controller(&self) -> Controller {
+    pub fn controller(&self) -> Controller<A> {
         self.controller.clone()
-    }
-
-    /// Sends an `Interrrupt` event.
-    ///
-    /// It required a `Context` parameter just to restrict using it in
-    /// methods other from handlers.
-    pub fn interrupt_by<T>(&mut self, _ctx: &Context<T>) -> Result<(), Error>
-    where
-        A: ActionHandler<Interrupt<T>>,
-        T: Actor,
-    {
-        self.send_hp_direct(Interrupt::new())
     }
 
     /// Creates the notifier that will use a provided message for notifications.

@@ -39,7 +39,8 @@ where
     S: Actor + ActionHandler<TaskDone<L>>,
 {
     let id = Id::of_task(&lite_task);
-    let (controller, operator) = channel::pair(id, Some(supervisor.controller()));
+    // TODO: Replace this `Controller`
+    let (controller, operator) = channel::pair(id, None);
     let id = controller.id();
     let event = TaskDone::new(id.clone());
     let done_notifier = LifecycleNotifier::once(supervisor, event);
