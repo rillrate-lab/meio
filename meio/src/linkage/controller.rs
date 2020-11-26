@@ -4,16 +4,23 @@ use futures::channel::mpsc;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 
-pub(crate) enum Operation<A: Actor> {
-    DoneWithEnvelope { id: Id, envelope: Envelope<A> },
-    Envelope { envelope: Envelope<A> },
+// TODO: Consider renaming to attached action
+pub(crate) enum Operation {
+    // TODO: Awake, Interrupt, also can be added here!
+    Done { id: Id },
+    Forward,
+}
+
+pub(crate) struct HpEnvelope<A: Actor> {
+    pub operation: Operation,
+    pub envelope: Envelope<A>,
 }
 
 pub struct Controller<A: Actor> {
     id: Id,
     // TODO: Add watch with `async join` method
     /// High-priority messages sender
-    hp_msg_tx: mpsc::UnboundedSender<Operation<A>>,
+    hp_msg_tx: mpsc::UnboundedSender<HpEnvelope<A>>,
 }
 
 impl<A: Actor> Clone for Controller<A> {
@@ -49,7 +56,7 @@ impl<A: Actor> Hash for Controller<A> {
 }
 
 impl<A: Actor> Controller<A> {
-    pub(crate) fn new(id: Id, hp_msg_tx: mpsc::UnboundedSender<Operation<A>>) -> Self {
+    pub(crate) fn new(id: Id, hp_msg_tx: mpsc::UnboundedSender<HpEnvelope<A>>) -> Self {
         Self { id, hp_msg_tx }
     }
 
@@ -59,10 +66,17 @@ impl<A: Actor> Controller<A> {
     }
 
     /// Sends a service message using the high-priority queue.
-    pub(crate) fn send_hp_direct(&mut self, envelope: Envelope<A>) -> Result<(), Error> {
-        let operation = Operation::Envelope { envelope };
+    pub(crate) fn send_hp_direct(
+        &mut self,
+        operation: Operation,
+        envelope: Envelope<A>,
+    ) -> Result<(), Error> {
+        let msg = HpEnvelope {
+            operation,
+            envelope,
+        };
         self.hp_msg_tx
-            .unbounded_send(operation)
+            .unbounded_send(msg)
             .map_err(|_| anyhow!("can't send a high-priority service message"))
     }
 
@@ -73,7 +87,7 @@ impl<A: Actor> Controller<A> {
         A: ActionHandler<T>,
     {
         let envelope = Envelope::action(msg);
-        self.send_hp_direct(envelope)
+        self.send_hp_direct(Operation::Forward, envelope)
     }
 
     /// Sends an `Interrrupt` event.

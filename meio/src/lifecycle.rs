@@ -1,6 +1,6 @@
 //! Contains message of the `Actor`'s lifecycle.
 
-use crate::linkage::controller::Controller;
+use crate::linkage::controller::{Controller, Operation};
 use crate::{
     Action, ActionHandler, ActionRecipient, Actor, Address, Context, Id, LiteTask, TypedId,
 };
@@ -68,7 +68,7 @@ impl<T: Actor> LifetimeTracker<T> {
         let stage = self.stages.entry(type_name).or_default();
         let id = controller.id();
         stage.ids.insert(id.clone());
-        let notifier = LifecycleNotifier::once(controller, Interrupt::new());
+        let notifier = LifecycleNotifier::once(controller, Operation::Forward, Interrupt::new());
         let record = Record {
             type_name,
             notifier,
@@ -142,7 +142,7 @@ where
 }
 
 impl dyn LifecycleNotifier {
-    pub fn once<A, M>(mut controller: Controller<A>, msg: M) -> Box<Self>
+    pub fn once<A, M>(mut controller: Controller<A>, operation: Operation, msg: M) -> Box<Self>
     where
         A: Actor + ActionHandler<M>,
         M: Action,

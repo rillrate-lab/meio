@@ -4,8 +4,8 @@
 use crate::{
     channel,
     lifecycle::{self, Awake, Done, Interrupt, LifecycleNotifier, LifetimeTracker, TaskDone},
-    linkage::controller::{Controller, Operation},
-    ActionHandler, Address, Envelope, Id, LiteTask, Operator,
+    linkage::controller::{Controller, HpEnvelope, Operation},
+    ActionHandler, Address, Envelope, Id, LiteTask,
 };
 use anyhow::Error;
 use async_trait::async_trait;
@@ -69,9 +69,10 @@ where
     let done_notifier = {
         match supervisor {
             None => LifecycleNotifier::ignore(),
-            Some(addr) => {
+            Some(super_addr) => {
                 let event = Done::new(address.id());
-                LifecycleNotifier::once(addr.controller(), event)
+                let op = Operation::Done { id: id.clone() };
+                LifecycleNotifier::once(super_addr.controller(), op, event)
             }
         }
     };
@@ -181,7 +182,7 @@ pub struct ActorRuntime<A: Actor> {
     /// `Receiver` that have to be used to receive incoming messages.
     msg_rx: mpsc::Receiver<Envelope<A>>,
     /// High-priority receiver
-    hp_msg_rx: mpsc::UnboundedReceiver<Operation<A>>,
+    hp_msg_rx: mpsc::UnboundedReceiver<HpEnvelope<A>>,
 }
 
 impl<A: Actor> ActorRuntime<A> {
@@ -239,25 +240,23 @@ impl<A: Actor> ActorRuntime<A> {
                     }
                 }
                 */
-                hp_operation = self.hp_msg_rx.next() => {
-                    if let Some(mut operation) = hp_operation {
-                        let mut hp_envelope;
-                        match operation {
-                            Operation::Envelope { envelope } => {
-                                hp_envelope = envelope;
+                hp_envelope = self.hp_msg_rx.next() => {
+                    if let Some(mut hp_env) = hp_envelope {
+                        let mut envelope = hp_env.envelope;
+                        match hp_env.operation {
+                            Operation::Forward => {
                             }
-                            Operation::DoneWithEnvelope { id, envelope } => {
-                                hp_envelope = envelope;
+                            Operation::Done { id } => {
                                 self.context.lifetime_tracker.remove(&id);
+                                if self.context.lifetime_tracker.is_finished() {
+
+                                    self.context.stop();
+                                }
                             }
                         }
-                        let handle_res = hp_envelope.handle(&mut self.actor, &mut self.context).await;
+                        let handle_res = envelope.handle(&mut self.actor, &mut self.context).await;
                         if let Err(err) = handle_res {
                             log::error!("Handler for {:?} (high-priority) failed: {}", self.id, err);
-                        }
-                        if self.context.lifetime_tracker.is_finished() {
-
-                            self.context.stop();
                         }
                     } else {
                         // Even if all `Address` dropped `Actor` can do something useful on

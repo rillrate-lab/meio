@@ -1,6 +1,6 @@
 //! This module contains `Address` to interact with an `Actor`.
 
-use super::controller::Controller;
+use super::controller::{Controller, Operation};
 use crate::{
     lifecycle::Interrupt, Action, ActionHandler, ActionPerformer, ActionRecipient, Actor, Context,
     Envelope, Id, Interaction, InteractionHandler, InteractionRecipient, Notifier, TypedId,
@@ -84,7 +84,7 @@ impl<A: Actor> Address<A> {
         high_priority: bool,
     ) -> Result<(), Error> {
         if high_priority {
-            self.controller.send_hp_direct(msg)
+            self.controller.send_hp_direct(Operation::Forward, msg)
         } else {
             self.msg_tx.send(msg).await.map_err(Error::from)
         }
