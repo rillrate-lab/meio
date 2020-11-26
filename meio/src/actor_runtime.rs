@@ -2,7 +2,7 @@
 
 use crate::{
     channel,
-    lifecycle::{self, Awake, Done, LifecycleNotifier, TaskDone},
+    lifecycle::{self, Awake, Done, Interrupt, LifecycleNotifier, LifetimeTracker, TaskDone},
     ActionHandler, Address, Controller, Envelope, Id, LiteTask, Operator,
 };
 use anyhow::Error;
@@ -77,6 +77,7 @@ where
     let context = Context {
         alive: true,
         address: address.clone(),
+        lifetime_tracker: LifetimeTracker::new(),
         //terminator: Terminator::new(id.clone()),
     };
     let runtime = ActorRuntime {
@@ -111,6 +112,7 @@ pub trait Actor: Sized + Send + 'static {
 pub struct Context<A: Actor> {
     alive: bool,
     address: Address<A>,
+    lifetime_tracker: LifetimeTracker<A>,
     //terminator: Terminator,
 }
 
@@ -121,20 +123,23 @@ impl<A: Actor> Context<A> {
     }
 
     /// Starts and binds an `Actor`.
-    pub fn bind_actor<T>(&self, actor: T) -> Address<T>
+    pub fn bind_actor<T>(&mut self, actor: T) -> Address<T>
     where
-        T: Actor + ActionHandler<Awake<A>>,
+        T: Actor + ActionHandler<Awake<A>> + ActionHandler<Interrupt<A>>,
         A: ActionHandler<Done<T>>,
     {
-        spawn(actor, Some(self.address.clone()))
+        let address = spawn(actor, Some(self.address.clone()));
+        self.lifetime_tracker.insert(address.clone());
+        address
     }
 
     /// Starts and binds an `Actor`.
-    pub fn bind_task<T>(&self, task: T) -> Controller
+    pub fn bind_task<T>(&mut self, task: T) -> Controller
     where
         T: LiteTask,
         A: ActionHandler<TaskDone<T>>,
     {
+        // TODO: Add `Controller`
         crate::lite_runtime::task(task, self.address.clone())
     }
 
@@ -152,6 +157,13 @@ impl<A: Actor> Context<A> {
     /// Stops the runtime of the `Actor` on one message will be processed after this call.
     pub fn stop(&mut self) {
         self.alive = false;
+    }
+
+    pub fn shutdown(&mut self) {
+        self.lifetime_tracker.start_termination();
+        if self.lifetime_tracker.is_finished() {
+            self.stop();
+        }
     }
 }
 
@@ -227,6 +239,9 @@ impl<A: Actor> ActorRuntime<A> {
                 }
                 */
                 hp_envelope = self.hp_msg_rx.next() => {
+                    // TODO: Track `Operation::InterruptWithEnvelope` events!
+                    // TODO: Use Interrupt meta to remove a task from tracker and call stop when
+                    // nothing remained.
                     if let Some(mut envelope) = hp_envelope {
                         let handle_res = envelope.handle(&mut self.actor, &mut self.context).await;
                         if let Err(err) = handle_res {

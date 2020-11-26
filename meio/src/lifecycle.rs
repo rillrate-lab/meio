@@ -23,18 +23,23 @@ impl Default for Stage {
 }
 
 impl Stage {
-    fn terminated(&mut self) -> bool {
+    fn is_finished(&self) -> bool {
+        self.terminating && self.map.is_empty()
+    }
+
+    fn terminate(&mut self) {
         if !self.terminating {
             self.terminating = true;
             for notifier in self.map.values_mut() {
                 notifier.notify();
             }
         }
-        self.map.is_empty()
     }
 }
 
-pub struct LifetimeTracker<T: Actor> {
+// TODO: Rename to Terminator again
+// TODO: Remove Phantom T
+pub(crate) struct LifetimeTracker<T: Actor> {
     terminating: bool,
     prioritized: Vec<&'static str>,
     stages: HashMap<&'static str, Stage>,
@@ -68,14 +73,14 @@ impl<T: Actor> LifetimeTracker<T> {
         stage.map.insert(id, notifier);
     }
 
-    pub fn remove<A: Actor>(&mut self, id: &TypedId<A>, ctx: &mut Context<T>) {
+    pub fn remove<A: Actor>(&mut self, id: &TypedId<A>) {
         let type_name = type_name::<A>();
         let notifier = self
             .stages
             .get_mut(type_name)
             .and_then(|stage| stage.map.remove(&id.id));
         if notifier.is_some() && self.terminating {
-            self.try_terminate_next(ctx);
+            self.try_terminate_next();
         }
     }
 
@@ -84,29 +89,34 @@ impl<T: Actor> LifetimeTracker<T> {
         self.prioritized.push(type_name);
     }
 
-    fn try_terminate_next(&mut self, ctx: &mut Context<T>) {
+    pub fn is_finished(&self) -> bool {
+        self.stages.values().all(Stage::is_finished)
+    }
+
+    fn try_terminate_next(&mut self) {
         self.terminating = true;
         let mut remained_stages: HashSet<&'static str> = self.stages.keys().cloned().collect();
         for stage_name in self.prioritized.iter() {
             remained_stages.remove(stage_name);
             if let Some(stage) = self.stages.get_mut(stage_name) {
-                if !stage.terminated() {
+                stage.terminate();
+                if !stage.is_finished() {
                     return;
                 }
             }
         }
         for stage_name in remained_stages.drain() {
             if let Some(stage) = self.stages.get_mut(stage_name) {
-                if !stage.terminated() {
+                stage.terminate();
+                if !stage.is_finished() {
                     return;
                 }
             }
         }
-        ctx.stop();
     }
 
-    pub fn start_termination(&mut self, ctx: &mut Context<T>) {
-        self.try_terminate_next(ctx);
+    pub fn start_termination(&mut self) {
+        self.try_terminate_next();
     }
 }
 
