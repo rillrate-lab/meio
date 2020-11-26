@@ -122,7 +122,7 @@ impl<T: Actor> Action for Interrupt<T> {
 /// Notifies when `Actor`'s activity is completed.
 #[derive(Debug)]
 pub struct Done<T: Actor> {
-    id: Id,
+    pub id: Id,
     _origin: PhantomData<T>,
 }
 
@@ -144,7 +144,7 @@ impl<T: Actor> Action for Done<T> {
 /// Notifies when `LiteTask` is finished.
 #[derive(Debug)]
 pub struct TaskDone<T: LiteTask> {
-    id: Id,
+    pub id: Id,
     _origin: PhantomData<T>,
 }
 
