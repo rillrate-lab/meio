@@ -37,7 +37,6 @@ impl Stage {
 pub struct LifetimeTracker<T: Actor> {
     terminating: bool,
     prioritized: Vec<&'static str>,
-    vital: HashSet<&'static str>,
     stages: HashMap<&'static str, Stage>,
     _actor: PhantomData<T>,
 }
@@ -49,7 +48,6 @@ impl<T: Actor> LifetimeTracker<T> {
             terminating: false,
             // TODO: with_capacity 0 ?
             prioritized: Vec::new(),
-            vital: HashSet::new(),
             stages: HashMap::new(),
             _actor: PhantomData,
         }
@@ -76,7 +74,7 @@ impl<T: Actor> LifetimeTracker<T> {
             .stages
             .get_mut(type_name)
             .and_then(|stage| stage.map.remove(&id.id));
-        if notifier.is_some() && self.vital.contains(type_name) {
+        if notifier.is_some() && self.terminating {
             self.try_terminate_next(ctx);
         }
     }
@@ -84,11 +82,6 @@ impl<T: Actor> LifetimeTracker<T> {
     pub fn prioritize_termination<A>(&mut self) {
         let type_name = type_name::<A>();
         self.prioritized.push(type_name);
-    }
-
-    pub fn mark_vital<A>(&mut self) {
-        let type_name = type_name::<A>();
-        self.vital.insert(type_name);
     }
 
     fn try_terminate_next(&mut self, ctx: &mut Context<T>) {
