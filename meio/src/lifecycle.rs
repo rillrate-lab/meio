@@ -28,6 +28,11 @@ impl<A: Actor> LifetimeTracker<A> {
         self.map.remove(&id)
     }
 
+    /// Checks the map is empty.
+    pub fn is_empty(&self) -> bool {
+        self.map.is_empty()
+    }
+
     /// Sends `Interrupt` message to all addresses in a set.
     pub fn interrupt_all_by<T>(&mut self, ctx: &Context<T>)
     where
