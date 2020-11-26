@@ -71,7 +71,7 @@ where
             None => LifecycleNotifier::ignore(),
             Some(addr) => {
                 let event = Done::new(address.id());
-                LifecycleNotifier::once(addr, event)
+                LifecycleNotifier::once(addr.controller(), event)
             }
         }
     };
@@ -129,7 +129,7 @@ impl<A: Actor> Context<A> {
         A: ActionHandler<Done<T>>,
     {
         let address = spawn(actor, Some(self.address.clone()));
-        self.lifetime_tracker.insert(address.clone());
+        self.lifetime_tracker.insert(address.controller());
         address
     }
 

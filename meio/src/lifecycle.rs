@@ -1,5 +1,6 @@
 //! Contains message of the `Actor`'s lifecycle.
 
+use crate::linkage::controller::Controller;
 use crate::{
     Action, ActionHandler, ActionRecipient, Actor, Address, Context, Id, LiteTask, TypedId,
 };
@@ -38,7 +39,6 @@ impl Stage {
 }
 
 // TODO: Rename to Terminator again
-// TODO: Remove Phantom T
 pub(crate) struct LifetimeTracker<T: Actor> {
     terminating: bool,
     prioritized: Vec<&'static str>,
@@ -62,14 +62,14 @@ impl<T: Actor> LifetimeTracker<T> {
         self.terminating
     }
 
-    pub fn insert<A: Actor>(&mut self, address: Address<A>)
+    pub fn insert<A: Actor>(&mut self, controller: Controller<A>)
     where
         A: Actor + ActionHandler<Interrupt<T>>,
     {
         let type_name = type_name::<A>();
         let stage = self.stages.entry(type_name).or_default();
-        let id = address.id().id;
-        let notifier = LifecycleNotifier::once(address, Interrupt::new());
+        let id = controller.id();
+        let notifier = LifecycleNotifier::once(controller, Interrupt::new());
         stage.map.insert(id, notifier);
     }
 
@@ -135,7 +135,7 @@ where
 }
 
 impl dyn LifecycleNotifier {
-    pub fn once<A, M>(mut address: Address<A>, msg: M) -> Box<Self>
+    pub fn once<A, M>(mut controller: Controller<A>, msg: M) -> Box<Self>
     where
         A: Actor + ActionHandler<M>,
         M: Action,
@@ -143,7 +143,7 @@ impl dyn LifecycleNotifier {
         let mut msg = Some(msg);
         let notifier = move || {
             if let Some(msg) = msg.take() {
-                address.send_hp(msg)
+                controller.send_hp(msg)
             } else {
                 Err(anyhow!(
                     "Attempt to send the second notification that can be sent once only."
