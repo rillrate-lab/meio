@@ -76,6 +76,16 @@ impl<A: Actor> Address<A> {
         TypedId::new(self.controller.id())
     }
 
+    pub async fn act<I>(&mut self, input: I) -> Result<(), Error>
+    where
+        I: Action,
+        A: ActionHandler<I>,
+    {
+        let high_priority = input.is_high_priority();
+        let envelope = Envelope::action(input);
+        self.send(envelope, high_priority).await
+    }
+
     pub async fn interact<IN, OUT>(&mut self, request: IN) -> Result<OUT, Error>
     where
         IN: Send + 'static,
@@ -171,6 +181,7 @@ impl<A: Actor> Address<A> {
         self.controller.clone()
     }
 
+    /*
     /// Creates the notifier that will use a provided message for notifications.
     pub fn notifier<I>(&self, message: I) -> Notifier<I>
     where
@@ -179,4 +190,5 @@ impl<A: Actor> Address<A> {
     {
         Notifier::new(self.action_recipient(), message)
     }
+    */
 }
