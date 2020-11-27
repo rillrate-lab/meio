@@ -3,7 +3,7 @@
 use crate::handlers::{Operation, Envelope, HpEnvelope, Interact, Interaction, Joiner};
 use crate::{
     lifecycle::Interrupt, Action, ActionHandler, ActionPerformer, ActionRecipient, Actor, Context,
-    Id, Notifier, TypedId,
+    Id, Notifier, TypedId, System,
 };
 use anyhow::{anyhow, Error};
 use futures::channel::{mpsc, oneshot};
@@ -145,7 +145,7 @@ impl<A: Actor> Address<A> {
         self.send_hp_direct(Operation::Forward, envelope)
     }
 
-    /// Sends an `Interrrupt` event.
+    /// Sends an `Interrupt` event.
     ///
     /// It required a `Context` parameter just to restrict using it in
     /// methods other from handlers.
@@ -225,4 +225,11 @@ impl<A: Actor> Address<A> {
         Notifier::new(self.action_recipient(), message)
     }
     */
+
+    pub fn shutdown(&mut self) -> Result<(), Error>
+    where
+        A: ActionHandler<Interrupt<System>>,
+    {
+        self.send_hp(Interrupt::<System>::new())
+    }
 }
