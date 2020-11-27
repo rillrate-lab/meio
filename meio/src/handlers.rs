@@ -2,7 +2,7 @@
 //! to call methods of actors related to a sepcific
 //! imcoming message.
 
-use crate::{Actor, Context, Id};
+use crate::{lifecycle, Actor, Context, Id};
 use anyhow::{anyhow, Error};
 use async_trait::async_trait;
 use futures::channel::oneshot;
@@ -165,8 +165,8 @@ pub trait InteractionHandler<I: Interaction>: Actor {
 #[async_trait]
 impl<T, I> ActionHandler<Interact<I>> for T
 where
-    I: Interaction,
     T: Actor + InteractionHandler<I>,
+    I: Interaction,
 {
     async fn handle(&mut self, input: Interact<I>, ctx: &mut Context<Self>) -> Result<(), Error> {
         let res = InteractionHandler::handle(self, input.request, ctx).await;
@@ -204,3 +204,19 @@ pub struct Joiner {
 }
 
 impl Action for Joiner {}
+
+#[async_trait]
+pub trait InterruptedBy<A: Actor>: Actor {
+    async fn handle(&mut self, ctx: &mut Context<Self>) -> Result<(), Error>;
+}
+
+#[async_trait]
+impl<T, A> ActionHandler<lifecycle::Interrupt<A>> for T
+where
+    T: Actor + InterruptedBy<A>,
+    A: Actor,
+{
+    async fn handle(&mut self, input: lifecycle::Interrupt<A>, ctx: &mut Context<Self>) -> Result<(), Error> {
+        todo!();
+    }
+}

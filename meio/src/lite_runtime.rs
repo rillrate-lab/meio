@@ -1,3 +1,4 @@
+use crate::handlers::InterruptedBy;
 use crate::{lifecycle, Actor, Action, ActionHandler, ActionPerformer, Address, Context};
 use anyhow::Error;
 use async_trait::async_trait;
@@ -94,16 +95,12 @@ where
 }
 
 #[async_trait]
-impl<T, S> ActionHandler<lifecycle::Interrupt<S>> for Task<T>
+impl<T, S> InterruptedBy<S> for Task<T>
 where
     T: LiteTask,
     S: Actor,
 {
-    async fn handle(
-        &mut self,
-        _event: lifecycle::Interrupt<S>,
-        ctx: &mut Context<Self>,
-    ) -> Result<(), Error> {
+    async fn handle(&mut self, _ctx: &mut Context<Self>) -> Result<(), Error> {
         self.shutdown_tx.broadcast(LiteStatus::Stop)?;
         Ok(())
     }
