@@ -2,7 +2,7 @@
 
 use crate::handlers::{Operation, Envelope, HpEnvelope, Interact, Interaction, Joiner};
 use crate::{
-    lifecycle::Interrupt, Action, ActionHandler, ActionPerformer, ActionRecipient, InteractionHandler, Actor, Context,
+    lifecycle::Interrupt, Action, ActionHandler, ActionPerformer, ActionRecipient, InteractionHandler, InteractionRecipient, Actor, Context,
     Id, Notifier, TypedId, System,
 };
 use anyhow::{anyhow, Error};
@@ -200,7 +200,6 @@ impl<A: Actor> Address<A> {
         ActionRecipient::from(self.clone())
     }
 
-    /*
     /// Generates `InteractionRecipient`.
     pub fn interaction_recipient<I>(&self) -> InteractionRecipient<I>
     where
@@ -209,7 +208,6 @@ impl<A: Actor> Address<A> {
     {
         InteractionRecipient::from(self.clone())
     }
-    */
 
     /*
     /// Gives a `Controller` of that entity.
