@@ -4,7 +4,7 @@ use crate::handlers::{Operation, Envelope, HpEnvelope};
 use crate::{
     lifecycle::Interrupt, Action, ActionHandler, ActionPerformer, ActionRecipient, Actor, Context,
     Id, Notifier, TypedId,
-    Interaction, Joiner,
+    Interact, Joiner,
 };
 use anyhow::{anyhow, Error};
 use futures::channel::{mpsc, oneshot};
@@ -91,10 +91,10 @@ impl<A: Actor> Address<A> {
     where
         IN: Send + 'static,
         OUT: Send + 'static,
-        A: ActionHandler<Interaction<IN, OUT>>,
+        A: ActionHandler<Interact<IN, OUT>>,
     {
         let (responder, rx) = oneshot::channel();
-        let msg = Interaction {
+        let msg = Interact {
             request,
             responder,
         };

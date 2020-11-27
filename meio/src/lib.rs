@@ -28,7 +28,7 @@ pub use actor_runtime::{standalone, Actor, Context, System};
 //pub use channel::{Controller, Status, Supervisor};
 //use channel::{Operator, Signal};
 use handlers::Envelope;
-pub use handlers::{Action, ActionHandler, Interaction, Joiner};
+pub use handlers::{Action, ActionHandler, Interact, Joiner};
 pub use linkage::address::Address;
 pub use linkage::link::Link;
 pub use linkage::notifier::Notifier;

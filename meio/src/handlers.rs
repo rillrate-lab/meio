@@ -156,12 +156,12 @@ where
     }
 }
 
-pub struct Interaction<IN, OUT> {
+pub struct Interact<IN, OUT> {
     pub(crate) request: IN,
     pub(crate) responder: oneshot::Sender<Result<OUT, Error>>,
 }
 
-impl<IN, OUT> Action for Interaction<IN, OUT>
+impl<IN, OUT> Action for Interact<IN, OUT>
 where
     IN: Send + 'static,
     OUT: Send + 'static,
