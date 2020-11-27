@@ -102,10 +102,6 @@ impl<T> TypedId<T> {
             _origin: PhantomData,
         }
     }
-
-    pub fn raw(&self) -> Id {
-        self.id.clone()
-    }
 }
 
 impl<T> PartialEq<Self> for TypedId<T> {
@@ -119,6 +115,12 @@ impl<T> Eq for TypedId<T> {}
 impl<T> Hash for TypedId<T> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.id.hash(state);
+    }
+}
+
+impl<T> Into<Id> for TypedId<T> {
+    fn into(self) -> Id {
+        self.id
     }
 }
 

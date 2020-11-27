@@ -1,6 +1,6 @@
 //! Contains message of the `Actor`'s lifecycle.
 
-use crate::linkage::controller::{Controller, Operation};
+use crate::handlers::Operation;
 use crate::{
     Action, ActionHandler, ActionRecipient, Actor, Address, Context, Id, LiteTask, TypedId,
 };
@@ -60,15 +60,15 @@ impl<T: Actor> LifetimeTracker<T> {
         self.terminating
     }
 
-    pub fn insert<A: Actor>(&mut self, controller: Controller<A>)
+    pub fn insert<A: Actor>(&mut self, address: Address<A>)
     where
         A: Actor + ActionHandler<Interrupt<T>>,
     {
         let type_name = type_name::<A>();
         let stage = self.stages.entry(type_name).or_default();
-        let id = controller.id();
+        let id: Id = address.id().into();
         stage.ids.insert(id.clone());
-        let notifier = LifecycleNotifier::once(controller, Operation::Forward, Interrupt::new());
+        let notifier = LifecycleNotifier::once(address, Operation::Forward, Interrupt::new());
         let record = Record {
             type_name,
             notifier,
@@ -142,7 +142,7 @@ where
 }
 
 impl dyn LifecycleNotifier {
-    pub fn once<A, M>(mut controller: Controller<A>, operation: Operation, msg: M) -> Box<Self>
+    pub fn once<A, M>(mut address: Address<A>, operation: Operation, msg: M) -> Box<Self>
     where
         A: Actor + ActionHandler<M>,
         M: Action,
@@ -150,7 +150,7 @@ impl dyn LifecycleNotifier {
         let mut msg = Some(msg);
         let notifier = move || {
             if let Some(msg) = msg.take() {
-                controller.send_hp(msg)
+                address.send_hp(msg)
             } else {
                 Err(anyhow!(
                     "Attempt to send the second notification that can be sent once only."

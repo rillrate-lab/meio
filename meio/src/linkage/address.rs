@@ -1,13 +1,12 @@
 //! This module contains `Address` to interact with an `Actor`.
 
-use super::controller::{Controller, Operation};
+use crate::handlers::{Operation, Envelope, HpEnvelope};
 use crate::{
     lifecycle::Interrupt, Action, ActionHandler, ActionPerformer, ActionRecipient, Actor, Context,
-    Envelope, Id, Notifier, TypedId,
+    Id, Notifier, TypedId,
     Interaction, Joiner,
 };
 use anyhow::{anyhow, Error};
-use derive_more::{Deref, DerefMut};
 use futures::channel::{mpsc, oneshot};
 use futures::{SinkExt, Stream, StreamExt};
 use std::convert::identity;
@@ -19,25 +18,27 @@ use tokio::task::JoinHandle;
 ///
 /// Can be compared each other to identify senders to
 /// the same `Actor`.
-#[derive(Deref, DerefMut)]
 pub struct Address<A: Actor> {
-    #[deref]
-    #[deref_mut]
-    controller: Controller<A>,
+    id: Id,
+    /// High-priority messages sender
+    hp_msg_tx: mpsc::UnboundedSender<HpEnvelope<A>>,
     /// Ordinary priority messages sender
     msg_tx: mpsc::Sender<Envelope<A>>,
 }
 
+/*
 impl<A: Actor> Into<Controller<A>> for Address<A> {
     fn into(self) -> Controller<A> {
         self.controller
     }
 }
+*/
 
 impl<A: Actor> Clone for Address<A> {
     fn clone(&self) -> Self {
         Self {
-            controller: self.controller.clone(),
+            id: self.id.clone(),
+            hp_msg_tx: self.hp_msg_tx.clone(),
             msg_tx: self.msg_tx.clone(),
         }
     }
@@ -47,14 +48,14 @@ impl<A: Actor> fmt::Debug for Address<A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // TODO: Id cloned here. Fix!
         f.debug_tuple("Address")
-            .field(&self.controller.id())
+            .field(&self.id)
             .finish()
     }
 }
 
 impl<A: Actor> PartialEq for Address<A> {
     fn eq(&self, other: &Self) -> bool {
-        self.controller.eq(&other.controller)
+        self.id.eq(&other.id)
     }
 }
 
@@ -62,18 +63,18 @@ impl<A: Actor> Eq for Address<A> {}
 
 impl<A: Actor> Hash for Address<A> {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.controller.hash(state);
+        self.id.hash(state);
     }
 }
 
 impl<A: Actor> Address<A> {
-    pub(crate) fn new(controller: Controller<A>, msg_tx: mpsc::Sender<Envelope<A>>) -> Self {
-        Self { controller, msg_tx }
+    pub(crate) fn new(id: Id, hp_msg_tx: mpsc::UnboundedSender<HpEnvelope<A>>, msg_tx: mpsc::Sender<Envelope<A>>) -> Self {
+        Self { id, hp_msg_tx, msg_tx }
     }
 
     /// Returns a typed id of the `Actor`.
     pub fn id(&self) -> TypedId<A> {
-        TypedId::new(self.controller.id())
+        TypedId::new(self.id.clone())
     }
 
     pub async fn act<I>(&mut self, input: I) -> Result<(), Error>
@@ -118,12 +119,48 @@ impl<A: Actor> Address<A> {
         high_priority: bool,
     ) -> Result<(), Error> {
         if high_priority {
-            self.controller.send_hp_direct(Operation::Forward, msg)
+            self.send_hp_direct(Operation::Forward, msg)
         } else {
             self.msg_tx.send(msg).await.map_err(Error::from)
         }
     }
 
+    /// Sends a service message using the high-priority queue.
+    pub(crate) fn send_hp_direct(
+        &mut self,
+        operation: Operation,
+        envelope: Envelope<A>,
+    ) -> Result<(), Error> {
+        let msg = HpEnvelope {
+            operation,
+            envelope,
+        };
+        self.hp_msg_tx
+            .unbounded_send(msg)
+            .map_err(|_| anyhow!("can't send a high-priority service message"))
+    }
+
+    /// Sends a service message using the high-priority queue.
+    pub(crate) fn send_hp<T>(&mut self, msg: T) -> Result<(), Error>
+    where
+        T: Action,
+        A: ActionHandler<T>,
+    {
+        let envelope = Envelope::action(msg);
+        self.send_hp_direct(Operation::Forward, envelope)
+    }
+
+    /// Sends an `Interrrupt` event.
+    ///
+    /// It required a `Context` parameter just to restrict using it in
+    /// methods other from handlers.
+    pub fn interrupt_by<T>(&mut self, _ctx: &Context<T>) -> Result<(), Error>
+    where
+        A: ActionHandler<Interrupt<T>>,
+        T: Actor,
+    {
+        self.send_hp(Interrupt::new())
+    }
     /// Forwards the stream into a flow of events to an `Actor`.
     async fn forward<S>(id: Id, mut stream: S, mut recipient: ActionRecipient<S::Item>)
     where
@@ -151,8 +188,8 @@ impl<A: Actor> Address<A> {
         S::Item: Action,
     {
         let recipient = self.action_recipient();
-        let id = self.controller.id();
-        let fut = Self::forward(id, stream, recipient);
+        let id = self.id();
+        let fut = Self::forward(id.into(), stream, recipient);
         tokio::spawn(fut)
     }
 
@@ -176,10 +213,12 @@ impl<A: Actor> Address<A> {
     }
     */
 
+    /*
     /// Gives a `Controller` of that entity.
     pub fn controller(&self) -> Controller<A> {
         self.controller.clone()
     }
+    */
 
     /*
     /// Creates the notifier that will use a provided message for notifications.

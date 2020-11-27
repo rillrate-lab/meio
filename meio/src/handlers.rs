@@ -2,7 +2,7 @@
 //! to call methods of actors related to a sepcific
 //! imcoming message.
 
-use crate::{Actor, Context};
+use crate::{Actor, Context, Id};
 use anyhow::{anyhow, Error};
 use async_trait::async_trait;
 use futures::channel::oneshot;
@@ -51,6 +51,18 @@ impl<A: Actor> Envelope<A> {
             handler: Box::new(handler),
         }
     }
+}
+
+// TODO: Consider renaming to attached action
+pub(crate) enum Operation {
+    // TODO: Awake, Interrupt, also can be added here!
+    Done { id: Id },
+    Forward,
+}
+
+pub(crate) struct HpEnvelope<A: Actor> {
+    pub operation: Operation,
+    pub envelope: Envelope<A>,
 }
 
 /// Internal `Handler` type that used by `Actor`'s routine to execute

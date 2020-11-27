@@ -3,7 +3,7 @@
 // TODO: Fix imports
 use crate::{
     lifecycle::{self, Awake, Done, Interrupt, LifecycleNotifier, LifetimeTracker},
-    linkage::controller::{Controller, HpEnvelope, Operation},
+    handlers::{HpEnvelope, Operation},
     ActionHandler, Address, Envelope, Id, LiteTask,
     Task,
 };
@@ -61,10 +61,9 @@ where
 {
     let id = Id::of_actor(&actor);
     let (hp_msg_tx, hp_msg_rx) = mpsc::unbounded();
-    let controller = Controller::new(id, hp_msg_tx);
-    let id = controller.id();
     let (msg_tx, msg_rx) = mpsc::channel(MESSAGES_CHANNEL_DEPTH);
-    let address = Address::new(controller, msg_tx);
+    let address = Address::new(id, hp_msg_tx, msg_tx);
+    let id: Id = address.id().into();
     let awake_envelope = Envelope::action(Awake::new());
     let done_notifier = {
         match supervisor {
@@ -72,7 +71,7 @@ where
             Some(super_addr) => {
                 let event = Done::new(address.id());
                 let op = Operation::Done { id: id.clone() };
-                LifecycleNotifier::once(super_addr.controller(), op, event)
+                LifecycleNotifier::once(super_addr, op, event)
             }
         }
     };
@@ -130,7 +129,7 @@ impl<A: Actor> Context<A> {
         A: ActionHandler<Done<T>>,
     {
         let address = spawn(actor, Some(self.address.clone()));
-        self.lifetime_tracker.insert(address.controller());
+        self.lifetime_tracker.insert(address.clone());
         address
     }
 

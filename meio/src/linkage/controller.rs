@@ -4,18 +4,6 @@ use futures::channel::mpsc;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 
-// TODO: Consider renaming to attached action
-pub(crate) enum Operation {
-    // TODO: Awake, Interrupt, also can be added here!
-    Done { id: Id },
-    Forward,
-}
-
-pub(crate) struct HpEnvelope<A: Actor> {
-    pub operation: Operation,
-    pub envelope: Envelope<A>,
-}
-
 pub struct Controller<A: Actor> {
     id: Id,
     // TODO: Add watch with `async join` method
