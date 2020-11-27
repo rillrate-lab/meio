@@ -3,7 +3,7 @@
 use crate::{
     lifecycle::{LifecycleNotifier, TaskDone},
     linkage::controller::{Controller, Operation},
-    ActionHandler, Actor, Address, Id, Signal,
+    ActionHandler, Actor, Address, Id,
 };
 use anyhow::Error;
 use async_trait::async_trait;

@@ -16,7 +16,7 @@
 mod actor_runtime;
 mod lite_runtime;
 
-pub mod channel;
+//pub mod channel;
 pub mod handlers;
 pub mod lifecycle;
 pub mod linkage;
@@ -25,8 +25,8 @@ pub mod task;
 //pub mod terminator;
 
 pub use actor_runtime::{standalone, Actor, Context, System};
-pub use channel::{Controller, Status, Supervisor};
-use channel::{Operator, Signal};
+//pub use channel::{Controller, Status, Supervisor};
+//use channel::{Operator, Signal};
 use handlers::Envelope;
 pub use handlers::{Action, ActionHandler, Interaction, InteractionHandler};
 pub use linkage::address::Address;

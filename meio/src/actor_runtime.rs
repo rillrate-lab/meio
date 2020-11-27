@@ -2,7 +2,6 @@
 
 // TODO: Fix imports
 use crate::{
-    channel,
     lifecycle::{self, Awake, Done, Interrupt, LifecycleNotifier, LifetimeTracker, TaskDone},
     linkage::controller::{Controller, HpEnvelope, Operation},
     ActionHandler, Address, Envelope, Id, LiteTask,
