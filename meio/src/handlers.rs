@@ -211,12 +211,28 @@ pub trait InterruptedBy<A: Actor>: Actor {
 }
 
 #[async_trait]
-impl<T, A> ActionHandler<lifecycle::Interrupt<A>> for T
+impl<T, S> ActionHandler<lifecycle::Interrupt<S>> for T
 where
-    T: Actor + InterruptedBy<A>,
-    A: Actor,
+    T: Actor + InterruptedBy<S>,
+    S: Actor,
 {
-    async fn handle(&mut self, input: lifecycle::Interrupt<A>, ctx: &mut Context<Self>) -> Result<(), Error> {
+    async fn handle(&mut self, input: lifecycle::Interrupt<S>, ctx: &mut Context<Self>) -> Result<(), Error> {
+        todo!();
+    }
+}
+
+#[async_trait]
+pub trait StartedBy<A: Actor>: Actor {
+    async fn handle(&mut self, ctx: &mut Context<Self>) -> Result<(), Error>;
+}
+
+#[async_trait]
+impl<T, S> ActionHandler<lifecycle::Awake<S>> for T
+where
+    T: Actor + InterruptedBy<S>,
+    S: Actor,
+{
+    async fn handle(&mut self, input: lifecycle::Awake<S>, ctx: &mut Context<Self>) -> Result<(), Error> {
         todo!();
     }
 }

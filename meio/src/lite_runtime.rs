@@ -1,4 +1,4 @@
-use crate::handlers::InterruptedBy;
+use crate::handlers::{StartedBy, InterruptedBy};
 use crate::{lifecycle, Actor, Action, ActionHandler, ActionPerformer, Address, Context};
 use anyhow::Error;
 use async_trait::async_trait;
@@ -74,14 +74,13 @@ impl<T: LiteTask> Task<T> {
 }
 
 #[async_trait]
-impl<T, S> ActionHandler<lifecycle::Awake<S>> for Task<T>
+impl<T, S> StartedBy<S> for Task<T>
 where
     T: LiteTask,
     S: Actor,
 {
     async fn handle(
         &mut self,
-        _event: lifecycle::Awake<S>,
         ctx: &mut Context<Self>,
     ) -> Result<(), Error> {
         if let Some(runtime) = self.runtime.take() {
