@@ -3,12 +3,14 @@
 use super::controller::{Controller, Operation};
 use crate::{
     lifecycle::Interrupt, Action, ActionHandler, ActionPerformer, ActionRecipient, Actor, Context,
-    Envelope, Id, Interaction, InteractionHandler, InteractionRecipient, Notifier, TypedId,
+    Envelope, Id, Notifier, TypedId,
+    Interaction,
 };
 use anyhow::{anyhow, Error};
 use derive_more::{Deref, DerefMut};
-use futures::channel::mpsc;
+use futures::channel::{mpsc, oneshot};
 use futures::{SinkExt, Stream, StreamExt};
+use std::convert::identity;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use tokio::task::JoinHandle;
@@ -74,6 +76,20 @@ impl<A: Actor> Address<A> {
         TypedId::new(self.controller.id())
     }
 
+    pub async fn interact<IN, OUT>(&mut self, request: IN) -> Result<OUT, Error>
+    where
+        IN: Send + 'static,
+        OUT: Send + 'static,
+        A: ActionHandler<Interaction<IN, OUT>>,
+    {
+        let (responder, rx) = oneshot::channel();
+        let msg = Interaction {
+            request,
+            responder,
+        };
+        rx.await.map_err(Error::from).and_then(identity)
+    }
+
     /// **Internal method.** Use `action` or `interaction` instead.
     /// It sends `Message` wrapped with `Envelope` to `Actor`.
     ///
@@ -131,6 +147,7 @@ impl<A: Actor> Address<A> {
         ActionRecipient::from(self.clone())
     }
 
+    /*
     /// Generates `InteractionRecipient`.
     pub fn interaction_recipient<I>(&self) -> InteractionRecipient<I>
     where
@@ -139,6 +156,7 @@ impl<A: Actor> Address<A> {
     {
         InteractionRecipient::from(self.clone())
     }
+    */
 
     /// Gives a `Controller` of that entity.
     pub fn controller(&self) -> Controller<A> {

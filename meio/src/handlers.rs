@@ -20,6 +20,7 @@ impl<A: Actor> Envelope<A> {
         self.handler.handle(actor, ctx).await
     }
 
+    /*
     /// Creates an `Envelope` for `Interaction`.
     pub(crate) fn interaction<I>(input: I) -> (Self, oneshot::Receiver<Result<I::Output, Error>>)
     where
@@ -36,7 +37,9 @@ impl<A: Actor> Envelope<A> {
         };
         (this, rx)
     }
+    */
 
+    // TODO: Is it posiible to use `handle` method directly and drop this one?
     /// Creates an `Envelope` for `Action`.
     pub(crate) fn action<I>(input: I) -> Self
     where
@@ -59,6 +62,7 @@ trait Handler<A: Actor>: Send {
     async fn handle(&mut self, actor: &mut A, _ctx: &mut Context<A>) -> Result<(), Error>;
 }
 
+/*
 /// `Interaction` type can be sent to an `Actor` that implements
 /// `InteractionHandler` for that message type.
 /// It has to return a response of `Output` type.
@@ -106,6 +110,7 @@ where
         Ok(())
     }
 }
+*/
 
 /// `Action` type can be sent to an `Actor` that implements
 /// `ActionHandler` for that message type.
@@ -138,3 +143,14 @@ where
         actor.handle(input, ctx).await
     }
 }
+
+pub struct Interaction<IN, OUT> {
+    pub(crate) request: IN,
+    pub(crate) responder: oneshot::Sender<Result<OUT, Error>>,
+}
+
+impl<IN, OUT> Action for Interaction<IN, OUT>
+where
+    IN: Send + 'static,
+    OUT: Send + 'static,
+{}

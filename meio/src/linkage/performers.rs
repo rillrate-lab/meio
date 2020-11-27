@@ -1,7 +1,7 @@
 //! This module contains extensions for the `Address` type
 //! to allow to send specific messages to actors.
 
-use crate::{Action, ActionHandler, Actor, Address, Envelope, Interaction, InteractionHandler};
+use crate::{Action, ActionHandler, Actor, Address, Envelope};
 use anyhow::Error;
 use async_trait::async_trait;
 
@@ -19,6 +19,7 @@ pub trait ActionPerformer<I: Action>: Send + 'static {
     async fn act(&mut self, input: I) -> Result<(), Error>;
 }
 
+/*
 /// A generic trait for `Interaction` functionality.
 /// The same as for `ActionPerformer`. This trait can be implemented
 /// be an `Actor` or just a simple function that can use async `Mutex`
@@ -31,6 +32,7 @@ pub trait InteractionPerformer<I: Interaction>: Send + 'static {
     /// Send `Interaction` message to an `Actor` and wait for the response.
     async fn interact(&mut self, input: I) -> Result<I::Output, Error>;
 }
+*/
 
 #[async_trait]
 impl<A, I> ActionPerformer<I> for Address<A>
@@ -46,6 +48,7 @@ where
     }
 }
 
+/*
 #[async_trait]
 impl<A, I> InteractionPerformer<I> for Address<A>
 where
@@ -61,3 +64,4 @@ where
         Ok(res)
     }
 }
+*/
