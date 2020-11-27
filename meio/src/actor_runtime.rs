@@ -2,9 +2,10 @@
 
 // TODO: Fix imports
 use crate::{
-    lifecycle::{self, Awake, Done, Interrupt, LifecycleNotifier, LifetimeTracker, TaskDone},
+    lifecycle::{self, Awake, Done, Interrupt, LifecycleNotifier, LifetimeTracker},
     linkage::controller::{Controller, HpEnvelope, Operation},
     ActionHandler, Address, Envelope, Id, LiteTask,
+    Task,
 };
 use anyhow::Error;
 use async_trait::async_trait;
@@ -133,34 +134,24 @@ impl<A: Actor> Context<A> {
         address
     }
 
-    /* TODO: Fix
     /// Starts and binds an `Actor`.
-    pub fn bind_task<T>(&mut self, task: T) -> Controller
+    pub fn bind_task<T>(&mut self, task: T) -> Address<Task<T>>
     where
         T: LiteTask,
-        A: ActionHandler<TaskDone<T>>,
+        A: ActionHandler<Done<Task<T>>>,
     {
-        // TODO: Add `Controller`
-        crate::lite_runtime::task(task, self.address.clone())
+        let actor = Task::new(task);
+        self.bind_actor(actor)
     }
-    */
-
-    /*
-    /// Returns a reference to an `Address`.
-    #[deprecated(
-        since = "0.25.0",
-        note = "Track lifetimes explicitly with `Awake`, `Interrupt`, `Done` events."
-    )]
-    pub fn terminator(&mut self) -> &mut Terminator {
-        &mut self.terminator
-    }
-    */
 
     /// Stops the runtime of the `Actor` on one message will be processed after this call.
+    ///
+    /// It's recommended way to terminate `Actor` is the `shutdown` method.
     pub fn stop(&mut self) {
         self.alive = false;
     }
 
+    /// Starts graceful termination of the `Actor`.
     pub fn shutdown(&mut self) {
         self.lifetime_tracker.start_termination();
         if self.lifetime_tracker.is_finished() {

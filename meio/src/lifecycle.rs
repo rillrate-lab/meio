@@ -222,37 +222,3 @@ impl<T: Actor> Action for Done<T> {
         true
     }
 }
-
-/// Notifies when `LiteTask` is finished.
-#[derive(Debug)]
-pub struct TaskDone<T: LiteTask> {
-    pub id: Id,
-    _origin: PhantomData<T>,
-}
-
-impl<T: LiteTask> TaskDone<T> {
-    pub(crate) fn new(id: Id) -> Self {
-        Self {
-            id,
-            _origin: PhantomData,
-        }
-    }
-}
-
-impl<T: LiteTask> Action for TaskDone<T> {
-    fn is_high_priority(&self) -> bool {
-        true
-    }
-}
-
-/*
- * struct Supervisor {
- *   address?
- * }
- *
- * impl Supervisor {
- *   /// The method that allow a child to ask the supervisor to shutdown.
- *   /// It sends `Shutdown` message, the supervisor can ignore it.
- *   fn shutdown();
- * }
-*/
