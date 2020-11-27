@@ -154,3 +154,9 @@ where
     IN: Send + 'static,
     OUT: Send + 'static,
 {}
+
+pub struct Joiner {
+    pub(crate) responder: oneshot::Sender<Result<(), Error>>,
+}
+
+impl Action for Joiner {}

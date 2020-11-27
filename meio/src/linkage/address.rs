@@ -4,7 +4,7 @@ use super::controller::{Controller, Operation};
 use crate::{
     lifecycle::Interrupt, Action, ActionHandler, ActionPerformer, ActionRecipient, Actor, Context,
     Envelope, Id, Notifier, TypedId,
-    Interaction,
+    Interaction, Joiner,
 };
 use anyhow::{anyhow, Error};
 use derive_more::{Deref, DerefMut};
@@ -90,6 +90,14 @@ impl<A: Actor> Address<A> {
         rx.await.map_err(Error::from).and_then(identity)
     }
 
+    pub async fn join(&mut self) -> Result<(), Error> {
+        let (responder, rx) = oneshot::channel();
+        let msg = Joiner {
+            responder,
+        };
+        rx.await.map_err(Error::from).and_then(identity)
+    }
+
     /// **Internal method.** Use `action` or `interaction` instead.
     /// It sends `Message` wrapped with `Envelope` to `Actor`.
     ///
@@ -170,10 +178,5 @@ impl<A: Actor> Address<A> {
         I: Action + Clone,
     {
         Notifier::new(self.action_recipient(), message)
-    }
-
-    pub async fn join(&mut self) {
-        // TODO: Get the `oneshot` instance using `Interaction` call (the `Actor` has to register
-        // it and execute later) and `await` it.
     }
 }
