@@ -156,6 +156,34 @@ where
     }
 }
 
+#[async_trait]
+pub trait InteractionHandler<I: Interaction>: Actor {
+    /// Asyncronous method that receives incoming message.
+    async fn handle(&mut self, input: I, _ctx: &mut Context<Self>) -> Result<I::Output, Error>;
+}
+
+#[async_trait]
+impl<T, I> ActionHandler<Interact<I>> for T
+where
+    I: Interaction,
+    T: Actor + InteractionHandler<I>,
+{
+    async fn handle(&mut self, input: Interact<I>, ctx: &mut Context<Self>) -> Result<(), Error> {
+        let res = InteractionHandler::handle(self, input.request, ctx).await;
+        let send_res = input.responder.send(res);
+        // TODO: How to improve that???
+        match send_res {
+            Ok(()) => Ok(()),
+            Err(Ok(_)) => {
+                Err(anyhow!("Can't send the successful result of interaction"))
+            }
+            Err(Err(err)) => {
+                Err(err)
+            }
+        }
+    }
+}
+
 pub struct Interact<T: Interaction> {
     pub(crate) request: T,
     pub(crate) responder: oneshot::Sender<Result<T::Output, Error>>,
