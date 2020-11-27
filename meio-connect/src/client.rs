@@ -11,7 +11,7 @@ use async_tungstenite::{
 use futures::channel::mpsc;
 use futures::{select, FutureExt, StreamExt};
 use meio::{
-    ActionHandler, Actor, Address, Interaction,
+    ActionHandler, Actor, Address, Interaction, InteractionHandler,
     LiteStatus, LiteTask, ShutdownReceiver,
 };
 use std::marker::PhantomData;
@@ -134,7 +134,7 @@ where
                     let (tx, rx) = mpsc::unbounded();
                     let sender = WsSender { tx };
                     self.address
-                        .interact(WsClientStatus::Connected { sender })
+                        .interact(WsClientStatus::<P>::Connected { sender })
                         .await?;
                     // Interruptable by status_rx
                     let mut talker =
@@ -165,7 +165,7 @@ where
                 }
             }
             self.address
-                .interact(WsClientStatus::Failed {
+                .interact(WsClientStatus::<P>::Failed {
                     reason: fail_reason.clone(),
                 })
                 .await?;
