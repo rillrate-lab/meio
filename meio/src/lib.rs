@@ -28,12 +28,12 @@ pub use actor_runtime::{standalone, Actor, Context, System};
 //pub use channel::{Controller, Status, Supervisor};
 //use channel::{Operator, Signal};
 use handlers::Envelope;
-pub use handlers::{Action, ActionHandler, Interact, Interaction, InteractionHandler, Joiner};
+pub use handlers::{Action, ActionHandler, Interact, Interaction, InteractionHandler, Joiner, InterruptedBy, StartedBy};
 pub use linkage::address::Address;
 pub use linkage::link::Link;
 pub use linkage::notifier::Notifier;
-pub use linkage::performers::ActionPerformer;
-pub use linkage::recipients::ActionRecipient;
+pub use linkage::performers::{ActionPerformer, InteractionPerformer};
+pub use linkage::recipients::{ActionRecipient, InteractionRecipient};
 pub use lite_runtime::{LiteStatus, LiteTask, ShutdownReceiver, Task};
 use std::fmt;
 use std::hash::{Hash, Hasher};
@@ -139,12 +139,19 @@ mod tests {
     pub struct MyActor;
 
     #[async_trait]
-    impl ActionHandler<lifecycle::Awake<System>> for MyActor {
+    impl StartedBy<System> for MyActor {
         async fn handle(
             &mut self,
-            _event: lifecycle::Awake<System>,
             _ctx: &mut Context<Self>,
         ) -> Result<(), Error> {
+            Ok(())
+        }
+    }
+
+    #[async_trait]
+    impl InterruptedBy<System> for MyActor {
+        async fn handle(&mut self, ctx: &mut Context<Self>) -> Result<(), Error> {
+            ctx.shutdown();
             Ok(())
         }
     }

@@ -2,7 +2,7 @@
 
 use crate::handlers::{Operation, Envelope, HpEnvelope, Interact, Interaction, Joiner};
 use crate::{
-    lifecycle::Interrupt, Action, ActionHandler, ActionPerformer, ActionRecipient, Actor, Context,
+    lifecycle::Interrupt, Action, ActionHandler, ActionPerformer, ActionRecipient, InteractionHandler, Actor, Context,
     Id, Notifier, TypedId, System,
 };
 use anyhow::{anyhow, Error};
@@ -86,7 +86,10 @@ impl<A: Actor> Address<A> {
         self.send(envelope, high_priority).await
     }
 
-    pub async fn interact<T: Interaction>(&mut self, request: T) -> Result<T::Output, Error>
+    pub async fn interact<I>(&mut self, request: I) -> Result<I::Output, Error>
+    where
+        I: Interaction,
+        A: InteractionHandler<I>,
     {
         let (responder, rx) = oneshot::channel();
         let msg = Interact {

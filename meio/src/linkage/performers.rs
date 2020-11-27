@@ -1,7 +1,7 @@
 //! This module contains extensions for the `Address` type
 //! to allow to send specific messages to actors.
 
-use crate::{Action, ActionHandler, Actor, Address, Envelope};
+use crate::{Action, ActionHandler, Actor, Address, Envelope, Interaction, InteractionHandler};
 use anyhow::Error;
 use async_trait::async_trait;
 
@@ -19,7 +19,23 @@ pub trait ActionPerformer<I: Action>: Send + 'static {
     async fn act(&mut self, input: I) -> Result<(), Error>;
 }
 
-/*
+#[async_trait]
+impl<A, I> ActionPerformer<I> for Address<A>
+where
+    A: Actor,
+    A: ActionHandler<I>,
+    I: Action,
+{
+    async fn act(&mut self, input: I) -> Result<(), Error> {
+        Address::act(self, input).await
+        /*
+        let high_priority = input.is_high_priority();
+        let envelope = Envelope::action(input);
+        self.send(envelope, high_priority).await
+        */
+    }
+}
+
 /// A generic trait for `Interaction` functionality.
 /// The same as for `ActionPerformer`. This trait can be implemented
 /// be an `Actor` or just a simple function that can use async `Mutex`
@@ -32,23 +48,7 @@ pub trait InteractionPerformer<I: Interaction>: Send + 'static {
     /// Send `Interaction` message to an `Actor` and wait for the response.
     async fn interact(&mut self, input: I) -> Result<I::Output, Error>;
 }
-*/
 
-#[async_trait]
-impl<A, I> ActionPerformer<I> for Address<A>
-where
-    A: Actor,
-    A: ActionHandler<I>,
-    I: Action,
-{
-    async fn act(&mut self, input: I) -> Result<(), Error> {
-        let high_priority = input.is_high_priority();
-        let envelope = Envelope::action(input);
-        self.send(envelope, high_priority).await
-    }
-}
-
-/*
 #[async_trait]
 impl<A, I> InteractionPerformer<I> for Address<A>
 where
@@ -57,11 +57,13 @@ where
     I: Interaction,
 {
     async fn interact(&mut self, input: I) -> Result<I::Output, Error> {
+        Address::interact(self, input).await
+        /*
         let high_priority = input.is_high_priority();
         let (envelope, rx) = Envelope::interaction(input);
         self.send(envelope, high_priority).await?;
         let res = rx.await??;
         Ok(res)
+        */
     }
 }
-*/

@@ -2,7 +2,7 @@
 //! a single incoming message type.
 
 use crate::{
-    Action, ActionHandler, ActionPerformer, Actor, Address,
+    Action, ActionHandler, ActionPerformer, Actor, Address, Interaction, InteractionHandler, InteractionPerformer,
 };
 use anyhow::Error;
 use async_trait::async_trait;
@@ -72,7 +72,6 @@ where
     }
 }
 
-/*
 trait InteractionRecipientGenerator<I>: Send + Sync {
     fn generate(&self) -> Box<dyn InteractionPerformer<I>>;
 }
@@ -137,4 +136,3 @@ where
         }
     }
 }
-*/
