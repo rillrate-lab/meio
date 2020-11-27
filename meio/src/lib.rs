@@ -53,12 +53,6 @@ impl Id {
         let name = entity.name();
         Self(Arc::new(name))
     }
-
-    /// Generated new `Id` for `Actor`.
-    fn of_task<T: LiteTask>(entity: &T) -> Self {
-        let name = entity.name();
-        Self(Arc::new(name))
-    }
 }
 
 impl fmt::Display for Id {
@@ -107,6 +101,10 @@ impl<T> TypedId<T> {
             id,
             _origin: PhantomData,
         }
+    }
+
+    pub fn raw(&self) -> Id {
+        self.id.clone()
     }
 }
 
