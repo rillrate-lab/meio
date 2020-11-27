@@ -153,4 +153,9 @@ impl<A: Actor> Address<A> {
     {
         Notifier::new(self.action_recipient(), message)
     }
+
+    pub async fn join(&mut self) {
+        // TODO: Get the `oneshot` instance using `Interaction` call (the `Actor` has to register
+        // it and execute later) and `await` it.
+    }
 }
