@@ -1,10 +1,9 @@
 //! This module contains `Address` to interact with an `Actor`.
 
-use crate::handlers::{Operation, Envelope, HpEnvelope};
+use crate::handlers::{Operation, Envelope, HpEnvelope, Interact, Interaction, Joiner};
 use crate::{
     lifecycle::Interrupt, Action, ActionHandler, ActionPerformer, ActionRecipient, Actor, Context,
     Id, Notifier, TypedId,
-    Interact, Joiner,
 };
 use anyhow::{anyhow, Error};
 use futures::channel::{mpsc, oneshot};
@@ -87,11 +86,7 @@ impl<A: Actor> Address<A> {
         self.send(envelope, high_priority).await
     }
 
-    pub async fn interact<IN, OUT>(&mut self, request: IN) -> Result<OUT, Error>
-    where
-        IN: Send + 'static,
-        OUT: Send + 'static,
-        A: ActionHandler<Interact<IN, OUT>>,
+    pub async fn interact<T: Interaction>(&mut self, request: T) -> Result<T::Output, Error>
     {
         let (responder, rx) = oneshot::channel();
         let msg = Interact {

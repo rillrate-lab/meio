@@ -156,16 +156,20 @@ where
     }
 }
 
-pub struct Interact<IN, OUT> {
-    pub(crate) request: IN,
-    pub(crate) responder: oneshot::Sender<Result<OUT, Error>>,
+pub struct Interact<T: Interaction> {
+    pub(crate) request: T,
+    pub(crate) responder: oneshot::Sender<Result<T::Output, Error>>,
 }
 
-impl<IN, OUT> Action for Interact<IN, OUT>
-where
-    IN: Send + 'static,
-    OUT: Send + 'static,
-{}
+impl<T: Interaction> Action for Interact<T> {}
+
+pub trait Interaction: Send + 'static {
+    type Output: Send + 'static;
+
+    fn is_high_priority(&self) -> bool {
+        false
+    }
+}
 
 pub struct Joiner {
     pub(crate) responder: oneshot::Sender<Result<(), Error>>,
