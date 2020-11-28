@@ -63,7 +63,7 @@ where
     let id = Id::of_actor(&actor);
     let (hp_msg_tx, hp_msg_rx) = mpsc::unbounded();
     let (msg_tx, msg_rx) = mpsc::channel(MESSAGES_CHANNEL_DEPTH);
-    let (join_tx, join_rx) = watch::channel(());
+    let (join_tx, join_rx) = watch::channel(lifecycle::Status::Alive);
     let address = Address::new(id, hp_msg_tx, msg_tx, join_rx);
     let id: Id = address.id().into();
     let awake_envelope = Envelope::action(Awake::new());
@@ -175,7 +175,7 @@ pub struct ActorRuntime<A: Actor> {
     msg_rx: mpsc::Receiver<Envelope<A>>,
     /// High-priority receiver
     hp_msg_rx: mpsc::UnboundedReceiver<HpEnvelope<A>>,
-    join_tx: watch::Sender<()>,
+    join_tx: watch::Sender<lifecycle::Status>,
 }
 
 impl<A: Actor> ActorRuntime<A> {
@@ -211,7 +211,7 @@ impl<A: Actor> ActorRuntime<A> {
         }
         // TODO: Activate this check for tokio 0.3
         //if !self.join_tx.is_closed() {
-            if let Err(_err) = self.join_tx.broadcast(()) {
+            if let Err(_err) = self.join_tx.broadcast(lifecycle::Status::Stop) {
                 // TODO: Activate this log for tokio 0.3
                 //log::error!("Can't release joiners of {:?}", self.id);
             }

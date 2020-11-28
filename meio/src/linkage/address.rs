@@ -2,7 +2,7 @@
 
 use crate::handlers::{Operation, Envelope, HpEnvelope, Interact, Interaction, Joiner, InterruptedBy};
 use crate::{
-    lifecycle::Interrupt, Action, ActionHandler, ActionPerformer, ActionRecipient, InteractionHandler, InteractionRecipient, Actor, Context,
+    lifecycle::{Interrupt, Status}, Action, ActionHandler, ActionPerformer, ActionRecipient, InteractionHandler, InteractionRecipient, Actor, Context,
     Id, Notifier, TypedId, System,
 };
 use anyhow::{anyhow, Error};
@@ -24,7 +24,7 @@ pub struct Address<A: Actor> {
     hp_msg_tx: mpsc::UnboundedSender<HpEnvelope<A>>,
     /// Ordinary priority messages sender
     msg_tx: mpsc::Sender<Envelope<A>>,
-    join_rx: watch::Receiver<()>,
+    join_rx: watch::Receiver<Status>,
 }
 
 /*
@@ -74,7 +74,7 @@ impl<A: Actor> Address<A> {
         id: Id,
         hp_msg_tx: mpsc::UnboundedSender<HpEnvelope<A>>,
         msg_tx: mpsc::Sender<Envelope<A>>,
-        join_rx: watch::Receiver<()>,
+        join_rx: watch::Receiver<Status>,
     ) -> Self {
         Self { id, hp_msg_tx, msg_tx, join_rx }
     }
@@ -107,12 +107,15 @@ impl<A: Actor> Address<A> {
         rx.await.map_err(Error::from).and_then(identity)
     }
 
-    pub async fn join(&mut self) -> Result<(), Error> {
-        let (responder, rx) = oneshot::channel();
-        let msg = Joiner {
-            responder,
-        };
-        rx.await.map_err(Error::from).and_then(identity)
+    /// Waits when the `Actor` will be terminated.
+    pub async fn join(&mut self) {
+        // TODO: tokio 0.3
+        // while self.join_rx.changed().await.is_ok() {
+        while self.join_rx.recv().await.is_some() {
+            if *self.join_rx.borrow() == Status::Stop {
+                break;
+            }
+        }
     }
 
     /// **Internal method.** Use `action` or `interaction` instead.
