@@ -107,12 +107,8 @@ where
         // TODO: How to improve that???
         match send_res {
             Ok(()) => Ok(()),
-            Err(Ok(_)) => {
-                Err(anyhow!("Can't send the successful result of interaction"))
-            }
-            Err(Err(err)) => {
-                Err(err)
-            }
+            Err(Ok(_)) => Err(anyhow!("Can't send the successful result of interaction")),
+            Err(Err(err)) => Err(err),
         }
     }
 }
@@ -154,7 +150,11 @@ where
     T: Actor + StartedBy<S>,
     S: Actor,
 {
-    async fn handle(&mut self, _input: lifecycle::Awake<S>, ctx: &mut Context<Self>) -> Result<(), Error> {
+    async fn handle(
+        &mut self,
+        _input: lifecycle::Awake<S>,
+        ctx: &mut Context<Self>,
+    ) -> Result<(), Error> {
         StartedBy::handle(self, ctx).await
     }
 }
@@ -172,7 +172,11 @@ where
     T: Actor + InterruptedBy<S>,
     S: Actor,
 {
-    async fn handle(&mut self, _input: lifecycle::Interrupt<S>, ctx: &mut Context<Self>) -> Result<(), Error> {
+    async fn handle(
+        &mut self,
+        _input: lifecycle::Interrupt<S>,
+        ctx: &mut Context<Self>,
+    ) -> Result<(), Error> {
         InterruptedBy::handle(self, ctx).await
     }
 }
@@ -190,7 +194,11 @@ where
     T: Actor + Eliminated<C>,
     C: Actor,
 {
-    async fn handle(&mut self, done: lifecycle::Done<C>, ctx: &mut Context<Self>) -> Result<(), Error> {
+    async fn handle(
+        &mut self,
+        done: lifecycle::Done<C>,
+        ctx: &mut Context<Self>,
+    ) -> Result<(), Error> {
         Eliminated::handle(self, done.id, ctx).await
     }
 }

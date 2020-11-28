@@ -1,9 +1,12 @@
 //! This module contains `Address` to interact with an `Actor`.
 
-use crate::handlers::{Consumer, Operation, Envelope, HpEnvelope, Interact, Interaction, InterruptedBy, StreamItem};
+use crate::handlers::{
+    Consumer, Envelope, HpEnvelope, Interact, Interaction, InterruptedBy, Operation, StreamItem,
+};
 use crate::{
-    lifecycle::{Interrupt, Status}, Action, ActionHandler, ActionPerformer, ActionRecipient, InteractionHandler, InteractionRecipient, Actor, Context,
-    Id, TypedId, System,
+    lifecycle::{Interrupt, Status},
+    Action, ActionHandler, ActionPerformer, ActionRecipient, Actor, Context, Id,
+    InteractionHandler, InteractionRecipient, System, TypedId,
 };
 use anyhow::{anyhow, Error};
 use futures::channel::{mpsc, oneshot};
@@ -11,8 +14,8 @@ use futures::{SinkExt, Stream, StreamExt};
 use std::convert::identity;
 use std::fmt;
 use std::hash::{Hash, Hasher};
-use tokio::task::JoinHandle;
 use tokio::sync::watch;
+use tokio::task::JoinHandle;
 
 /// `Address` to send messages to `Actor`.
 ///
@@ -41,9 +44,7 @@ impl<A: Actor> Clone for Address<A> {
 impl<A: Actor> fmt::Debug for Address<A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // TODO: Id cloned here. Fix!
-        f.debug_tuple("Address")
-            .field(&self.id)
-            .finish()
+        f.debug_tuple("Address").field(&self.id).finish()
     }
 }
 
@@ -68,7 +69,12 @@ impl<A: Actor> Address<A> {
         msg_tx: mpsc::Sender<Envelope<A>>,
         join_rx: watch::Receiver<Status>,
     ) -> Self {
-        Self { id, hp_msg_tx, msg_tx, join_rx }
+        Self {
+            id,
+            hp_msg_tx,
+            msg_tx,
+            join_rx,
+        }
     }
 
     /// Returns a typed id of the `Actor`.
@@ -97,10 +103,7 @@ impl<A: Actor> Address<A> {
         A: InteractionHandler<I>,
     {
         let (responder, rx) = oneshot::channel();
-        let input = Interact {
-            request,
-            responder,
-        };
+        let input = Interact { request, responder };
         self.act(input).await?;
         rx.await.map_err(Error::from).and_then(identity)
     }
@@ -117,11 +120,7 @@ impl<A: Actor> Address<A> {
     }
 
     /// Sends a service message using the high-priority queue.
-    pub(crate) fn send_hp_direct<I>(
-        &mut self,
-        operation: Operation,
-        input: I,
-    ) -> Result<(), Error>
+    pub(crate) fn send_hp_direct<I>(&mut self, operation: Operation, input: I) -> Result<(), Error>
     where
         I: Action,
         A: ActionHandler<I>,

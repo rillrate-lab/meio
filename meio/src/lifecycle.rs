@@ -1,9 +1,7 @@
 //! Contains message of the `Actor`'s lifecycle.
 
 use crate::handlers::Operation;
-use crate::{
-    Action, ActionHandler, Actor, Address, Id, TypedId,
-};
+use crate::{Action, ActionHandler, Actor, Address, Id, TypedId};
 use anyhow::{anyhow, Error};
 use std::any::type_name;
 use std::collections::{HashMap, HashSet};
@@ -130,7 +128,11 @@ impl<T: Actor> LifetimeTracker<T> {
                 for id in stage.ids.iter() {
                     if let Some(record) = self.records.get_mut(id) {
                         if let Err(err) = record.notifier.notify() {
-                            log::error!("Can't notify the supervisor about actor with {:?} termination: {}", id, err);
+                            log::error!(
+                                "Can't notify the supervisor about actor with {:?} termination: {}",
+                                id,
+                                err
+                            );
                         }
                     }
                 }

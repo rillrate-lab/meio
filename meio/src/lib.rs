@@ -25,7 +25,10 @@ pub mod task;
 
 pub use actor_runtime::{standalone, Actor, Context, System};
 use handlers::Envelope;
-pub use handlers::{Action, ActionHandler, Eliminated, Interaction, InteractionHandler, InterruptedBy, StartedBy, Consumer};
+pub use handlers::{
+    Action, ActionHandler, Consumer, Eliminated, Interaction, InteractionHandler, InterruptedBy,
+    StartedBy,
+};
 pub use linkage::address::Address;
 pub use linkage::link::Link;
 pub use linkage::performers::{ActionPerformer, InteractionPerformer};
@@ -135,10 +138,7 @@ mod tests {
 
     #[async_trait]
     impl StartedBy<System> for MyActor {
-        async fn handle(
-            &mut self,
-            _ctx: &mut Context<Self>,
-        ) -> Result<(), Error> {
+        async fn handle(&mut self, _ctx: &mut Context<Self>) -> Result<(), Error> {
             Ok(())
         }
     }

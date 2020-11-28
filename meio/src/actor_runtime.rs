@@ -2,10 +2,9 @@
 
 // TODO: Fix imports
 use crate::{
+    handlers::{Eliminated, HpEnvelope, InterruptedBy, Operation, StartedBy},
     lifecycle::{self, Awake, Done, LifecycleNotifier, LifetimeTracker},
-    handlers::{HpEnvelope, Operation, StartedBy, Eliminated, InterruptedBy},
-    ActionHandler, Address, Envelope, Id, LiteTask,
-    Task, TypedId,
+    ActionHandler, Address, Envelope, Id, LiteTask, Task, TypedId,
 };
 use anyhow::Error;
 use async_trait::async_trait;
@@ -24,11 +23,7 @@ impl Actor for System {}
 
 #[async_trait]
 impl<T: Actor> Eliminated<T> for System {
-    async fn handle(
-        &mut self,
-        _id: TypedId<T>,
-        _ctx: &mut Context<Self>,
-    ) -> Result<(), Error> {
+    async fn handle(&mut self, _id: TypedId<T>, _ctx: &mut Context<Self>) -> Result<(), Error> {
         // TODO: Maybe change this in the future...
         unreachable!("The system has no Address and no one actor actually binded to it.")
     }
@@ -215,10 +210,10 @@ impl<A: Actor> ActorRuntime<A> {
         }
         // TODO: Activate this check for tokio 0.3
         //if !self.join_tx.is_closed() {
-            if let Err(_err) = self.join_tx.broadcast(lifecycle::Status::Stop) {
-                // TODO: Activate this log for tokio 0.3
-                //log::error!("Can't release joiners of {:?}", self.id);
-            }
+        if let Err(_err) = self.join_tx.broadcast(lifecycle::Status::Stop) {
+            // TODO: Activate this log for tokio 0.3
+            //log::error!("Can't release joiners of {:?}", self.id);
+        }
         //}
     }
 

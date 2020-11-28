@@ -11,8 +11,8 @@ use async_tungstenite::{
 use futures::channel::mpsc;
 use futures::{select, FutureExt, StreamExt};
 use meio::{
-    ActionHandler, Actor, Address, Interaction, InteractionHandler,
-    lifecycle, LiteTask, ShutdownReceiver,
+    lifecycle, ActionHandler, Actor, Address, Interaction, InteractionHandler, LiteTask,
+    ShutdownReceiver,
 };
 use std::marker::PhantomData;
 use std::time::{Duration, Instant};

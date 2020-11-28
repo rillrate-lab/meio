@@ -1,5 +1,5 @@
-use crate::handlers::{StartedBy, InterruptedBy};
-use crate::{lifecycle, Actor, Action, ActionHandler, Address, Context};
+use crate::handlers::{InterruptedBy, StartedBy};
+use crate::{lifecycle, Action, ActionHandler, Actor, Address, Context};
 use anyhow::Error;
 use async_trait::async_trait;
 use derive_more::{From, Into};
@@ -48,7 +48,10 @@ impl<T: LiteTask> LiteRuntime<T> {
         }
         log::info!("Finishing the task: {:?}", name);
         if let Err(err) = actor.act(LiteTaskFinished).await {
-            log::error!("Can't notify a Task about LiteTask routine termination: {}", err);
+            log::error!(
+                "Can't notify a Task about LiteTask routine termination: {}",
+                err
+            );
         }
     }
 }
@@ -64,10 +67,7 @@ impl<T: LiteTask> Task<T> {
     pub(crate) fn new(task: T) -> Self {
         let name = task.name();
         let (shutdown_tx, shutdown_rx) = watch::channel(lifecycle::Status::Alive);
-        let runtime = LiteRuntime {
-            task,
-            shutdown_rx,
-        };
+        let runtime = LiteRuntime { task, shutdown_rx };
         Self {
             name,
             runtime: Some(runtime),
@@ -82,10 +82,7 @@ where
     T: LiteTask,
     S: Actor,
 {
-    async fn handle(
-        &mut self,
-        ctx: &mut Context<Self>,
-    ) -> Result<(), Error> {
+    async fn handle(&mut self, ctx: &mut Context<Self>) -> Result<(), Error> {
         if let Some(runtime) = self.runtime.take() {
             let address = ctx.address().clone();
             tokio::spawn(runtime.entrypoint(address));
@@ -122,7 +119,6 @@ where
         Ok(())
     }
 }
-
 
 impl<T: LiteTask> Actor for Task<T> {
     fn name(&self) -> String {
