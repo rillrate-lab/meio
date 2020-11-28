@@ -266,11 +266,11 @@ mod tests {
     #[tokio::test]
     async fn start_and_terminate() -> Result<(), Error> {
         env_logger::try_init().ok();
-        let mut address = standalone(MyActor);
+        let mut address = spawn(MyActor);
         address.act(MsgOne).await?;
         let res = address.interact(MsgTwo).await?;
         assert_eq!(res, 1);
-        address.shutdown();
+        address.shutdown()?;
         address.join().await;
         Ok(())
     }
@@ -278,13 +278,13 @@ mod tests {
     #[tokio::test]
     async fn test_recipient() -> Result<(), Error> {
         env_logger::try_init().ok();
-        let mut address = standalone(MyActor);
+        let mut address = spawn(MyActor);
         let action_recipient = address.action_recipient();
         action_recipient.clone().act(MsgOne).await?;
         let interaction_recipient = address.interaction_recipient();
         let res = interaction_recipient.clone().interact(MsgTwo).await?;
         assert_eq!(res, 1);
-        address.shutdown();
+        address.shutdown()?;
         address.join().await;
         Ok(())
     }
@@ -292,23 +292,23 @@ mod tests {
     #[tokio::test]
     async fn test_attach() -> Result<(), Error> {
         env_logger::try_init().ok();
-        let mut address = standalone(MyActor);
+        let mut address = spawn(MyActor);
         let stream = stream::iter(vec![MsgOne, MsgOne, MsgOne]);
         address.attach(stream).await?;
         // If you acivate this line the test will wait for the `Ctrl+C` signal.
         //address.attach(signal::CtrlC::stream()).await?;
-        address.shutdown();
+        address.shutdown()?;
         Ok(())
     }
 
     #[tokio::test]
     async fn test_link() -> Result<(), Error> {
         env_logger::try_init().ok();
-        let address = standalone(MyActor);
+        let address = spawn(MyActor);
         let mut link: link::MyLink = address.link();
         link.send_signal().await?;
         let mut alternative_link: link::MyAlternativeLink = address.link();
-        alternative_link.shutdown();
+        alternative_link.shutdown()?;
         alternative_link.join().await;
         Ok(())
     }
