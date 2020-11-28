@@ -23,24 +23,14 @@ pub enum System {}
 impl Actor for System {}
 
 #[async_trait]
-impl ActionHandler<lifecycle::Awake<Self>> for System {
-    async fn handle(
-        &mut self,
-        _event: lifecycle::Awake<Self>,
-        _ctx: &mut Context<Self>,
-    ) -> Result<(), Error> {
-        unreachable!()
-    }
-}
-
-#[async_trait]
 impl<T: Actor> Eliminated<T> for System {
     async fn handle(
         &mut self,
         _id: TypedId<T>,
         _ctx: &mut Context<Self>,
     ) -> Result<(), Error> {
-        unreachable!()
+        // TODO: Maybe change this in the future...
+        unreachable!("The system has no Address and no one actor actually binded to it.")
     }
 }
 
@@ -223,20 +213,6 @@ impl<A: Actor> ActorRuntime<A> {
     async fn routine(&mut self) {
         while self.context.alive {
             select_biased! {
-                /*
-                event = self.operator.next() => {
-                    log::trace!("Stop signal received: {:?} for {:?}", event, self.id);
-                    // Because `Operator` contained an instance of the `Controller`.
-                    let signal = event.expect("actor controller couldn't be closed");
-                    let child = signal.into();
-                    let progress = self.context.terminator.track_child_or_stop_signal(child);
-                    if progress == TerminationProgress::SafeToStop {
-                        log::info!("Actor {:?} is completed.", self.id);
-                        self.msg_rx.close();
-                        break;
-                    }
-                }
-                */
                 hp_envelope = self.hp_msg_rx.next() => {
                     if let Some(hp_env) = hp_envelope {
                         let mut envelope = hp_env.envelope;
