@@ -24,7 +24,7 @@ pub mod task;
 
 pub use actor_runtime::{standalone, Actor, Context, System};
 use handlers::Envelope;
-pub use handlers::{Action, ActionHandler, Interact, Interaction, InteractionHandler, InterruptedBy, StartedBy};
+pub use handlers::{Action, ActionHandler, Interact, Interaction, InteractionHandler, InterruptedBy, StartedBy, Consumer};
 pub use linkage::address::Address;
 pub use linkage::link::Link;
 pub use linkage::performers::{ActionPerformer, InteractionPerformer};
@@ -207,6 +207,14 @@ mod tests {
     }
 
     #[async_trait]
+    impl Consumer<MsgOne> for MyActor {
+        async fn handle(&mut self, _: MsgOne, _ctx: &mut Context<Self>) -> Result<(), Error> {
+            log::info!("Received MsgOne (from the stream)");
+            Ok(())
+        }
+    }
+
+    #[async_trait]
     impl InteractionHandler<MsgTwo> for MyActor {
         async fn handle(&mut self, _: MsgTwo, _ctx: &mut Context<Self>) -> Result<u8, Error> {
             log::info!("Received MsgTwo");
@@ -215,7 +223,7 @@ mod tests {
     }
 
     #[async_trait]
-    impl ActionHandler<signal::CtrlC> for MyActor {
+    impl Consumer<signal::CtrlC> for MyActor {
         async fn handle(
             &mut self,
             _: signal::CtrlC,
