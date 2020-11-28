@@ -181,11 +181,11 @@ impl<A: Actor> Address<A> {
         InteractionRecipient::from(self.clone())
     }
 
-    /// Launches the shutdown process.
+    /// Launches the interruption process.
     ///
-    /// It's an independent shutdown signal that can be sent anywhere, but only
+    /// It's an independent interrupt signal that can be sent anywhere, but only
     /// if the recipient `Actor` accepts interruption signals from the `System`.
-    pub fn shutdown(&mut self) -> Result<(), Error>
+    pub fn interrupt(&mut self) -> Result<(), Error>
     where
         A: InterruptedBy<System>,
     {
