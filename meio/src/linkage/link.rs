@@ -1,7 +1,7 @@
 //! `Link` provides convenient ways of interaction with `Actors` using methods
 //! by wrapping `Address` of `Recipient`.
 
-use crate::{Action, ActionRecipient, Actor, Address};
+use crate::{Action, ActionRecipient, Actor, Address, Interaction, InteractionRecipient};
 
 /// Returns a `Link` to an `Actor`.
 /// `Link` is a convenient concept for creating wrappers for
@@ -32,7 +32,6 @@ where
     }
 }
 
-/*
 impl<T, I> Link<T> for InteractionRecipient<I>
 where
     T: From<InteractionRecipient<I>>,
@@ -42,4 +41,3 @@ where
         T::from(self.clone())
     }
 }
-*/
