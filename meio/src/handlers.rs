@@ -218,7 +218,7 @@ where
 }
 
 pub struct StreamItem<T> {
-    item: T,
+    pub item: T,
 }
 
 impl<T: Send + 'static> Action for StreamItem<T> {}

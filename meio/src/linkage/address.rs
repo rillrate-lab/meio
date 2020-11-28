@@ -1,6 +1,6 @@
 //! This module contains `Address` to interact with an `Actor`.
 
-use crate::handlers::{Operation, Envelope, HpEnvelope, Interact, Interaction, InterruptedBy};
+use crate::handlers::{Consumer, Operation, Envelope, HpEnvelope, Interact, Interaction, InterruptedBy, StreamItem};
 use crate::{
     lifecycle::{Interrupt, Status}, Action, ActionHandler, ActionPerformer, ActionRecipient, InteractionHandler, InteractionRecipient, Actor, Context,
     Id, TypedId, System,
@@ -134,18 +134,6 @@ impl<A: Actor> Address<A> {
             .map_err(|_| anyhow!("can't send a high-priority service message"))
     }
 
-    /*
-    /// Sends a service message using the high-priority queue.
-    pub(crate) fn send_hp<T>(&mut self, msg: T) -> Result<(), Error>
-    where
-        T: Action,
-        A: ActionHandler<T>,
-    {
-        let envelope = Envelope::action(msg);
-        self.send_hp_direct(Operation::Forward, envelope)
-    }
-    */
-
     /// Sends an `Interrupt` event.
     ///
     /// It required a `Context` parameter just to restrict using it in
@@ -161,9 +149,9 @@ impl<A: Actor> Address<A> {
     /// Attaches a `Stream` of event to an `Actor`.
     pub fn attach<S>(&mut self, stream: S) -> JoinHandle<()>
     where
-        A: ActionHandler<S::Item>,
+        A: Consumer<S::Item>,
         S: Stream + Send + Unpin + 'static,
-        S::Item: Action,
+        S::Item: Send + 'static,
     {
         let recipient = self.action_recipient();
         let id = self.id.clone();
@@ -204,16 +192,17 @@ impl<A: Actor> Address<A> {
 struct Forwarder<S: Stream> {
     id: Id,
     stream: S,
-    recipient: ActionRecipient<S::Item>,
+    recipient: ActionRecipient<StreamItem<S::Item>>,
 }
 
 impl<S> Forwarder<S>
 where
     S: Stream + Unpin,
-    S::Item: Action,
+    S::Item: Send + 'static,
 {
     async fn entrypoint(mut self) {
-        while let Some(action) = self.stream.next().await {
+        while let Some(item) = self.stream.next().await {
+            let action = StreamItem { item };
             if let Err(err) = self.recipient.act(action).await {
                 log::error!(
                     "Can't send an event to {:?} form a background stream: {}. Breaking...",
