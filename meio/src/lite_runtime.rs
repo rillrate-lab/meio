@@ -26,9 +26,9 @@ impl ShutdownReceiver {
     }
 }
 
-struct TaskFinished;
+struct LiteTaskFinished;
 
-impl Action for TaskFinished {}
+impl Action for LiteTaskFinished {}
 
 struct LiteRuntime<T: LiteTask> {
     task: T,
@@ -47,7 +47,7 @@ impl<T: LiteTask> LiteRuntime<T> {
             log::error!("LiteTask {} failed with: {}", name, err);
         }
         log::info!("Finishing the task: {:?}", name);
-        actor.act(TaskFinished).await;
+        actor.act(LiteTaskFinished).await;
     }
 }
 
@@ -106,13 +106,13 @@ where
 }
 
 #[async_trait]
-impl<T> ActionHandler<TaskFinished> for Task<T>
+impl<T> ActionHandler<LiteTaskFinished> for Task<T>
 where
     T: LiteTask,
 {
     async fn handle(
         &mut self,
-        _event: TaskFinished,
+        _event: LiteTaskFinished,
         ctx: &mut Context<Self>,
     ) -> Result<(), Error> {
         ctx.shutdown();
