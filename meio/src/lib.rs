@@ -21,9 +21,10 @@ pub mod handlers;
 pub mod lifecycle;
 pub mod linkage;
 pub mod signal;
+pub mod system;
 pub mod task;
 
-pub use actor_runtime::{standalone, Actor, Context, System};
+pub use actor_runtime::{standalone, Actor, Context};
 use handlers::Envelope;
 pub use handlers::{
     Action, ActionHandler, Consumer, Eliminated, Interaction, InteractionHandler, InterruptedBy,
@@ -38,6 +39,7 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::sync::Arc;
+pub use system::System;
 
 /// Unique Id of Actor's runtime that used to identify
 /// all senders for that actor.

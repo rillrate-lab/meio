@@ -4,9 +4,8 @@
 use crate::{
     handlers::{Eliminated, HpEnvelope, InterruptedBy, Operation, StartedBy},
     lifecycle::{self, Awake, Done, LifecycleNotifier, LifetimeTracker},
-    ActionHandler, Address, Envelope, Id, LiteTask, Task, TypedId,
+    ActionHandler, Address, Envelope, Id, LiteTask, System, Task,
 };
-use anyhow::Error;
 use async_trait::async_trait;
 use futures::channel::mpsc;
 use futures::{select_biased, StreamExt};
@@ -14,20 +13,6 @@ use tokio::sync::watch;
 use uuid::Uuid;
 
 const MESSAGES_CHANNEL_DEPTH: usize = 32;
-
-// TODO: Move system somewhere
-/// Virtual actor that represents the system/environment.
-pub enum System {}
-
-impl Actor for System {}
-
-#[async_trait]
-impl<T: Actor> Eliminated<T> for System {
-    async fn handle(&mut self, _id: TypedId<T>, _ctx: &mut Context<Self>) -> Result<(), Error> {
-        // TODO: Maybe change this in the future...
-        unreachable!("The system has no Address and no one actor actually binded to it.")
-    }
-}
 
 /// Spawns a standalone `Actor` that has no `Supervisor`.
 pub fn standalone<A>(actor: A) -> Address<A>
