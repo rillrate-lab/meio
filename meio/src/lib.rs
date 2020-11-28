@@ -24,7 +24,7 @@ pub mod task;
 
 pub use actor_runtime::{standalone, Actor, Context, System};
 use handlers::Envelope;
-pub use handlers::{Action, ActionHandler, Interact, Interaction, InteractionHandler, InterruptedBy, StartedBy, Consumer};
+pub use handlers::{Action, ActionHandler, Eliminated, Interact, Interaction, InteractionHandler, InterruptedBy, StartedBy, Consumer};
 pub use linkage::address::Address;
 pub use linkage::link::Link;
 pub use linkage::performers::{ActionPerformer, InteractionPerformer};
