@@ -2,7 +2,7 @@
 
 // TODO: Fix imports
 use crate::{
-    lifecycle::{self, Awake, Done, Interrupt, LifecycleNotifier, LifetimeTracker},
+    lifecycle::{self, Awake, Done, LifecycleNotifier, LifetimeTracker},
     handlers::{HpEnvelope, Operation, StartedBy, Eliminated, InterruptedBy},
     ActionHandler, Address, Envelope, Id, LiteTask,
     Task, TypedId,
@@ -138,9 +138,22 @@ impl<A: Actor> Context<A> {
         self.bind_actor(actor)
     }
 
+    /// Returns true if the shutdown process is in progress.
+    pub fn is_terminating(&self) -> bool {
+        self.lifetime_tracker.is_terminating()
+    }
+
+    /// Increases the priority of the `Actor`'s type.
+    pub fn terminate_earlier<T>(&mut self) {
+        self.lifetime_tracker.prioritize_termination::<T>();
+    }
+
     /// Stops the runtime of the `Actor` on one message will be processed after this call.
     ///
     /// It's recommended way to terminate `Actor` is the `shutdown` method.
+    ///
+    /// > Attention! Termination process will never started here and all spawned actors
+    /// and tasks will be orphaned.
     pub fn stop(&mut self) {
         self.alive = false;
     }
@@ -154,8 +167,6 @@ impl<A: Actor> Context<A> {
     }
 }
 
-// TODO: Maybe add `S: Supervisor` parameter to
-// avoid using blind notifiers, etc?
 /// `ActorRuntime` for `Actor`.
 pub struct ActorRuntime<A: Actor> {
     id: Id,
@@ -167,6 +178,7 @@ pub struct ActorRuntime<A: Actor> {
     msg_rx: mpsc::Receiver<Envelope<A>>,
     /// High-priority receiver
     hp_msg_rx: mpsc::UnboundedReceiver<HpEnvelope<A>>,
+    /// Sends a signal when the `Actor` completely stopped.
     join_tx: watch::Sender<lifecycle::Status>,
 }
 

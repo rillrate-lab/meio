@@ -129,7 +129,9 @@ impl<T: Actor> LifetimeTracker<T> {
                 stage.terminating = true;
                 for id in stage.ids.iter() {
                     if let Some(record) = self.records.get_mut(id) {
-                        record.notifier.notify();
+                        if let Err(err) = record.notifier.notify() {
+                            log::error!("Can't notify the supervisor about actor with {:?} termination: {}", id, err);
+                        }
                     }
                 }
                 if !stage.is_finished() {

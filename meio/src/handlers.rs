@@ -88,6 +88,7 @@ where
     }
 }
 
+/// Implements an interaction with an `Actor`.
 #[async_trait]
 pub trait InteractionHandler<I: Interaction>: Actor {
     /// Asyncronous method that receives incoming message.
@@ -116,9 +117,9 @@ where
     }
 }
 
-pub struct Interact<T: Interaction> {
-    pub(crate) request: T,
-    pub(crate) responder: oneshot::Sender<Result<T::Output, Error>>,
+pub(crate) struct Interact<T: Interaction> {
+    pub request: T,
+    pub responder: oneshot::Sender<Result<T::Output, Error>>,
 }
 
 impl<T: Interaction> Action for Interact<T> {
@@ -127,17 +128,23 @@ impl<T: Interaction> Action for Interact<T> {
     }
 }
 
+/// Interaction message to an `Actor`.
 pub trait Interaction: Send + 'static {
+    /// The result of the `Interaction` that will be returned by `InteractionHandler`.
     type Output: Send + 'static;
 
+    /// The priority of the `Interaction`.
+    ///
+    /// It goes to `Action` that used to implement interaction process directly.
     fn is_high_priority(&self) -> bool {
         false
     }
 }
 
-
+/// Represents initialization routine of an `Actor`.
 #[async_trait]
 pub trait StartedBy<A: Actor>: Actor {
+    /// It's an initialization method of the `Actor`.
     async fn handle(&mut self, ctx: &mut Context<Self>) -> Result<(), Error>;
 }
 
@@ -152,8 +159,10 @@ where
     }
 }
 
+/// The listener to an interruption signal.
 #[async_trait]
 pub trait InterruptedBy<A: Actor>: Actor {
+    /// Called when the `Actor` terminated by another actor.
     async fn handle(&mut self, ctx: &mut Context<Self>) -> Result<(), Error>;
 }
 
@@ -168,8 +177,10 @@ where
     }
 }
 
+/// Listens for spawned actors finished.
 #[async_trait]
 pub trait Eliminated<A: Actor>: Actor {
+    /// Called when the `Actor` finished.
     async fn handle(&mut self, id: TypedId<A>, ctx: &mut Context<Self>) -> Result<(), Error>;
 }
 
@@ -184,14 +195,16 @@ where
     }
 }
 
-pub struct StreamItem<T> {
+pub(crate) struct StreamItem<T> {
     pub item: T,
 }
 
 impl<T: Send + 'static> Action for StreamItem<T> {}
 
+/// Represents a capability to receive message from a `Stream`.
 #[async_trait]
 pub trait Consumer<T>: Actor {
+    /// The method called when the next item received from a `Stream`.
     async fn handle(&mut self, item: T, ctx: &mut Context<Self>) -> Result<(), Error>;
 }
 

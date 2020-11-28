@@ -47,10 +47,13 @@ impl<T: LiteTask> LiteRuntime<T> {
             log::error!("LiteTask {} failed with: {}", name, err);
         }
         log::info!("Finishing the task: {:?}", name);
-        actor.act(LiteTaskFinished).await;
+        if let Err(err) = actor.act(LiteTaskFinished).await {
+            log::error!("Can't notify a Task about LiteTask routine termination: {}", err);
+        }
     }
 }
 
+/// The `Actor` that spawns and controls a `LiteTask`.
 pub struct Task<T: LiteTask> {
     name: String,
     runtime: Option<LiteRuntime<T>>,

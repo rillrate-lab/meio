@@ -76,6 +76,7 @@ impl<A: Actor> Address<A> {
         TypedId::new(self.id.clone())
     }
 
+    /// Just sends an `Action` to the `Actor`.
     pub async fn act<I>(&mut self, input: I) -> Result<(), Error>
     where
         I: Action,
@@ -89,6 +90,7 @@ impl<A: Actor> Address<A> {
         }
     }
 
+    /// Interacts with an `Actor` and waits for the result of the `Interaction`.
     pub async fn interact<I>(&mut self, request: I) -> Result<I::Output, Error>
     where
         I: Interaction,
@@ -181,6 +183,10 @@ impl<A: Actor> Address<A> {
         InteractionRecipient::from(self.clone())
     }
 
+    /// Launches the shutdown process.
+    ///
+    /// It's an independent shutdown signal that can be sent anywhere, but only
+    /// if the recipient `Actor` accepts interruption signals from the `System`.
     pub fn shutdown(&mut self) -> Result<(), Error>
     where
         A: InterruptedBy<System>,
