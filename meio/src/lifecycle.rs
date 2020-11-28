@@ -9,6 +9,7 @@ use std::any::type_name;
 use std::collections::{HashMap, HashSet};
 use std::marker::PhantomData;
 
+// TODO: Move somewhere
 /// Status of the task.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Status {
@@ -183,7 +184,7 @@ impl dyn LifecycleNotifier {
 
 /// This message sent by a `Supervisor` to a spawned child actor.
 #[derive(Debug)]
-pub struct Awake<T: Actor> {
+pub(crate) struct Awake<T: Actor> {
     _origin: PhantomData<T>,
 }
 
@@ -203,7 +204,7 @@ impl<T: Actor> Action for Awake<T> {
 
 /// The event to ask an `Actor` to interrupt its activity.
 #[derive(Debug)]
-pub struct Interrupt<T: Actor> {
+pub(crate) struct Interrupt<T: Actor> {
     _origin: PhantomData<T>,
 }
 
@@ -223,7 +224,7 @@ impl<T: Actor> Action for Interrupt<T> {
 
 /// Notifies when `Actor`'s activity is completed.
 #[derive(Debug)]
-pub struct Done<T: Actor> {
+pub(crate) struct Done<T: Actor> {
     pub id: TypedId<T>,
 }
 

@@ -17,6 +17,7 @@ mod actor_runtime;
 mod lite_runtime;
 
 pub mod handlers;
+// TODO: Hide this module after `Status` moving
 pub mod lifecycle;
 pub mod linkage;
 pub mod signal;
