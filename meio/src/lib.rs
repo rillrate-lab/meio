@@ -122,6 +122,12 @@ impl<T> Into<Id> for TypedId<T> {
     }
 }
 
+impl<T> AsRef<Id> for TypedId<T> {
+    fn as_ref(&self) -> &Id {
+        &self.id
+    }
+}
+
 // %%%%%%%%%%%%%%%%%%%%%% TESTS %%%%%%%%%%%%%%%%%%%%%
 
 #[cfg(test)]
