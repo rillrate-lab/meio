@@ -18,7 +18,7 @@ mod lite_runtime;
 
 //pub mod channel;
 pub mod handlers;
-mod lifecycle;
+pub mod lifecycle;
 pub mod linkage;
 pub mod signal;
 pub mod task;
@@ -34,7 +34,7 @@ pub use linkage::link::Link;
 pub use linkage::notifier::Notifier;
 pub use linkage::performers::{ActionPerformer, InteractionPerformer};
 pub use linkage::recipients::{ActionRecipient, InteractionRecipient};
-pub use lite_runtime::{LiteStatus, LiteTask, ShutdownReceiver, Task};
+pub use lite_runtime::{LiteTask, ShutdownReceiver, Task};
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;

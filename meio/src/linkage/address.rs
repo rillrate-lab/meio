@@ -12,6 +12,7 @@ use std::convert::identity;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use tokio::task::JoinHandle;
+use tokio::sync::watch;
 
 /// `Address` to send messages to `Actor`.
 ///
@@ -23,6 +24,7 @@ pub struct Address<A: Actor> {
     hp_msg_tx: mpsc::UnboundedSender<HpEnvelope<A>>,
     /// Ordinary priority messages sender
     msg_tx: mpsc::Sender<Envelope<A>>,
+    join_rx: watch::Receiver<()>,
 }
 
 /*
@@ -39,6 +41,7 @@ impl<A: Actor> Clone for Address<A> {
             id: self.id.clone(),
             hp_msg_tx: self.hp_msg_tx.clone(),
             msg_tx: self.msg_tx.clone(),
+            join_rx: self.join_rx.clone(),
         }
     }
 }
@@ -67,8 +70,13 @@ impl<A: Actor> Hash for Address<A> {
 }
 
 impl<A: Actor> Address<A> {
-    pub(crate) fn new(id: Id, hp_msg_tx: mpsc::UnboundedSender<HpEnvelope<A>>, msg_tx: mpsc::Sender<Envelope<A>>) -> Self {
-        Self { id, hp_msg_tx, msg_tx }
+    pub(crate) fn new(
+        id: Id,
+        hp_msg_tx: mpsc::UnboundedSender<HpEnvelope<A>>,
+        msg_tx: mpsc::Sender<Envelope<A>>,
+        join_rx: watch::Receiver<()>,
+    ) -> Self {
+        Self { id, hp_msg_tx, msg_tx, join_rx }
     }
 
     /// Returns a typed id of the `Actor`.

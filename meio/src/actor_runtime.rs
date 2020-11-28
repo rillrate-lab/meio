@@ -11,6 +11,7 @@ use anyhow::Error;
 use async_trait::async_trait;
 use futures::channel::mpsc;
 use futures::{select_biased, StreamExt};
+use tokio::sync::watch;
 use uuid::Uuid;
 
 const MESSAGES_CHANNEL_DEPTH: usize = 32;
@@ -62,7 +63,8 @@ where
     let id = Id::of_actor(&actor);
     let (hp_msg_tx, hp_msg_rx) = mpsc::unbounded();
     let (msg_tx, msg_rx) = mpsc::channel(MESSAGES_CHANNEL_DEPTH);
-    let address = Address::new(id, hp_msg_tx, msg_tx);
+    let (join_tx, join_rx) = watch::channel(());
+    let address = Address::new(id, hp_msg_tx, msg_tx, join_rx);
     let id: Id = address.id().into();
     let awake_envelope = Envelope::action(Awake::new());
     let done_notifier = {
@@ -89,6 +91,7 @@ where
         done_notifier,
         msg_rx,
         hp_msg_rx,
+        join_tx,
     };
     tokio::spawn(runtime.entrypoint());
     address
@@ -172,12 +175,12 @@ pub struct ActorRuntime<A: Actor> {
     msg_rx: mpsc::Receiver<Envelope<A>>,
     /// High-priority receiver
     hp_msg_rx: mpsc::UnboundedReceiver<HpEnvelope<A>>,
+    join_tx: watch::Sender<()>,
 }
 
 impl<A: Actor> ActorRuntime<A> {
     /// The `entrypoint` of the `ActorRuntime` that calls `routine` method.
     async fn entrypoint(mut self) {
-        //self.operator.initialize();
         log::info!("Actor started: {:?}", self.id);
         let mut awake_envelope = self
             .awake_envelope
@@ -199,9 +202,6 @@ impl<A: Actor> ActorRuntime<A> {
             }
         }
         log::info!("Actor finished: {:?}", self.id);
-        // It's important to finalize `Operator` after `terminate` call,
-        // because that can contain some activities for parent `Actor`.
-        // Unregistering ids for example.
         if let Err(err) = self.done_notifier.notify() {
             log::error!(
                 "Can't send done notification from the actor {:?}: {}",
@@ -209,7 +209,13 @@ impl<A: Actor> ActorRuntime<A> {
                 err
             );
         }
-        //self.operator.finalize();
+        // TODO: Activate this check for tokio 0.3
+        //if !self.join_tx.is_closed() {
+            if let Err(_err) = self.join_tx.broadcast(()) {
+                // TODO: Activate this log for tokio 0.3
+                //log::error!("Can't release joiners of {:?}", self.id);
+            }
+        //}
     }
 
     async fn routine(&mut self) {

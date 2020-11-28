@@ -3,7 +3,7 @@ use anyhow::Error;
 use futures::channel::mpsc;
 use futures::stream::Fuse;
 use futures::{select, FutureExt, Sink, SinkExt, Stream, StreamExt};
-use meio::{ActionHandler, ActionPerformer, Actor, Address, LiteStatus};
+use meio::{ActionHandler, ActionPerformer, Actor, Address, lifecycle};
 use serde::ser::StdError;
 use std::fmt::Debug;
 use tokio::sync::watch;
@@ -102,7 +102,7 @@ pub struct Talker<T: TalkerCompatible> {
     address: Address<T::Actor>,
     connection: Fuse<T::WebSocket>,
     rx: mpsc::UnboundedReceiver<T::Outgoing>,
-    signal: watch::Receiver<LiteStatus>,
+    signal: watch::Receiver<lifecycle::Status>,
     rx_drained: bool,
     connection_drained: bool,
     interrupted: bool,
@@ -113,7 +113,7 @@ impl<T: TalkerCompatible> Talker<T> {
         address: Address<T::Actor>,
         connection: T::WebSocket,
         rx: mpsc::UnboundedReceiver<T::Outgoing>,
-        signal: watch::Receiver<LiteStatus>,
+        signal: watch::Receiver<lifecycle::Status>,
     ) -> Self {
         Self {
             address,
@@ -138,12 +138,12 @@ impl<T: TalkerCompatible> Talker<T> {
                 //     if res.is_ok() {
                 status = self.signal.recv().fuse() => {
                     match status {
-                        Some(LiteStatus::Stop) | None => {
+                        Some(lifecycle::Status::Stop) | None => {
                             self.interrupted = true;
                             // Just close the channel and wait when it will be drained
                             self.rx.close();
                         }
-                        Some(LiteStatus::Alive) => {
+                        Some(lifecycle::Status::Alive) => {
                             // Continue working
                         }
                     }

@@ -1,4 +1,5 @@
 use crate::handlers::{StartedBy, InterruptedBy};
+use crate::lifecycle::Status;
 use crate::{lifecycle, Actor, Action, ActionHandler, ActionPerformer, Address, Context};
 use anyhow::Error;
 use async_trait::async_trait;
@@ -10,7 +11,7 @@ use uuid::Uuid;
 #[derive(Debug, From, Into)]
 pub struct ShutdownReceiver {
     /// Use `Into` to extract that `Receiver`.
-    status: watch::Receiver<LiteStatus>,
+    status: watch::Receiver<lifecycle::Status>,
 }
 
 impl ShutdownReceiver {
@@ -32,7 +33,7 @@ impl Action for TaskFinished {}
 
 struct LiteRuntime<T: LiteTask> {
     task: T,
-    shutdown_rx: watch::Receiver<LiteStatus>,
+    shutdown_rx: watch::Receiver<lifecycle::Status>,
 }
 
 impl<T: LiteTask> LiteRuntime<T> {
@@ -54,13 +55,13 @@ impl<T: LiteTask> LiteRuntime<T> {
 pub struct Task<T: LiteTask> {
     name: String,
     runtime: Option<LiteRuntime<T>>,
-    shutdown_tx: watch::Sender<LiteStatus>,
+    shutdown_tx: watch::Sender<lifecycle::Status>,
 }
 
 impl<T: LiteTask> Task<T> {
     pub(crate) fn new(task: T) -> Self {
         let name = task.name();
-        let (shutdown_tx, shutdown_rx) = watch::channel(LiteStatus::Alive);
+        let (shutdown_tx, shutdown_rx) = watch::channel(lifecycle::Status::Alive);
         let runtime = LiteRuntime {
             task,
             shutdown_rx,
@@ -100,7 +101,7 @@ where
     S: Actor,
 {
     async fn handle(&mut self, _ctx: &mut Context<Self>) -> Result<(), Error> {
-        self.shutdown_tx.broadcast(LiteStatus::Stop)?;
+        self.shutdown_tx.broadcast(lifecycle::Status::Stop)?;
         Ok(())
     }
 }
@@ -124,22 +125,6 @@ where
 impl<T: LiteTask> Actor for Task<T> {
     fn name(&self) -> String {
         self.name.clone()
-    }
-}
-
-/// Status of the task.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum LiteStatus {
-    /// Task is alive and working.
-    Alive,
-    /// Task had finished.
-    Stop,
-}
-
-impl LiteStatus {
-    /// Is task finished yet?
-    pub fn is_done(&self) -> bool {
-        *self == LiteStatus::Stop
     }
 }
 
