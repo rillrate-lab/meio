@@ -189,7 +189,11 @@ pub struct Interact<T: Interaction> {
     pub(crate) responder: oneshot::Sender<Result<T::Output, Error>>,
 }
 
-impl<T: Interaction> Action for Interact<T> {}
+impl<T: Interaction> Action for Interact<T> {
+    fn is_high_priority(&self) -> bool {
+        Interaction::is_high_priority(&self.request)
+    }
+}
 
 pub trait Interaction: Send + 'static {
     type Output: Send + 'static;

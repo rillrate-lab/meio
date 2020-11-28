@@ -100,10 +100,11 @@ impl<A: Actor> Address<A> {
         A: InteractionHandler<I>,
     {
         let (responder, rx) = oneshot::channel();
-        let msg = Interact {
+        let input = Interact {
             request,
             responder,
         };
+        self.act(input).await?;
         rx.await.map_err(Error::from).and_then(identity)
     }
 
