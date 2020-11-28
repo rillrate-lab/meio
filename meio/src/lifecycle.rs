@@ -7,23 +7,6 @@ use std::any::type_name;
 use std::collections::{HashMap, HashSet};
 use std::marker::PhantomData;
 
-// TODO: Move somewhere
-/// Status of the task.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum Status {
-    /// Task is alive and working.
-    Alive,
-    /// Task had finished.
-    Stop,
-}
-
-impl Status {
-    /// Is task finished yet?
-    pub fn is_done(&self) -> bool {
-        *self == Status::Stop
-    }
-}
-
 struct Stage {
     terminating: bool,
     ids: HashSet<Id>,

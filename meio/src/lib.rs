@@ -17,14 +17,13 @@ mod actor_runtime;
 mod lite_runtime;
 
 pub mod handlers;
-// TODO: Hide this module after `Status` moving
-pub mod lifecycle;
+mod lifecycle;
 pub mod linkage;
 pub mod signal;
 pub mod system;
 pub mod task;
 
-pub use actor_runtime::{Actor, Context};
+pub use actor_runtime::{Actor, Context, Status};
 use handlers::Envelope;
 pub use handlers::{
     Action, ActionHandler, Consumer, Eliminated, Interaction, InteractionHandler, InterruptedBy,

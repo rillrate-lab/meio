@@ -1,5 +1,5 @@
 use crate::handlers::{InterruptedBy, StartedBy};
-use crate::{lifecycle, Action, ActionHandler, Actor, Address, Context};
+use crate::{Action, ActionHandler, Actor, Address, Context, Status};
 use anyhow::Error;
 use async_trait::async_trait;
 use derive_more::{From, Into};
@@ -10,7 +10,7 @@ use uuid::Uuid;
 #[derive(Debug, From, Into)]
 pub struct ShutdownReceiver {
     /// Use `Into` to extract that `Receiver`.
-    status: watch::Receiver<lifecycle::Status>,
+    status: watch::Receiver<Status>,
 }
 
 impl ShutdownReceiver {
@@ -32,7 +32,7 @@ impl Action for LiteTaskFinished {}
 
 struct LiteRuntime<T: LiteTask> {
     task: T,
-    shutdown_rx: watch::Receiver<lifecycle::Status>,
+    shutdown_rx: watch::Receiver<Status>,
 }
 
 impl<T: LiteTask> LiteRuntime<T> {
@@ -60,13 +60,13 @@ impl<T: LiteTask> LiteRuntime<T> {
 pub struct Task<T: LiteTask> {
     name: String,
     runtime: Option<LiteRuntime<T>>,
-    shutdown_tx: watch::Sender<lifecycle::Status>,
+    shutdown_tx: watch::Sender<Status>,
 }
 
 impl<T: LiteTask> Task<T> {
     pub(crate) fn new(task: T) -> Self {
         let name = task.name();
-        let (shutdown_tx, shutdown_rx) = watch::channel(lifecycle::Status::Alive);
+        let (shutdown_tx, shutdown_rx) = watch::channel(Status::Alive);
         let runtime = LiteRuntime { task, shutdown_rx };
         Self {
             name,
@@ -100,7 +100,7 @@ where
     S: Actor,
 {
     async fn handle(&mut self, _ctx: &mut Context<Self>) -> Result<(), Error> {
-        self.shutdown_tx.broadcast(lifecycle::Status::Stop)?;
+        self.shutdown_tx.broadcast(Status::Stop)?;
         Ok(())
     }
 }

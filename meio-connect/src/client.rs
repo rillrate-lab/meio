@@ -11,8 +11,8 @@ use async_tungstenite::{
 use futures::channel::mpsc;
 use futures::{select, FutureExt, StreamExt};
 use meio::{
-    lifecycle, ActionHandler, Actor, Address, Interaction, InteractionHandler, LiteTask,
-    ShutdownReceiver,
+    ActionHandler, Actor, Address, Interaction, InteractionHandler, LiteTask, ShutdownReceiver,
+    Status,
 };
 use std::marker::PhantomData;
 use std::time::{Duration, Instant};
@@ -119,9 +119,9 @@ where
 {
     async fn connection_routine(
         &mut self,
-        status_rx: watch::Receiver<lifecycle::Status>,
+        status_rx: watch::Receiver<Status>,
     ) -> Result<(), Error> {
-        while *status_rx.borrow() == lifecycle::Status::Alive {
+        while *status_rx.borrow() == Status::Alive {
             log::trace!("Ws client conencting to: {}", self.url);
             let res = connect_async(&self.url).await;
             let mut last_success = Instant::now();
@@ -183,11 +183,11 @@ where
                             }
                             status = signal_rx.next() => {
                                 match status {
-                                    Some(lifecycle::Status::Stop) | None => {
+                                    Some(Status::Stop) | None => {
                                         log::debug!("Reconnection terminated by user for: {}", self.url);
                                         return Ok(());
                                     }
-                                    Some(lifecycle::Status::Alive) => {
+                                    Some(Status::Alive) => {
                                         // Continue working
                                     }
                                 }

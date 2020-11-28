@@ -3,7 +3,7 @@
 // TODO: Fix imports
 use crate::{
     handlers::{Eliminated, HpEnvelope, InterruptedBy, Operation, StartedBy},
-    lifecycle::{self, Awake, Done, LifecycleNotifier, LifetimeTracker},
+    lifecycle::{Awake, Done, LifecycleNotifier, LifetimeTracker},
     ActionHandler, Address, Envelope, Id, LiteTask, Task,
 };
 use async_trait::async_trait;
@@ -13,6 +13,22 @@ use tokio::sync::watch;
 use uuid::Uuid;
 
 const MESSAGES_CHANNEL_DEPTH: usize = 32;
+
+/// Status of the task.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Status {
+    /// Task is alive and working.
+    Alive,
+    /// Task had finished.
+    Stop,
+}
+
+impl Status {
+    /// Is task finished yet?
+    pub fn is_done(&self) -> bool {
+        *self == Status::Stop
+    }
+}
 
 /// Spawns `Actor` in `ActorRuntime`.
 // TODO: No `Option`! Use `static Address<System>` instead.
@@ -25,7 +41,7 @@ where
     let id = Id::of_actor(&actor);
     let (hp_msg_tx, hp_msg_rx) = mpsc::unbounded();
     let (msg_tx, msg_rx) = mpsc::channel(MESSAGES_CHANNEL_DEPTH);
-    let (join_tx, join_rx) = watch::channel(lifecycle::Status::Alive);
+    let (join_tx, join_rx) = watch::channel(Status::Alive);
     let address = Address::new(id, hp_msg_tx, msg_tx, join_rx);
     let id: Id = address.id().into();
     // There is `Envelope` here, because it will be processed at start and
@@ -151,7 +167,7 @@ pub struct ActorRuntime<A: Actor> {
     /// High-priority receiver
     hp_msg_rx: mpsc::UnboundedReceiver<HpEnvelope<A>>,
     /// Sends a signal when the `Actor` completely stopped.
-    join_tx: watch::Sender<lifecycle::Status>,
+    join_tx: watch::Sender<Status>,
 }
 
 impl<A: Actor> ActorRuntime<A> {
@@ -187,7 +203,7 @@ impl<A: Actor> ActorRuntime<A> {
         }
         // TODO: Activate this check for tokio 0.3
         //if !self.join_tx.is_closed() {
-        if let Err(_err) = self.join_tx.broadcast(lifecycle::Status::Stop) {
+        if let Err(_err) = self.join_tx.broadcast(Status::Stop) {
             // TODO: Activate this log for tokio 0.3
             //log::error!("Can't release joiners of {:?}", self.id);
         }
