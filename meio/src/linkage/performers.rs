@@ -1,7 +1,7 @@
 //! This module contains extensions for the `Address` type
 //! to allow to send specific messages to actors.
 
-use crate::{Action, ActionHandler, Actor, Address, Envelope, Interaction, InteractionHandler};
+use crate::{Action, ActionHandler, Actor, Address, Interaction, InteractionHandler};
 use anyhow::Error;
 use async_trait::async_trait;
 

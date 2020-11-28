@@ -1,9 +1,9 @@
 //! This module contains `Address` to interact with an `Actor`.
 
-use crate::handlers::{Operation, Envelope, HpEnvelope, Interact, Interaction, Joiner, InterruptedBy};
+use crate::handlers::{Operation, Envelope, HpEnvelope, Interact, Interaction, InterruptedBy};
 use crate::{
     lifecycle::{Interrupt, Status}, Action, ActionHandler, ActionPerformer, ActionRecipient, InteractionHandler, InteractionRecipient, Actor, Context,
-    Id, Notifier, TypedId, System,
+    Id, TypedId, System,
 };
 use anyhow::{anyhow, Error};
 use futures::channel::{mpsc, oneshot};
@@ -26,14 +26,6 @@ pub struct Address<A: Actor> {
     msg_tx: mpsc::Sender<Envelope<A>>,
     join_rx: watch::Receiver<Status>,
 }
-
-/*
-impl<A: Actor> Into<Controller<A>> for Address<A> {
-    fn into(self) -> Controller<A> {
-        self.controller
-    }
-}
-*/
 
 impl<A: Actor> Clone for Address<A> {
     fn clone(&self) -> Self {
@@ -89,9 +81,12 @@ impl<A: Actor> Address<A> {
         I: Action,
         A: ActionHandler<I>,
     {
-        let high_priority = input.is_high_priority();
-        let envelope = Envelope::action(input);
-        self.send(envelope, high_priority).await
+        if input.is_high_priority() {
+            self.send_hp_direct(Operation::Forward, input)
+        } else {
+            let envelope = Envelope::new(input);
+            self.msg_tx.send(envelope).await.map_err(Error::from)
+        }
     }
 
     pub async fn interact<I>(&mut self, request: I) -> Result<I::Output, Error>
@@ -119,28 +114,17 @@ impl<A: Actor> Address<A> {
         }
     }
 
-    /// **Internal method.** Use `action` or `interaction` instead.
-    /// It sends `Message` wrapped with `Envelope` to `Actor`.
-    ///
-    /// `high_priority` flag inidicates that it have to be send with high priority.
-    pub(crate) async fn send(
-        &mut self,
-        msg: Envelope<A>,
-        high_priority: bool,
-    ) -> Result<(), Error> {
-        if high_priority {
-            self.send_hp_direct(Operation::Forward, msg)
-        } else {
-            self.msg_tx.send(msg).await.map_err(Error::from)
-        }
-    }
-
     /// Sends a service message using the high-priority queue.
-    pub(crate) fn send_hp_direct(
+    pub(crate) fn send_hp_direct<I>(
         &mut self,
         operation: Operation,
-        envelope: Envelope<A>,
-    ) -> Result<(), Error> {
+        input: I,
+    ) -> Result<(), Error>
+    where
+        I: Action,
+        A: ActionHandler<I>,
+    {
+        let envelope = Envelope::new(input);
         let msg = HpEnvelope {
             operation,
             envelope,
@@ -150,6 +134,7 @@ impl<A: Actor> Address<A> {
             .map_err(|_| anyhow!("can't send a high-priority service message"))
     }
 
+    /*
     /// Sends a service message using the high-priority queue.
     pub(crate) fn send_hp<T>(&mut self, msg: T) -> Result<(), Error>
     where
@@ -159,6 +144,7 @@ impl<A: Actor> Address<A> {
         let envelope = Envelope::action(msg);
         self.send_hp_direct(Operation::Forward, envelope)
     }
+    */
 
     /// Sends an `Interrupt` event.
     ///
@@ -169,7 +155,7 @@ impl<A: Actor> Address<A> {
         A: InterruptedBy<T>,
         T: Actor,
     {
-        self.send_hp(Interrupt::new())
+        self.send_hp_direct(Operation::Forward, Interrupt::new())
     }
 
     /// Attaches a `Stream` of event to an `Actor`.
@@ -207,29 +193,11 @@ impl<A: Actor> Address<A> {
         InteractionRecipient::from(self.clone())
     }
 
-    /*
-    /// Gives a `Controller` of that entity.
-    pub fn controller(&self) -> Controller<A> {
-        self.controller.clone()
-    }
-    */
-
-    /*
-    /// Creates the notifier that will use a provided message for notifications.
-    pub fn notifier<I>(&self, message: I) -> Notifier<I>
-    where
-        A: ActionHandler<I>,
-        I: Action + Clone,
-    {
-        Notifier::new(self.action_recipient(), message)
-    }
-    */
-
     pub fn shutdown(&mut self) -> Result<(), Error>
     where
         A: InterruptedBy<System>,
     {
-        self.send_hp(Interrupt::<System>::new())
+        self.send_hp_direct(Operation::Forward, Interrupt::<System>::new())
     }
 }
 

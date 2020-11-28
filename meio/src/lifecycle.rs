@@ -2,10 +2,10 @@
 
 use crate::handlers::Operation;
 use crate::{
-    Action, ActionHandler, ActionRecipient, Actor, Address, Context, Id, LiteTask, TypedId,
+    Action, ActionHandler, Actor, Address, Id, TypedId,
 };
 use anyhow::{anyhow, Error};
-use std::any::{type_name, Any};
+use std::any::type_name;
 use std::collections::{HashMap, HashSet};
 use std::marker::PhantomData;
 
@@ -166,7 +166,7 @@ impl dyn LifecycleNotifier {
         let mut msg = Some(msg);
         let notifier = move || {
             if let Some(msg) = msg.take() {
-                address.send_hp(msg)
+                address.send_hp_direct(operation.clone(), msg)
             } else {
                 Err(anyhow!(
                     "Attempt to send the second notification that can be sent once only."

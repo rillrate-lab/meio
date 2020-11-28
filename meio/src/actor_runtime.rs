@@ -66,7 +66,9 @@ where
     let (join_tx, join_rx) = watch::channel(lifecycle::Status::Alive);
     let address = Address::new(id, hp_msg_tx, msg_tx, join_rx);
     let id: Id = address.id().into();
-    let awake_envelope = Envelope::action(Awake::new());
+    // There is `Envelope` here, because it will be processed at start and
+    // will never been sent to prevent other messages come before the `Awake`.
+    let awake_envelope = Envelope::new(Awake::new());
     let done_notifier = {
         match supervisor {
             None => LifecycleNotifier::ignore(),
@@ -236,7 +238,7 @@ impl<A: Actor> ActorRuntime<A> {
                 }
                 */
                 hp_envelope = self.hp_msg_rx.next() => {
-                    if let Some(mut hp_env) = hp_envelope {
+                    if let Some(hp_env) = hp_envelope {
                         let mut envelope = hp_env.envelope;
                         match hp_env.operation {
                             Operation::Forward => {

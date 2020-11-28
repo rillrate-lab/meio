@@ -20,28 +20,9 @@ impl<A: Actor> Envelope<A> {
         self.handler.handle(actor, ctx).await
     }
 
-    /*
-    /// Creates an `Envelope` for `Interaction`.
-    pub(crate) fn interaction<I>(input: I) -> (Self, oneshot::Receiver<Result<I::Output, Error>>)
-    where
-        A: InteractionHandler<I>,
-        I: Interaction,
-    {
-        let (tx, rx) = oneshot::channel();
-        let handler = InteractionHandlerImpl {
-            input: Some(input),
-            tx: Some(tx),
-        };
-        let this = Self {
-            handler: Box::new(handler),
-        };
-        (this, rx)
-    }
-    */
-
     // TODO: Is it posiible to use `handle` method directly and drop this one?
     /// Creates an `Envelope` for `Action`.
-    pub(crate) fn action<I>(input: I) -> Self
+    pub(crate) fn new<I>(input: I) -> Self
     where
         A: ActionHandler<I>,
         I: Action,
@@ -54,6 +35,7 @@ impl<A: Actor> Envelope<A> {
 }
 
 // TODO: Consider renaming to attached action
+#[derive(Clone)]
 pub(crate) enum Operation {
     // TODO: Awake, Interrupt, also can be added here!
     Done { id: Id },
@@ -202,12 +184,6 @@ pub trait Interaction: Send + 'static {
         false
     }
 }
-
-pub struct Joiner {
-    pub(crate) responder: oneshot::Sender<Result<(), Error>>,
-}
-
-impl Action for Joiner {}
 
 #[async_trait]
 pub trait InterruptedBy<A: Actor>: Actor {

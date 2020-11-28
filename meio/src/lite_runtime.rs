@@ -1,6 +1,5 @@
 use crate::handlers::{StartedBy, InterruptedBy};
-use crate::lifecycle::Status;
-use crate::{lifecycle, Actor, Action, ActionHandler, ActionPerformer, Address, Context};
+use crate::{lifecycle, Actor, Action, ActionHandler, Address, Context};
 use anyhow::Error;
 use async_trait::async_trait;
 use derive_more::{From, Into};
