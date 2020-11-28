@@ -16,17 +16,13 @@
 mod actor_runtime;
 mod lite_runtime;
 
-//pub mod channel;
 pub mod handlers;
 pub mod lifecycle;
 pub mod linkage;
 pub mod signal;
 pub mod task;
-//pub mod terminator;
 
 pub use actor_runtime::{standalone, Actor, Context, System};
-//pub use channel::{Controller, Status, Supervisor};
-//use channel::{Operator, Signal};
 use handlers::Envelope;
 pub use handlers::{Action, ActionHandler, Interact, Interaction, InteractionHandler, Joiner, InterruptedBy, StartedBy};
 pub use linkage::address::Address;
@@ -39,7 +35,6 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::sync::Arc;
-//pub use terminator::{Stage, TerminationProgress, Terminator};
 
 /// Unique Id of Actor's runtime that used to identify
 /// all senders for that actor.
@@ -132,8 +127,8 @@ mod tests {
     use anyhow::Error;
     use async_trait::async_trait;
     use futures::stream;
-    //use std::time::Duration;
-    //use tokio::time::delay_for;
+    use std::time::Duration;
+    use tokio::time::delay_for;
 
     #[derive(Debug)]
     pub struct MyActor;
@@ -151,6 +146,7 @@ mod tests {
     #[async_trait]
     impl InterruptedBy<System> for MyActor {
         async fn handle(&mut self, ctx: &mut Context<Self>) -> Result<(), Error> {
+            delay_for(Duration::from_secs(3)).await;
             ctx.shutdown();
             Ok(())
         }
@@ -201,13 +197,7 @@ mod tests {
     }
 
     #[async_trait]
-    impl Actor for MyActor {
-        /* TODO: Fix in the future releases.
-        async fn terminate(&mut self) {
-            delay_for(Duration::from_secs(3)).await;
-        }
-        */
-    }
+    impl Actor for MyActor {}
 
     #[async_trait]
     impl ActionHandler<MsgOne> for MyActor {
