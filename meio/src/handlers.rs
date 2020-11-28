@@ -229,7 +229,7 @@ pub trait StartedBy<A: Actor>: Actor {
 #[async_trait]
 impl<T, S> ActionHandler<lifecycle::Awake<S>> for T
 where
-    T: Actor + InterruptedBy<S>,
+    T: Actor + StartedBy<S>,
     S: Actor,
 {
     async fn handle(&mut self, input: lifecycle::Awake<S>, ctx: &mut Context<Self>) -> Result<(), Error> {

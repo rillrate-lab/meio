@@ -3,7 +3,7 @@
 // TODO: Fix imports
 use crate::{
     lifecycle::{self, Awake, Done, Interrupt, LifecycleNotifier, LifetimeTracker},
-    handlers::{HpEnvelope, Operation},
+    handlers::{HpEnvelope, Operation, StartedBy},
     ActionHandler, Address, Envelope, Id, LiteTask,
     Task,
 };
@@ -46,7 +46,7 @@ impl<T: Actor> ActionHandler<lifecycle::Done<T>> for System {
 /// Spawns a standalone `Actor` that has no `Supervisor`.
 pub fn standalone<A>(actor: A) -> Address<A>
 where
-    A: Actor + ActionHandler<Awake<System>>,
+    A: Actor + StartedBy<System>,
 {
     spawn(actor, Option::<Address<System>>::None)
 }
