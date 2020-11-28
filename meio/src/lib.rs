@@ -41,6 +41,14 @@ use std::marker::PhantomData;
 use std::sync::Arc;
 pub use system::System;
 
+/// Spawns a standalone `Actor` that has no `Supervisor`.
+pub fn spawn<A>(actor: A) -> Address<A>
+where
+    A: Actor + StartedBy<System>,
+{
+    actor_runtime::spawn(actor, Option::<Address<System>>::None)
+}
+
 /// Unique Id of Actor's runtime that used to identify
 /// all senders for that actor.
 // TODO: Rename to `GenericId`
