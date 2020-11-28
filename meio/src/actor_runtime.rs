@@ -4,7 +4,7 @@
 use crate::{
     handlers::{Eliminated, HpEnvelope, InterruptedBy, Operation, StartedBy},
     lifecycle::{self, Awake, Done, LifecycleNotifier, LifetimeTracker},
-    ActionHandler, Address, Envelope, Id, LiteTask, System, Task,
+    ActionHandler, Address, Envelope, Id, LiteTask, Task,
 };
 use async_trait::async_trait;
 use futures::channel::mpsc;
@@ -14,18 +14,10 @@ use uuid::Uuid;
 
 const MESSAGES_CHANNEL_DEPTH: usize = 32;
 
-/// Spawns a standalone `Actor` that has no `Supervisor`.
-pub fn standalone<A>(actor: A) -> Address<A>
-where
-    A: Actor + StartedBy<System>,
-{
-    spawn(actor, Option::<Address<System>>::None)
-}
-
 /// Spawns `Actor` in `ActorRuntime`.
 // TODO: No `Option`! Use `static Address<System>` instead.
 // It can be possible when `Controller` and `Operator` will be removed.
-fn spawn<A, S>(actor: A, supervisor: Option<Address<S>>) -> Address<A>
+pub(crate) fn spawn<A, S>(actor: A, supervisor: Option<Address<S>>) -> Address<A>
 where
     A: Actor + ActionHandler<Awake<S>>,
     S: Actor + ActionHandler<Done<A>>,

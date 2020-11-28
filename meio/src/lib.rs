@@ -24,7 +24,7 @@ pub mod signal;
 pub mod system;
 pub mod task;
 
-pub use actor_runtime::{standalone, Actor, Context};
+pub use actor_runtime::{Actor, Context};
 use handlers::Envelope;
 pub use handlers::{
     Action, ActionHandler, Consumer, Eliminated, Interaction, InteractionHandler, InterruptedBy,
