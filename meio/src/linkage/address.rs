@@ -159,24 +159,6 @@ impl<A: Actor> Address<A> {
     {
         self.send_hp(Interrupt::new())
     }
-    /// Forwards the stream into a flow of events to an `Actor`.
-    async fn forward<S>(id: Id, mut stream: S, mut recipient: ActionRecipient<S::Item>)
-    where
-        A: ActionHandler<S::Item>,
-        S: Stream + Unpin,
-        S::Item: Action,
-    {
-        while let Some(action) = stream.next().await {
-            if let Err(err) = recipient.act(action).await {
-                log::error!(
-                    "Can't send an event to {:?} form a background stream: {}. Breaking...",
-                    id,
-                    err
-                );
-                break;
-            }
-        }
-    }
 
     /// Attaches a `Stream` of event to an `Actor`.
     pub fn attach<S>(&mut self, stream: S) -> JoinHandle<()>
@@ -186,9 +168,13 @@ impl<A: Actor> Address<A> {
         S::Item: Action,
     {
         let recipient = self.action_recipient();
-        let id = self.id();
-        let fut = Self::forward(id.into(), stream, recipient);
-        tokio::spawn(fut)
+        let id = self.id.clone();
+        let forwarder = Forwarder {
+            id,
+            stream,
+            recipient,
+        };
+        tokio::spawn(forwarder.entrypoint())
     }
 
     /// Generates `ActionRecipient`.
@@ -232,5 +218,30 @@ impl<A: Actor> Address<A> {
         A: ActionHandler<Interrupt<System>>,
     {
         self.send_hp(Interrupt::<System>::new())
+    }
+}
+
+struct Forwarder<S: Stream> {
+    id: Id,
+    stream: S,
+    recipient: ActionRecipient<S::Item>,
+}
+
+impl<S> Forwarder<S>
+where
+    S: Stream + Unpin,
+    S::Item: Action,
+{
+    async fn entrypoint(mut self) {
+        while let Some(action) = self.stream.next().await {
+            if let Err(err) = self.recipient.act(action).await {
+                log::error!(
+                    "Can't send an event to {:?} form a background stream: {}. Breaking...",
+                    self.id,
+                    err
+                );
+                break;
+            }
+        }
     }
 }

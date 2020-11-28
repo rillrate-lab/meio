@@ -281,7 +281,7 @@ mod tests {
         let mut address = standalone(MyActor);
         let stream = stream::iter(vec![MsgOne, MsgOne, MsgOne]);
         address.attach(stream).await?;
-        // If you activeate this line the test will wait for the `Ctrl+C` signal.
+        // If you acivate this line the test will wait for the `Ctrl+C` signal.
         //address.attach(signal::CtrlC::stream()).await?;
         address.shutdown();
         Ok(())
