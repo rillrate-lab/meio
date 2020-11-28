@@ -3,7 +3,7 @@
 // TODO: Fix imports
 use crate::{
     lifecycle::{self, Awake, Done, Interrupt, LifecycleNotifier, LifetimeTracker},
-    handlers::{HpEnvelope, Operation, StartedBy, Eliminated},
+    handlers::{HpEnvelope, Operation, StartedBy, Eliminated, InterruptedBy},
     ActionHandler, Address, Envelope, Id, LiteTask,
     Task, TypedId,
 };
@@ -120,8 +120,8 @@ impl<A: Actor> Context<A> {
     /// Starts and binds an `Actor`.
     pub fn bind_actor<T>(&mut self, actor: T) -> Address<T>
     where
-        T: Actor + ActionHandler<Awake<A>> + ActionHandler<Interrupt<A>>,
-        A: ActionHandler<Done<T>>,
+        T: Actor + StartedBy<A> + InterruptedBy<A>,
+        A: Eliminated<T>,
     {
         let address = spawn(actor, Some(self.address.clone()));
         self.lifetime_tracker.insert(address.clone());
@@ -132,7 +132,7 @@ impl<A: Actor> Context<A> {
     pub fn bind_task<T>(&mut self, task: T) -> Address<Task<T>>
     where
         T: LiteTask,
-        A: ActionHandler<Done<Task<T>>>,
+        A: Eliminated<Task<T>>,
     {
         let actor = Task::new(task);
         self.bind_actor(actor)
