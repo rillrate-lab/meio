@@ -18,7 +18,7 @@ mod lite_runtime;
 
 //pub mod channel;
 pub mod handlers;
-pub mod lifecycle;
+mod lifecycle;
 pub mod linkage;
 pub mod signal;
 pub mod task;

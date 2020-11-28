@@ -1,6 +1,6 @@
 //! This module contains `Address` to interact with an `Actor`.
 
-use crate::handlers::{Operation, Envelope, HpEnvelope, Interact, Interaction, Joiner};
+use crate::handlers::{Operation, Envelope, HpEnvelope, Interact, Interaction, Joiner, InterruptedBy};
 use crate::{
     lifecycle::Interrupt, Action, ActionHandler, ActionPerformer, ActionRecipient, InteractionHandler, InteractionRecipient, Actor, Context,
     Id, Notifier, TypedId, System,
@@ -154,7 +154,7 @@ impl<A: Actor> Address<A> {
     /// methods other from handlers.
     pub fn interrupt_by<T>(&mut self, _ctx: &Context<T>) -> Result<(), Error>
     where
-        A: ActionHandler<Interrupt<T>>,
+        A: InterruptedBy<T>,
         T: Actor,
     {
         self.send_hp(Interrupt::new())
@@ -215,7 +215,7 @@ impl<A: Actor> Address<A> {
 
     pub fn shutdown(&mut self) -> Result<(), Error>
     where
-        A: ActionHandler<Interrupt<System>>,
+        A: InterruptedBy<System>,
     {
         self.send_hp(Interrupt::<System>::new())
     }
