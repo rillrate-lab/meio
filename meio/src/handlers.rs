@@ -2,7 +2,7 @@
 //! to call methods of actors related to a sepcific
 //! imcoming message.
 
-use crate::{lifecycle, Actor, Context, Id};
+use crate::{lifecycle, Actor, Context, Id, TypedId};
 use anyhow::{anyhow, Error};
 use async_trait::async_trait;
 use futures::channel::oneshot;
@@ -55,56 +55,6 @@ trait Handler<A: Actor>: Send {
     /// will be used by implementations to handle messages.
     async fn handle(&mut self, actor: &mut A, _ctx: &mut Context<A>) -> Result<(), Error>;
 }
-
-/*
-/// `Interaction` type can be sent to an `Actor` that implements
-/// `InteractionHandler` for that message type.
-/// It has to return a response of `Output` type.
-pub trait Interaction: Send + 'static {
-    /// The type of a response.
-    type Output: Send + 'static;
-
-    /// Indicates that this message have to be sent with high-priority.
-    fn is_high_priority(&self) -> bool {
-        false
-    }
-}
-
-/// Type of `Handler` to process interaction in request-response style.
-#[async_trait]
-pub trait InteractionHandler<I: Interaction>: Actor {
-    /// Asyncronous method that receives incoming message and return a response.
-    async fn handle(&mut self, input: I, _ctx: &mut Context<Self>) -> Result<I::Output, Error>;
-}
-
-struct InteractionHandlerImpl<I, O> {
-    input: Option<I>,
-    tx: Option<oneshot::Sender<Result<O, Error>>>,
-}
-
-#[async_trait]
-impl<A, I, O> Handler<A> for InteractionHandlerImpl<I, O>
-where
-    A: Actor + InteractionHandler<I>,
-    I: Interaction<Output = O>,
-    O: Send + 'static,
-{
-    async fn handle(&mut self, actor: &mut A, ctx: &mut Context<A>) -> Result<(), Error> {
-        let input = self
-            .input
-            .take()
-            .expect("interaction handler called twice (no msg)");
-        let response = actor.handle(input, ctx).await;
-        let tx = self
-            .tx
-            .take()
-            .expect("interaction handler called twice (no tx)");
-        tx.send(response)
-            .map_err(|_| anyhow!("can't send a response of interaction"))?;
-        Ok(())
-    }
-}
-*/
 
 /// `Action` type can be sent to an `Actor` that implements
 /// `ActionHandler` for that message type.
@@ -185,6 +135,23 @@ pub trait Interaction: Send + 'static {
     }
 }
 
+
+#[async_trait]
+pub trait StartedBy<A: Actor>: Actor {
+    async fn handle(&mut self, ctx: &mut Context<Self>) -> Result<(), Error>;
+}
+
+#[async_trait]
+impl<T, S> ActionHandler<lifecycle::Awake<S>> for T
+where
+    T: Actor + StartedBy<S>,
+    S: Actor,
+{
+    async fn handle(&mut self, _input: lifecycle::Awake<S>, ctx: &mut Context<Self>) -> Result<(), Error> {
+        StartedBy::handle(self, ctx).await
+    }
+}
+
 #[async_trait]
 pub trait InterruptedBy<A: Actor>: Actor {
     async fn handle(&mut self, ctx: &mut Context<Self>) -> Result<(), Error>;
@@ -202,18 +169,18 @@ where
 }
 
 #[async_trait]
-pub trait StartedBy<A: Actor>: Actor {
-    async fn handle(&mut self, ctx: &mut Context<Self>) -> Result<(), Error>;
+pub trait Eliminated<A: Actor>: Actor {
+    async fn handle(&mut self, id: TypedId<A>, ctx: &mut Context<Self>) -> Result<(), Error>;
 }
 
 #[async_trait]
-impl<T, S> ActionHandler<lifecycle::Awake<S>> for T
+impl<T, C> ActionHandler<lifecycle::Done<C>> for T
 where
-    T: Actor + StartedBy<S>,
-    S: Actor,
+    T: Actor + Eliminated<C>,
+    C: Actor,
 {
-    async fn handle(&mut self, _input: lifecycle::Awake<S>, ctx: &mut Context<Self>) -> Result<(), Error> {
-        StartedBy::handle(self, ctx).await
+    async fn handle(&mut self, done: lifecycle::Done<C>, ctx: &mut Context<Self>) -> Result<(), Error> {
+        Eliminated::handle(self, done.id, ctx).await
     }
 }
 

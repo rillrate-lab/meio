@@ -3,9 +3,9 @@
 // TODO: Fix imports
 use crate::{
     lifecycle::{self, Awake, Done, Interrupt, LifecycleNotifier, LifetimeTracker},
-    handlers::{HpEnvelope, Operation, StartedBy},
+    handlers::{HpEnvelope, Operation, StartedBy, Eliminated},
     ActionHandler, Address, Envelope, Id, LiteTask,
-    Task,
+    Task, TypedId,
 };
 use anyhow::Error;
 use async_trait::async_trait;
@@ -34,10 +34,10 @@ impl ActionHandler<lifecycle::Awake<Self>> for System {
 }
 
 #[async_trait]
-impl<T: Actor> ActionHandler<lifecycle::Done<T>> for System {
+impl<T: Actor> Eliminated<T> for System {
     async fn handle(
         &mut self,
-        _event: lifecycle::Done<T>,
+        _id: TypedId<T>,
         _ctx: &mut Context<Self>,
     ) -> Result<(), Error> {
         unreachable!()
