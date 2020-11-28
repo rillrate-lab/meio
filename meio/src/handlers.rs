@@ -216,8 +216,8 @@ where
     T: Actor + InterruptedBy<S>,
     S: Actor,
 {
-    async fn handle(&mut self, input: lifecycle::Interrupt<S>, ctx: &mut Context<Self>) -> Result<(), Error> {
-        todo!();
+    async fn handle(&mut self, _input: lifecycle::Interrupt<S>, ctx: &mut Context<Self>) -> Result<(), Error> {
+        InterruptedBy::handle(self, ctx).await
     }
 }
 
@@ -232,7 +232,29 @@ where
     T: Actor + StartedBy<S>,
     S: Actor,
 {
-    async fn handle(&mut self, input: lifecycle::Awake<S>, ctx: &mut Context<Self>) -> Result<(), Error> {
-        todo!();
+    async fn handle(&mut self, _input: lifecycle::Awake<S>, ctx: &mut Context<Self>) -> Result<(), Error> {
+        StartedBy::handle(self, ctx).await
+    }
+}
+
+pub struct StreamItem<T> {
+    item: T,
+}
+
+impl<T: Send + 'static> Action for StreamItem<T> {}
+
+#[async_trait]
+pub trait Consumer<T>: Actor {
+    async fn handle(&mut self, item: T, ctx: &mut Context<Self>) -> Result<(), Error>;
+}
+
+#[async_trait]
+impl<T, I> ActionHandler<StreamItem<I>> for T
+where
+    T: Actor + Consumer<I>,
+    I: Send + 'static,
+{
+    async fn handle(&mut self, msg: StreamItem<I>, ctx: &mut Context<Self>) -> Result<(), Error> {
+        Consumer::handle(self, msg.item, ctx).await
     }
 }
