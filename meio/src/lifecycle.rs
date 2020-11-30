@@ -67,10 +67,19 @@ impl<T: Actor> LifetimeTracker<T> {
         let id: Id = address.id().into();
         stage.ids.insert(id.clone());
         let notifier = LifecycleNotifier::once(address, Operation::Forward, Interrupt::new());
-        let record = Record {
+        let mut record = Record {
             type_name,
             notifier,
         };
+        if stage.terminating {
+            log::warn!(
+                "Actor added into the terminating state (interrupt it immediately): {}",
+                id
+            );
+            if let Err(err) = record.notifier.notify() {
+                log::error!("Can't interrupt actor {:?} immediately: {}", id, err);
+            }
+        }
         self.records.insert(id, record);
     }
 
