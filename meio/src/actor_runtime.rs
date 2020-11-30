@@ -135,10 +135,9 @@ impl<A: Actor> Context<A> {
         self.lifetime_tracker.is_terminating()
     }
 
-    // TODO: Change to `termination_sequence` where list of groups expected.
     /// Increases the priority of the `Actor`'s type.
-    pub fn terminate_earlier<T>(&mut self, group: A::GroupBy) {
-        self.lifetime_tracker.prioritize_termination(group);
+    pub fn termination_sequence(&mut self, sequence: Vec<A::GroupBy>) {
+        self.lifetime_tracker.prioritize_termination_by(sequence);
     }
 
     /// Stops the runtime of the `Actor` on one message will be processed after this call.

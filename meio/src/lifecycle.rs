@@ -88,8 +88,9 @@ impl<A: Actor> LifetimeTracker<A> {
         }
     }
 
-    pub fn prioritize_termination(&mut self, group: A::GroupBy) {
-        self.prioritized.push(group);
+    // TODO: Change `Vec` to `OrderedSet`
+    pub fn prioritize_termination_by(&mut self, groups: Vec<A::GroupBy>) {
+        self.prioritized = groups;
     }
 
     pub fn is_finished(&self) -> bool {
