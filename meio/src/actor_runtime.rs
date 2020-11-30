@@ -9,6 +9,7 @@ use crate::{
 use async_trait::async_trait;
 use futures::channel::mpsc;
 use futures::{select_biased, StreamExt};
+use std::hash::Hash;
 use tokio::sync::watch;
 use uuid::Uuid;
 
@@ -84,7 +85,7 @@ where
 #[async_trait]
 pub trait Actor: Sized + Send + 'static {
     /// Specifies how to group child actors.
-    type GroupBy;
+    type GroupBy: Clone + Send + Eq + Hash;
 
     /// Returns unique name of the `Actor`.
     /// Uses `Uuid` by default.
@@ -109,13 +110,13 @@ impl<A: Actor> Context<A> {
     }
 
     /// Starts and binds an `Actor`.
-    pub fn bind_actor<T>(&mut self, actor: T, _group: A::GroupBy) -> Address<T>
+    pub fn bind_actor<T>(&mut self, actor: T, group: A::GroupBy) -> Address<T>
     where
         T: Actor + StartedBy<A> + InterruptedBy<A>,
         A: Eliminated<T>,
     {
         let address = spawn(actor, Some(self.address.clone()));
-        self.lifetime_tracker.insert(address.clone());
+        self.lifetime_tracker.insert(address.clone(), group);
         address
     }
 
@@ -136,8 +137,8 @@ impl<A: Actor> Context<A> {
 
     // TODO: Change to `termination_sequence` where list of groups expected.
     /// Increases the priority of the `Actor`'s type.
-    pub fn terminate_earlier<T>(&mut self) {
-        self.lifetime_tracker.prioritize_termination::<T>();
+    pub fn terminate_earlier<T>(&mut self, group: A::GroupBy) {
+        self.lifetime_tracker.prioritize_termination(group);
     }
 
     /// Stops the runtime of the `Actor` on one message will be processed after this call.
