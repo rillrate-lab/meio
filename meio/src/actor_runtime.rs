@@ -108,9 +108,8 @@ impl<A: Actor> Context<A> {
         &mut self.address
     }
 
-    // TODO: Add termination group parameter
     /// Starts and binds an `Actor`.
-    pub fn bind_actor<T>(&mut self, actor: T) -> Address<T>
+    pub fn bind_actor<T>(&mut self, actor: T, _group: A::GroupBy) -> Address<T>
     where
         T: Actor + StartedBy<A> + InterruptedBy<A>,
         A: Eliminated<T>,
@@ -120,15 +119,14 @@ impl<A: Actor> Context<A> {
         address
     }
 
-    // TODO: Add termination group parameter
     /// Starts and binds an `Actor`.
-    pub fn bind_task<T>(&mut self, task: T) -> Address<Task<T>>
+    pub fn bind_task<T>(&mut self, task: T, group: A::GroupBy) -> Address<Task<T>>
     where
         T: LiteTask,
         A: Eliminated<Task<T>>,
     {
         let actor = Task::new(task);
-        self.bind_actor(actor)
+        self.bind_actor(actor, group)
     }
 
     /// Returns true if the shutdown process is in progress.
