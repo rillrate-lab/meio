@@ -211,7 +211,9 @@ mod tests {
     }
 
     #[async_trait]
-    impl Actor for MyActor {}
+    impl Actor for MyActor {
+        type GroupBy = ();
+    }
 
     #[async_trait]
     impl ActionHandler<MsgOne> for MyActor {
