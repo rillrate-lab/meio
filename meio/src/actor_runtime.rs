@@ -83,6 +83,9 @@ where
 /// **Recommended** to implement reactive activities.
 #[async_trait]
 pub trait Actor: Sized + Send + 'static {
+    /// Specifies how to group child actors.
+    type GroupBy;
+
     /// Returns unique name of the `Actor`.
     /// Uses `Uuid` by default.
     fn name(&self) -> String {
@@ -105,6 +108,7 @@ impl<A: Actor> Context<A> {
         &mut self.address
     }
 
+    // TODO: Add termination group parameter
     /// Starts and binds an `Actor`.
     pub fn bind_actor<T>(&mut self, actor: T) -> Address<T>
     where
@@ -116,6 +120,7 @@ impl<A: Actor> Context<A> {
         address
     }
 
+    // TODO: Add termination group parameter
     /// Starts and binds an `Actor`.
     pub fn bind_task<T>(&mut self, task: T) -> Address<Task<T>>
     where
@@ -131,6 +136,7 @@ impl<A: Actor> Context<A> {
         self.lifetime_tracker.is_terminating()
     }
 
+    // TODO: Change to `termination_sequence` where list of groups expected.
     /// Increases the priority of the `Actor`'s type.
     pub fn terminate_earlier<T>(&mut self) {
         self.lifetime_tracker.prioritize_termination::<T>();

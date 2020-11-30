@@ -121,6 +121,8 @@ where
 }
 
 impl<T: LiteTask> Actor for Task<T> {
+    type GroupBy = ();
+
     fn name(&self) -> String {
         self.name.clone()
     }

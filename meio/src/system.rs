@@ -7,7 +7,9 @@ use async_trait::async_trait;
 /// Virtual actor that represents the system/environment.
 pub enum System {}
 
-impl Actor for System {}
+impl Actor for System {
+    type GroupBy = ();
+}
 
 #[async_trait]
 impl<T: Actor> Eliminated<T> for System {
