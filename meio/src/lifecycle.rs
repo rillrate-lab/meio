@@ -27,8 +27,7 @@ impl Stage {
 }
 
 struct Record<T> {
-    // TODO: Rename to `group`
-    type_name: T,
+    group: T,
     notifier: Box<dyn LifecycleNotifier>,
 }
 
@@ -38,12 +37,10 @@ pub(crate) struct LifetimeTracker<T: Actor> {
     prioritized: Vec<T::GroupBy>,
     stages: HashMap<T::GroupBy, Stage>,
     records: HashMap<Id, Record<T::GroupBy>>,
-    // TODO: Remove it
-    _actor: PhantomData<T>,
 }
 
 // TODO: Change T to A
-impl<T: Actor> LifetimeTracker<T> {
+impl<A: Actor> LifetimeTracker<A> {
     // TODO: Make the constructor private
     pub fn new() -> Self {
         Self {
@@ -52,7 +49,6 @@ impl<T: Actor> LifetimeTracker<T> {
             prioritized: Vec::new(),
             stages: HashMap::new(),
             records: HashMap::new(),
-            _actor: PhantomData,
         }
     }
 
@@ -60,18 +56,15 @@ impl<T: Actor> LifetimeTracker<T> {
         self.terminating
     }
 
-    pub fn insert<A: Actor>(&mut self, address: Address<A>, group: T::GroupBy)
+    pub fn insert<T: Actor>(&mut self, address: Address<T>, group: A::GroupBy)
     where
-        A: Actor + ActionHandler<Interrupt<T>>,
+        T: Actor + ActionHandler<Interrupt<A>>,
     {
         let stage = self.stages.entry(group.clone()).or_default();
         let id: Id = address.id().into();
         stage.ids.insert(id.clone());
         let notifier = LifecycleNotifier::once(address, Operation::Forward, Interrupt::new());
-        let mut record = Record {
-            type_name: group,
-            notifier,
-        };
+        let mut record = Record { group, notifier };
         if stage.terminating {
             log::warn!(
                 "Actor added into the terminating state (interrupt it immediately): {}",
@@ -86,7 +79,7 @@ impl<T: Actor> LifetimeTracker<T> {
 
     pub fn remove(&mut self, id: &Id) {
         if let Some(record) = self.records.remove(id) {
-            if let Some(stage) = self.stages.get_mut(&record.type_name) {
+            if let Some(stage) = self.stages.get_mut(&record.group) {
                 stage.ids.remove(id);
             }
         }
@@ -95,7 +88,7 @@ impl<T: Actor> LifetimeTracker<T> {
         }
     }
 
-    pub fn prioritize_termination(&mut self, group: T::GroupBy) {
+    pub fn prioritize_termination(&mut self, group: A::GroupBy) {
         self.prioritized.push(group);
     }
 
@@ -103,7 +96,7 @@ impl<T: Actor> LifetimeTracker<T> {
         self.stages.values().all(Stage::is_finished)
     }
 
-    fn stage_sequence(&self) -> Vec<T::GroupBy> {
+    fn stage_sequence(&self) -> Vec<A::GroupBy> {
         let stages_to_term: HashSet<_> = self.stages.keys().cloned().collect();
         let prior_set: HashSet<_> = self.prioritized.iter().cloned().collect();
         let remained = stages_to_term.difference(&prior_set).cloned();
