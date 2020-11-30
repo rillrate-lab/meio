@@ -5,7 +5,7 @@ use crate::handlers::{
 };
 use crate::{
     lifecycle::Interrupt, Action, ActionHandler, ActionPerformer, ActionRecipient, Actor, Context,
-    Id, InteractionHandler, InteractionRecipient, Status, System, TypedId,
+    Id, IdOf, InteractionHandler, InteractionRecipient, Status, System,
 };
 use anyhow::{anyhow, Error};
 use futures::channel::{mpsc, oneshot};
@@ -77,8 +77,8 @@ impl<A: Actor> Address<A> {
     }
 
     /// Returns a typed id of the `Actor`.
-    pub fn id(&self) -> TypedId<A> {
-        TypedId::new(self.id.clone())
+    pub fn id(&self) -> IdOf<A> {
+        IdOf::new(self.id.clone())
     }
 
     /// Just sends an `Action` to the `Actor`.

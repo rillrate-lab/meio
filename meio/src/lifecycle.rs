@@ -1,7 +1,7 @@
 //! Contains message of the `Actor`'s lifecycle.
 
 use crate::handlers::Operation;
-use crate::{Action, ActionHandler, Actor, Address, Id, TypedId};
+use crate::{Action, ActionHandler, Actor, Address, Id, IdOf};
 use anyhow::{anyhow, Error};
 use std::any::type_name;
 use std::collections::{HashMap, HashSet};
@@ -212,11 +212,11 @@ impl<T: Actor> Action for Interrupt<T> {
 /// Notifies when `Actor`'s activity is completed.
 #[derive(Debug)]
 pub(crate) struct Done<T: Actor> {
-    pub id: TypedId<T>,
+    pub id: IdOf<T>,
 }
 
 impl<T: Actor> Done<T> {
-    pub(crate) fn new(id: TypedId<T>) -> Self {
+    pub(crate) fn new(id: IdOf<T>) -> Self {
         Self { id }
     }
 }

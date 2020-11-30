@@ -2,7 +2,7 @@
 //! to call methods of actors related to a sepcific
 //! imcoming message.
 
-use crate::{lifecycle, Actor, Context, Id, TypedId};
+use crate::{lifecycle, Actor, Context, Id, IdOf};
 use anyhow::{anyhow, Error};
 use async_trait::async_trait;
 use futures::channel::oneshot;
@@ -185,7 +185,7 @@ where
 #[async_trait]
 pub trait Eliminated<A: Actor>: Actor {
     /// Called when the `Actor` finished.
-    async fn handle(&mut self, id: TypedId<A>, ctx: &mut Context<Self>) -> Result<(), Error>;
+    async fn handle(&mut self, id: IdOf<A>, ctx: &mut Context<Self>) -> Result<(), Error>;
 }
 
 #[async_trait]

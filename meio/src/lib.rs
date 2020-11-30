@@ -50,7 +50,6 @@ where
 
 /// Unique Id of Actor's runtime that used to identify
 /// all senders for that actor.
-// TODO: Rename to `GenericId`
 #[derive(Clone)]
 pub struct Id(Arc<String>);
 
@@ -97,12 +96,12 @@ impl AsRef<str> for Id {
 /// Typed if of the task or actor.
 // TODO: Rename to Id
 #[derive(Debug, Clone)]
-pub struct TypedId<T> {
+pub struct IdOf<T> {
     id: Id,
     _origin: PhantomData<T>,
 }
 
-impl<T> TypedId<T> {
+impl<T> IdOf<T> {
     fn new(id: Id) -> Self {
         Self {
             id,
@@ -111,27 +110,27 @@ impl<T> TypedId<T> {
     }
 }
 
-impl<T> PartialEq<Self> for TypedId<T> {
+impl<T> PartialEq<Self> for IdOf<T> {
     fn eq(&self, other: &Self) -> bool {
         self.id.eq(&other.id)
     }
 }
 
-impl<T> Eq for TypedId<T> {}
+impl<T> Eq for IdOf<T> {}
 
-impl<T> Hash for TypedId<T> {
+impl<T> Hash for IdOf<T> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.id.hash(state);
     }
 }
 
-impl<T> Into<Id> for TypedId<T> {
+impl<T> Into<Id> for IdOf<T> {
     fn into(self) -> Id {
         self.id
     }
 }
 
-impl<T> AsRef<Id> for TypedId<T> {
+impl<T> AsRef<Id> for IdOf<T> {
     fn as_ref(&self) -> &Id {
         &self.id
     }
