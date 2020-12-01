@@ -190,7 +190,11 @@ impl<T: Actor> Awake<T> {
 
 impl<T: Actor> Action for Awake<T> {
     fn is_high_priority(&self) -> bool {
-        true
+        // Normal priority, because it's a special event
+        // that never sent by channels and used in-place.
+        // But the type implements `Action` to be used by
+        // ordinary handler type.
+        false
     }
 }
 
@@ -210,6 +214,9 @@ impl<T: Actor> Interrupt<T> {
 
 impl<T: Actor> Action for Interrupt<T> {
     fn is_high_priority(&self) -> bool {
+        // Only `Interrupt` event has high-priority,
+        // because all actors have to react to it as fast
+        // as possible even in case when all queues are full.
         true
     }
 }
@@ -228,6 +235,9 @@ impl<T: Actor> Done<T> {
 
 impl<T: Actor> Action for Done<T> {
     fn is_high_priority(&self) -> bool {
-        true
+        // It has normal priority, because `Done` message have to be the
+        // latest in a queue of messages. No other message will be generated,
+        // because `Actor` is terminated when its runtime sends `Done` event.
+        false
     }
 }
