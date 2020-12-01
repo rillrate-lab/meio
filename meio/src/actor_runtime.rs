@@ -6,7 +6,6 @@ use crate::{
     lifecycle::{Awake, Done, LifecycleNotifier, LifetimeTracker},
     ActionHandler, Address, Envelope, Id, LiteTask, Task,
 };
-use anyhow::Error;
 use async_trait::async_trait;
 use futures::channel::mpsc;
 use futures::{select_biased, StreamExt};
@@ -95,11 +94,13 @@ pub trait Actor: Sized + Send + 'static {
         format!("Actor:{}({})", std::any::type_name::<Self>(), uuid)
     }
 
+    /* TODO: Hide this with feature or remove
     /// Called after every message. Useful for post-checking, for example to
     /// carry graceful app-level termination process (pre-shutdown).
     async fn inspection(&mut self, _ctx: &mut Context<Self>) -> Result<(), Error> {
         Ok(())
     }
+    */
 }
 
 /// `Context` of a `ActorRuntime` that contains `Address` and `Receiver`.
@@ -265,10 +266,12 @@ impl<A: Actor> ActorRuntime<A> {
                     }
                 }
             }
+            /*
             let inspection_res = self.actor.inspection(&mut self.context).await;
             if let Err(err) = inspection_res {
                 log::error!("Inspection of {:?} failed: {}", self.id, err);
             }
+            */
         }
     }
 }
