@@ -24,24 +24,14 @@ pub mod signal;
 pub mod system;
 pub mod task;
 
-use actor_runtime::Actor;
-use handlers::StartedBy;
-use linkage::Address;
-use system::System;
-
-/// Spawns a standalone `Actor` that has no `Supervisor`.
-pub fn spawn<A>(actor: A) -> Address<A>
-where
-    A: Actor + StartedBy<System>,
-{
-    actor_runtime::spawn(actor, Option::<Address<System>>::None)
-}
+pub use prelude::spawn;
 
 // %%%%%%%%%%%%%%%%%%%%%% TESTS %%%%%%%%%%%%%%%%%%%%%
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::prelude::*;
+    use super::signal;
     use anyhow::Error;
     use async_trait::async_trait;
     use futures::stream;
