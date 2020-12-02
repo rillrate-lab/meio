@@ -10,7 +10,7 @@ use async_tungstenite::{
 };
 use futures::channel::mpsc;
 use futures::{select, FutureExt, StreamExt};
-use meio::{
+use meio::prelude::{
     ActionHandler, Actor, Address, Interaction, InteractionHandler, LiteTask, ShutdownReceiver,
     Status,
 };

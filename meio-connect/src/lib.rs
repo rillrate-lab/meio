@@ -6,7 +6,7 @@ pub mod server;
 mod talker;
 
 use anyhow::Error;
-use meio::Action;
+use meio::prelude::Action;
 use serde::{de::DeserializeOwned, Serialize};
 use std::fmt::Debug;
 

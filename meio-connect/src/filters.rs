@@ -1,5 +1,5 @@
 use anyhow::Error;
-use meio::{Actor, Address, Interaction, InteractionHandler};
+use meio::prelude::{Actor, Address, Interaction, InteractionHandler};
 use std::convert::Infallible;
 use std::net::SocketAddr;
 use std::str::FromStr;

@@ -3,7 +3,7 @@ use anyhow::Error;
 use futures::channel::mpsc;
 use futures::stream::Fuse;
 use futures::{select, FutureExt, Sink, SinkExt, Stream, StreamExt};
-use meio::{ActionHandler, Actor, Address, Status};
+use meio::prelude::{ActionHandler, Actor, Address, Status};
 use serde::ser::StdError;
 use std::fmt::Debug;
 use tokio::sync::watch;

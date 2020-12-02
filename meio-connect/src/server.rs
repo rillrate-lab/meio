@@ -6,7 +6,7 @@ use crate::{
 use anyhow::Error;
 use async_trait::async_trait;
 use futures::channel::mpsc;
-use meio::{ActionHandler, Actor, Address, LiteTask, ShutdownReceiver};
+use meio::prelude::{ActionHandler, Actor, Address, LiteTask, ShutdownReceiver};
 use std::net::SocketAddr;
 use warp::{ws::WebSocket, Filter, Reply, Server};
 
