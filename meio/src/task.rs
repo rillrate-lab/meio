@@ -1,6 +1,8 @@
 //! This module contains useful tasks that you can attach to an `Actor`.
 
-use crate::{Action, ActionPerformer, ActionRecipient, LiteTask, ShutdownReceiver};
+use crate::handlers::Action;
+use crate::linkage::{ActionPerformer, ActionRecipient};
+use crate::lite_runtime::{LiteTask, ShutdownReceiver};
 use anyhow::Error;
 use async_trait::async_trait;
 use futures::{select, FutureExt, StreamExt};

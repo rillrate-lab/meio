@@ -1,6 +1,6 @@
 //! Module contains stream to connect signals to actors.
 
-use crate::Action;
+use crate::handlers::Action;
 use futures::{stream::BoxStream, FutureExt, StreamExt};
 use tokio::signal;
 

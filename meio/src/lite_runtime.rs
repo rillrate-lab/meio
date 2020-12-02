@@ -1,5 +1,6 @@
-use crate::handlers::{InterruptedBy, StartedBy};
-use crate::{Action, ActionHandler, Actor, Address, Context, Status};
+use crate::actor_runtime::{Actor, Context, Status};
+use crate::handlers::{Action, ActionHandler, InterruptedBy, StartedBy};
+use crate::linkage::Address;
 use anyhow::Error;
 use async_trait::async_trait;
 use derive_more::{From, Into};

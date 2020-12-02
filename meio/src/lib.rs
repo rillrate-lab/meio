@@ -24,18 +24,10 @@ pub mod signal;
 pub mod system;
 pub mod task;
 
-pub use actor_runtime::{Actor, Context, Status};
-use handlers::Envelope;
-pub use handlers::{
-    Action, ActionHandler, Consumer, Eliminated, Interaction, InteractionHandler, InterruptedBy,
-    StartedBy,
-};
-pub use linkage::address::Address;
-pub use linkage::link::Link;
-pub use linkage::performers::{ActionPerformer, InteractionPerformer};
-pub use linkage::recipients::{ActionRecipient, InteractionRecipient};
-pub use lite_runtime::{LiteTask, ShutdownReceiver, Task};
-pub use system::System;
+use actor_runtime::Actor;
+use handlers::StartedBy;
+use linkage::Address;
+use system::System;
 
 /// Spawns a standalone `Actor` that has no `Supervisor`.
 pub fn spawn<A>(actor: A) -> Address<A>

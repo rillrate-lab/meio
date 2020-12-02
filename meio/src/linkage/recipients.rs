@@ -1,10 +1,10 @@
 //! This module contains recipients that works like addresses with
 //! a single incoming message type.
 
-use crate::{
-    Action, ActionHandler, ActionPerformer, Actor, Address, Interaction, InteractionHandler,
-    InteractionPerformer,
-};
+use crate::actor_runtime::Actor;
+use crate::handlers::{Action, ActionHandler, Interaction, InteractionHandler};
+use crate::linkage::address::Address;
+use crate::linkage::performers::{ActionPerformer, InteractionPerformer};
 use anyhow::Error;
 use async_trait::async_trait;
 use std::fmt;

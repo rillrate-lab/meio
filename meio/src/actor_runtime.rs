@@ -1,11 +1,12 @@
 //! This module contains `Actor` trait and the runtime to execute it.
 
-use crate::ids::Id;
-use crate::{
-    handlers::{Eliminated, HpEnvelope, InterruptedBy, Operation, StartedBy},
-    lifecycle::{Awake, Done, LifecycleNotifier, LifetimeTracker},
-    ActionHandler, Address, Envelope, LiteTask, Task,
+use crate::handlers::{
+    ActionHandler, Eliminated, Envelope, HpEnvelope, InterruptedBy, Operation, StartedBy,
 };
+use crate::ids::Id;
+use crate::lifecycle::{Awake, Done, LifecycleNotifier, LifetimeTracker};
+use crate::linkage::Address;
+use crate::lite_runtime::{LiteTask, Task};
 use async_trait::async_trait;
 use futures::channel::mpsc;
 use futures::{select_biased, StreamExt};

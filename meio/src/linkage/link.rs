@@ -1,7 +1,9 @@
 //! `Link` provides convenient ways of interaction with `Actors` using methods
 //! by wrapping `Address` of `Recipient`.
 
-use crate::{Action, ActionRecipient, Actor, Address, Interaction, InteractionRecipient};
+use super::{ActionRecipient, Address, InteractionRecipient};
+use crate::actor_runtime::Actor;
+use crate::handlers::{Action, Interaction};
 
 /// Returns a `Link` to an `Actor`.
 /// `Link` is a convenient concept for creating wrappers for

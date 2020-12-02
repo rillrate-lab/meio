@@ -1,13 +1,14 @@
 //! This module contains `Address` to interact with an `Actor`.
 
+use crate::actor_runtime::{Actor, Context, Status};
 use crate::handlers::{
-    Consumer, Envelope, HpEnvelope, Interact, Interaction, InterruptedBy, Operation, StreamItem,
+    Action, ActionHandler, Consumer, Envelope, HpEnvelope, Interact, Interaction,
+    InteractionHandler, InterruptedBy, Operation, StreamItem,
 };
 use crate::ids::{Id, IdOf};
-use crate::{
-    lifecycle::Interrupt, Action, ActionHandler, ActionPerformer, ActionRecipient, Actor, Context,
-    InteractionHandler, InteractionRecipient, Status, System,
-};
+use crate::lifecycle::Interrupt;
+use crate::linkage::{ActionPerformer, ActionRecipient, InteractionRecipient};
+use crate::system::System;
 use anyhow::{anyhow, Error};
 use futures::channel::{mpsc, oneshot};
 use futures::{SinkExt, Stream, StreamExt};
