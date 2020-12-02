@@ -11,11 +11,3 @@ pub use crate::linkage::{
 };
 pub use crate::lite_runtime::{LiteTask, ShutdownReceiver, Task};
 pub use crate::system::System;
-
-/// Spawns a standalone `Actor` that has no `Supervisor`.
-pub fn spawn<A>(actor: A) -> Address<A>
-where
-    A: Actor + StartedBy<System>,
-{
-    crate::actor_runtime::spawn(actor, Option::<Address<System>>::None)
-}

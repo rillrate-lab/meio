@@ -24,14 +24,14 @@ pub mod signal;
 pub mod system;
 pub mod task;
 
-pub use prelude::spawn;
+pub use system::spawn;
 
 // %%%%%%%%%%%%%%%%%%%%%% TESTS %%%%%%%%%%%%%%%%%%%%%
 
 #[cfg(test)]
 mod tests {
     use super::prelude::*;
-    use super::signal;
+    use super::{signal, spawn};
     use anyhow::Error;
     use async_trait::async_trait;
     use futures::stream;

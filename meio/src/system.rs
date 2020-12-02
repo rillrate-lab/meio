@@ -1,10 +1,19 @@
 //! This module contains `System` actor.
 
 use crate::actor_runtime::{Actor, Context};
-use crate::handlers::Eliminated;
+use crate::handlers::{Eliminated, StartedBy};
 use crate::ids::IdOf;
+use crate::linkage::Address;
 use anyhow::Error;
 use async_trait::async_trait;
+
+/// Spawns a standalone `Actor` that has no `Supervisor`.
+pub fn spawn<A>(actor: A) -> Address<A>
+where
+    A: Actor + StartedBy<System>,
+{
+    crate::actor_runtime::spawn(actor, Option::<Address<System>>::None)
+}
 
 /// Virtual actor that represents the system/environment.
 pub enum System {}
