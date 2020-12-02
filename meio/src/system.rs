@@ -1,6 +1,7 @@
 //! This module contains `System` actor.
 
-use crate::{Actor, Context, Eliminated, IdOf};
+use crate::ids::IdOf;
+use crate::{Actor, Context, Eliminated};
 use anyhow::Error;
 use async_trait::async_trait;
 

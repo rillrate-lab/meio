@@ -1,10 +1,10 @@
 //! This module contains `Actor` trait and the runtime to execute it.
 
-// TODO: Fix imports
+use crate::ids::Id;
 use crate::{
     handlers::{Eliminated, HpEnvelope, InterruptedBy, Operation, StartedBy},
     lifecycle::{Awake, Done, LifecycleNotifier, LifetimeTracker},
-    ActionHandler, Address, Envelope, Id, LiteTask, Task,
+    ActionHandler, Address, Envelope, LiteTask, Task,
 };
 use async_trait::async_trait;
 use futures::channel::mpsc;

@@ -3,9 +3,10 @@
 use crate::handlers::{
     Consumer, Envelope, HpEnvelope, Interact, Interaction, InterruptedBy, Operation, StreamItem,
 };
+use crate::ids::{Id, IdOf};
 use crate::{
     lifecycle::Interrupt, Action, ActionHandler, ActionPerformer, ActionRecipient, Actor, Context,
-    Id, IdOf, InteractionHandler, InteractionRecipient, Status, System,
+    InteractionHandler, InteractionRecipient, Status, System,
 };
 use anyhow::{anyhow, Error};
 use futures::channel::{mpsc, oneshot};

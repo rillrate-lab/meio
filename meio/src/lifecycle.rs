@@ -1,7 +1,8 @@
 //! Contains message of the `Actor`'s lifecycle.
 
 use crate::handlers::Operation;
-use crate::{Action, ActionHandler, Actor, Address, Id, IdOf};
+use crate::ids::{Id, IdOf};
+use crate::{Action, ActionHandler, Actor, Address};
 use anyhow::{anyhow, Error};
 use std::collections::{HashMap, HashSet};
 use std::marker::PhantomData;

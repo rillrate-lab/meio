@@ -2,7 +2,8 @@
 //! to call methods of actors related to a sepcific
 //! imcoming message.
 
-use crate::{lifecycle, Actor, Context, Id, IdOf};
+use crate::ids::{Id, IdOf};
+use crate::{lifecycle, Actor, Context};
 use anyhow::{anyhow, Error};
 use async_trait::async_trait;
 use futures::channel::oneshot;
