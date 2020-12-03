@@ -10,8 +10,6 @@
 
 #![warn(missing_docs)]
 #![recursion_limit = "512"]
-#![feature(generators)]
-#![feature(option_expect_none)]
 
 mod actor_runtime;
 pub mod handlers;
