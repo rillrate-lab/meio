@@ -99,7 +99,7 @@ impl<A: Actor> Address<A> {
     }
 
     /// Just sends an `Action` to the `Actor`.
-    pub async fn schedule<I>(&mut self, input: I, deadline: Instant) -> Result<(), Error>
+    pub fn schedule<I>(&mut self, input: I, deadline: Instant) -> Result<(), Error>
     where
         I: Send + 'static,
         A: Scheduled<I>,
