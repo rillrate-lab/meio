@@ -245,3 +245,18 @@ where
         Consumer::handle(self, msg.item, ctx).await
     }
 }
+
+/// Used to wrap scheduled event.
+pub(crate) struct ScheduledItem<T> {
+    pub timestamp: Instant,
+    pub item: T,
+}
+
+impl<T: Send + 'static> Action for ScheduledItem<T> {
+    /// Priority never taken into account for `Scheduled` message,
+    /// but it has high-priority to show that it will be called as
+    /// soon as the deadline has reached.
+    fn is_high_priority(&self) -> bool {
+        true
+    }
+}
