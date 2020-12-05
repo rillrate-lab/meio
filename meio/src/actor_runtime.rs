@@ -245,7 +245,7 @@ impl<A: Actor> ActorRuntime<A> {
                                 process_envelope = Some(envelope);
                             }
                             Operation::Schedule { deadline } => {
-                                scheduled_queue.get_mut().insert_at(envelope, deadline);
+                                scheduled_queue.get_mut().insert_at(envelope, deadline.into());
                                 process_envelope = None;
                             }
                         }

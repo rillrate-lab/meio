@@ -3,7 +3,7 @@
 use crate::actor_runtime::{Actor, Context, Status};
 use crate::handlers::{
     Action, ActionHandler, Consumer, Envelope, HpEnvelope, Interact, Interaction,
-    InteractionHandler, InterruptedBy, Operation, StreamItem,
+    InteractionHandler, InterruptedBy, Operation, Scheduled, ScheduledItem, StreamItem,
 };
 use crate::ids::{Id, IdOf};
 use crate::lifecycle::Interrupt;
@@ -102,12 +102,16 @@ impl<A: Actor> Address<A> {
     pub async fn schedule<I>(&mut self, input: I, deadline: Instant) -> Result<(), Error>
     where
         I: Action,
-        A: ActionHandler<I>,
+        A: Scheduled<I>,
     {
         let operation = Operation::Schedule {
-            deadline: deadline.into(),
+            deadline: deadline.clone(),
         };
-        self.send_hp_direct(operation, input)
+        let wrapped = ScheduledItem {
+            timestamp: deadline,
+            item: input,
+        };
+        self.send_hp_direct(operation, wrapped)
     }
 
     /// Interacts with an `Actor` and waits for the result of the `Interaction`.

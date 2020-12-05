@@ -8,7 +8,7 @@ use crate::lifecycle;
 use anyhow::{anyhow, Error};
 use async_trait::async_trait;
 use futures::channel::oneshot;
-use tokio::time::Instant;
+use std::time::Instant;
 
 pub(crate) struct Envelope<A: Actor> {
     handler: Box<dyn Handler<A>>,
@@ -258,5 +258,32 @@ impl<T: Send + 'static> Action for ScheduledItem<T> {
     /// soon as the deadline has reached.
     fn is_high_priority(&self) -> bool {
         true
+    }
+}
+
+/// Represents reaction to a scheduled activity.
+#[async_trait]
+pub trait Scheduled<T>: Actor {
+    /// The method called when the deadline has reached.
+    async fn handle(
+        &mut self,
+        timestamp: Instant,
+        item: T,
+        ctx: &mut Context<Self>,
+    ) -> Result<(), Error>;
+}
+
+#[async_trait]
+impl<T, I> ActionHandler<ScheduledItem<I>> for T
+where
+    T: Actor + Scheduled<I>,
+    I: Send + 'static,
+{
+    async fn handle(
+        &mut self,
+        msg: ScheduledItem<I>,
+        ctx: &mut Context<Self>,
+    ) -> Result<(), Error> {
+        Scheduled::handle(self, msg.timestamp, msg.item, ctx).await
     }
 }
