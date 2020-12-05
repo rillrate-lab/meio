@@ -8,6 +8,7 @@ use crate::lifecycle;
 use anyhow::{anyhow, Error};
 use async_trait::async_trait;
 use futures::channel::oneshot;
+use tokio::time::Instant;
 
 pub(crate) struct Envelope<A: Actor> {
     handler: Box<dyn Handler<A>>,
@@ -40,8 +41,20 @@ impl<A: Actor> Envelope<A> {
 #[derive(Clone)]
 pub(crate) enum Operation {
     // TODO: Awake, Interrupt, also can be added here!
-    Done { id: Id },
+    Done {
+        id: Id,
+    },
+    /// Just process it with high-priority.
     Forward,
+    /// The operation to schedule en action handling at the specific time.
+    ///
+    /// `Instant` used to avoid delays for sending and processing this `Operation` message.
+    ///
+    /// It can't be sent as normal priority, because the message has to be scheduled as
+    /// soon as possible to reduce influence of the ordinary processing queue to execution time.
+    Schedule {
+        deadline: Instant,
+    },
 }
 
 pub(crate) struct HpEnvelope<A: Actor> {

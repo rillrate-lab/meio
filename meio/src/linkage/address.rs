@@ -15,6 +15,7 @@ use futures::{SinkExt, Stream, StreamExt};
 use std::convert::identity;
 use std::fmt;
 use std::hash::{Hash, Hasher};
+use std::time::Instant;
 use tokio::sync::watch;
 use tokio::task::JoinHandle;
 
@@ -95,6 +96,18 @@ impl<A: Actor> Address<A> {
             let envelope = Envelope::new(input);
             self.msg_tx.send(envelope).await.map_err(Error::from)
         }
+    }
+
+    /// Just sends an `Action` to the `Actor`.
+    pub async fn schedule<I>(&mut self, input: I, deadline: Instant) -> Result<(), Error>
+    where
+        I: Action,
+        A: ActionHandler<I>,
+    {
+        let operation = Operation::Schedule {
+            deadline: deadline.into(),
+        };
+        self.send_hp_direct(operation, input)
     }
 
     /// Interacts with an `Actor` and waits for the result of the `Interaction`.
@@ -195,6 +208,8 @@ impl<A: Actor> Address<A> {
     }
 }
 
+/// This worker receives items from a stream and send them as actions
+/// into an `Actor`.
 struct Forwarder<S: Stream> {
     id: Id,
     stream: S,

@@ -12,6 +12,7 @@ use futures::channel::mpsc;
 use futures::{select_biased, StreamExt};
 use std::hash::Hash;
 use tokio::sync::watch;
+use tokio::time::DelayQueue;
 use uuid::Uuid;
 
 const MESSAGES_CHANNEL_DEPTH: usize = 32;
@@ -224,13 +225,16 @@ impl<A: Actor> ActorRuntime<A> {
     }
 
     async fn routine(&mut self) {
+        let mut scheduled_queue = DelayQueue::<Envelope<A>>::new().fuse();
         while self.context.alive {
             select_biased! {
                 hp_envelope = self.hp_msg_rx.next() => {
                     if let Some(hp_env) = hp_envelope {
-                        let mut envelope = hp_env.envelope;
+                        let envelope = hp_env.envelope;
+                        let process_envelope;
                         match hp_env.operation {
                             Operation::Forward => {
+                                process_envelope = Some(envelope);
                             }
                             Operation::Done { id } => {
                                 self.context.lifetime_tracker.remove(&id);
@@ -238,11 +242,18 @@ impl<A: Actor> ActorRuntime<A> {
 
                                     self.context.stop();
                                 }
+                                process_envelope = Some(envelope);
+                            }
+                            Operation::Schedule { deadline } => {
+                                scheduled_queue.get_mut().insert_at(envelope, deadline);
+                                process_envelope = None;
                             }
                         }
-                        let handle_res = envelope.handle(&mut self.actor, &mut self.context).await;
-                        if let Err(err) = handle_res {
-                            log::error!("Handler for {:?} (high-priority) failed: {}", self.id, err);
+                        if let Some(mut envelope) = process_envelope {
+                            let handle_res = envelope.handle(&mut self.actor, &mut self.context).await;
+                            if let Err(err) = handle_res {
+                                log::error!("Handler for {:?} (high-priority) failed: {}", self.id, err);
+                            }
                         }
                     } else {
                         // Even if all `Address` dropped `Actor` can do something useful on
@@ -250,6 +261,20 @@ impl<A: Actor> ActorRuntime<A> {
                         // it still has controllers.
                         // Background tasks = something spawned that `Actors` waits for finishing.
                         log::trace!("Messages stream of {:?} (high-priority) drained.", self.id);
+                    }
+                }
+                delayed_envelope = scheduled_queue.select_next_some() => {
+                    match delayed_envelope {
+                        Ok(expired) => {
+                            let mut envelope = expired.into_inner();
+                            let handle_res = envelope.handle(&mut self.actor, &mut self.context).await;
+                            if let Err(err) = handle_res {
+                                log::error!("Handler for {:?} (scheduled) failed: {}", self.id, err);
+                            }
+                        }
+                        Err(err) => {
+                            log::error!("Failed scheduled execution for {:?}: {}", self.id, err);
+                        }
                     }
                 }
                 lp_envelope = self.msg_rx.next() => {
