@@ -4,7 +4,10 @@ use crate::linkage::Address;
 use anyhow::Error;
 use async_trait::async_trait;
 use derive_more::Into;
-use futures::{future::FusedFuture, Future, FutureExt};
+use futures::{
+    future::{select, Either, FusedFuture},
+    Future, FutureExt,
+};
 use std::pin::Pin;
 use tokio::sync::watch;
 use uuid::Uuid;
@@ -14,7 +17,7 @@ pub trait DoneSignal: Future<Output = ()> + FusedFuture + Send {}
 impl<T> DoneSignal for T where T: Future<Output = ()> + FusedFuture + Send {}
 
 /// Contains a receiver with a status of a task.
-#[derive(Debug, Into)]
+#[derive(Debug, Into, Clone)]
 pub struct ShutdownReceiver {
     status: watch::Receiver<Status>,
 }
@@ -27,6 +30,21 @@ impl ShutdownReceiver {
     /// Returns a `Future` that completed when `Done` signal received.
     pub fn just_done(self) -> Pin<Box<dyn DoneSignal>> {
         Box::pin(just_done(self.status).fuse())
+    }
+
+    /// Tries to execute provided `Future` to completion if the `ShutdownReceived`
+    /// won't interrupted during that time.
+    pub async fn or<Fut>(&mut self, fut: Fut) -> Result<Fut::Output, Error>
+    where
+        Fut: Future + Unpin,
+    {
+        let either = select(self.clone().just_done(), fut).await;
+        match either {
+            Either::Left((_done, _rem_fut)) => {
+                Err(Error::msg("task received an interruption signal"))
+            }
+            Either::Right((output, _rem_fut)) => Ok(output),
+        }
     }
 }
 
