@@ -3,7 +3,6 @@ use crate::handlers::{Action, ActionHandler, InterruptedBy, StartedBy};
 use crate::linkage::Address;
 use anyhow::Error;
 use async_trait::async_trait;
-use derive_more::Into;
 use futures::{
     future::{select, Either, FusedFuture},
     Future, FutureExt,
@@ -17,7 +16,7 @@ pub trait DoneSignal: Future<Output = ()> + FusedFuture + Send {}
 impl<T> DoneSignal for T where T: Future<Output = ()> + FusedFuture + Send {}
 
 /// Contains a receiver with a status of a task.
-#[derive(Debug, Into, Clone)]
+#[derive(Debug, Clone)]
 pub struct ShutdownReceiver {
     status: watch::Receiver<Status>,
 }
