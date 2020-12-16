@@ -36,8 +36,9 @@ impl ShutdownReceiver {
     /// won't interrupted during that time.
     pub async fn or<Fut>(&mut self, fut: Fut) -> Result<Fut::Output, Error>
     where
-        Fut: Future + Unpin,
+        Fut: Future,
     {
+        tokio::pin!(fut);
         let either = select(self.clone().just_done(), fut).await;
         match either {
             Either::Left((_done, _rem_fut)) => {
