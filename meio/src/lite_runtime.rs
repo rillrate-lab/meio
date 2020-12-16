@@ -29,7 +29,7 @@ impl ShutdownReceiver {
 
     /// Returns `true` is the task can be alive.
     pub fn is_alive(&self) -> bool {
-        *self.status.borrow() != Status::Stop
+        *self.status.borrow() == Status::Alive
     }
 
     /// Returns a `Future` that completed when `Done` signal received.

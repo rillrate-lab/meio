@@ -11,13 +11,11 @@ use async_tungstenite::{
 use futures::channel::mpsc;
 use meio::prelude::{
     ActionHandler, Actor, Address, Interaction, InteractionHandler, LiteTask, ShutdownReceiver,
-    Status,
 };
 use std::marker::PhantomData;
 use std::time::{Duration, Instant};
 use thiserror::Error;
 use tokio::net::TcpStream;
-use tokio::sync::watch;
 use tokio::time::delay_for;
 
 #[derive(Debug)]
@@ -117,8 +115,7 @@ where
     A: Actor + InteractionHandler<WsClientStatus<P>> + ActionHandler<WsIncoming<P::ToClient>>,
 {
     async fn connection_routine(&mut self, mut signal: ShutdownReceiver) -> Result<(), Error> {
-        let status_rx: watch::Receiver<Status> = signal.clone().into();
-        while *status_rx.borrow() == Status::Alive {
+        while signal.is_alive() {
             log::trace!("Ws client conencting to: {}", self.url);
             let res = connect_async(&self.url).await;
             let mut last_success = Instant::now();
@@ -133,7 +130,7 @@ where
                     self.address
                         .interact(WsClientStatus::<P>::Connected { sender })
                         .await?;
-                    // Interruptable by status_rx
+                    // Interruptable by a signal
                     let mut talker =
                         Talker::<Self>::new(self.address.clone(), wss, rx, signal.clone());
                     let res = talker.routine().await;
