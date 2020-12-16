@@ -8,12 +8,17 @@ use futures::{
     Future, FutureExt,
 };
 use std::pin::Pin;
+use thiserror::Error;
 use tokio::sync::watch;
 use uuid::Uuid;
 
 pub trait DoneSignal: Future<Output = ()> + FusedFuture + Send {}
 
 impl<T> DoneSignal for T where T: Future<Output = ()> + FusedFuture + Send {}
+
+#[derive(Debug, Error)]
+#[error("interrupted by a signal")]
+pub struct InterruptionSignal;
 
 /// Contains a receiver with a status of a task.
 #[derive(Debug, Clone)]
@@ -38,16 +43,14 @@ impl ShutdownReceiver {
 
     /// Tries to execute provided `Future` to completion if the `ShutdownReceived`
     /// won't interrupted during that time.
-    pub async fn or<Fut>(&mut self, fut: Fut) -> Result<Fut::Output, Error>
+    pub async fn or<Fut>(&mut self, fut: Fut) -> Result<Fut::Output, InterruptionSignal>
     where
         Fut: Future,
     {
         tokio::pin!(fut);
         let either = select(self.clone().just_done(), fut).await;
         match either {
-            Either::Left((_done, _rem_fut)) => {
-                Err(Error::msg("task received an interruption signal"))
-            }
+            Either::Left((_done, _rem_fut)) => Err(InterruptionSignal),
             Either::Right((output, _rem_fut)) => Ok(output),
         }
     }

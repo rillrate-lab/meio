@@ -21,6 +21,7 @@ async-trait = "0.1.41"
 derive_more = "0.99.11"
 futures = "0.3.6"
 log = "0.4.11"
+thiserror = "1.0.22"
 tokio = { version = "0.2.22", features = ["full"] }
 uuid = { version = "0.8.1", features = ["v4"] }
 
