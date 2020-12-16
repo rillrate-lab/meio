@@ -3,31 +3,49 @@ use crate::handlers::{Action, ActionHandler, InterruptedBy, StartedBy};
 use crate::linkage::Address;
 use anyhow::Error;
 use async_trait::async_trait;
-use derive_more::{From, Into};
+use futures::{future::FusedFuture, Future, FutureExt};
+use std::pin::Pin;
+use std::task::{self, Poll};
 use tokio::sync::watch;
 use uuid::Uuid;
 
+trait ShutdownFuture: Future<Output = ()> + FusedFuture + Send {}
+
+impl<T> ShutdownFuture for T where T: Future<Output = ()> + FusedFuture + Send {}
+
 /// Contains a receiver with a status of a task.
-#[derive(Debug, From, Into)]
 pub struct ShutdownReceiver {
-    /// Use `Into` to extract that `Receiver`.
-    status: watch::Receiver<Status>,
+    watcher: Pin<Box<dyn ShutdownFuture>>,
 }
 
 impl ShutdownReceiver {
     fn new(status: watch::Receiver<Status>) -> Self {
-        Self { status }
+        let watcher = Box::pin(just_done(status).fuse());
+        Self { watcher }
     }
+}
 
-    /// Converts the `Receiver` into a `Future` that just returns `()` when task finished.
-    pub async fn just_done(mut self) {
-        // TODO: tokio 0.3
-        // while self.status.changed().await.is_ok() {
-        while self.status.recv().await.is_some() {
-            if self.status.borrow().is_done() {
-                break;
-            }
+async fn just_done(mut status: watch::Receiver<Status>) {
+    // TODO: tokio 0.3
+    // while status.changed().await.is_ok() {
+    while status.recv().await.is_some() {
+        if status.borrow().is_done() {
+            break;
         }
+    }
+}
+
+impl Future for ShutdownReceiver {
+    type Output = ();
+
+    fn poll(self: Pin<&mut Self>, cx: &mut task::Context<'_>) -> Poll<Self::Output> {
+        todo!()
+    }
+}
+
+impl FusedFuture for ShutdownReceiver {
+    fn is_terminated(&self) -> bool {
+        self.watcher.is_terminated()
     }
 }
 

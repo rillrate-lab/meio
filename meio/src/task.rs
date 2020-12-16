@@ -37,17 +37,14 @@ impl Action for Tick {}
 
 #[async_trait]
 impl LiteTask for HeartBeat {
-    async fn routine(mut self, signal: ShutdownReceiver) -> Result<(), Error> {
+    async fn routine(mut self, mut signal: ShutdownReceiver) -> Result<(), Error> {
         let mut ticks = interval(self.duration).map(Tick).fuse();
-
-        let done = signal.just_done().fuse();
-        tokio::pin!(done);
 
         let recipient = &mut self.recipient;
 
         loop {
             select! {
-                _ = done => {
+                _ = signal => {
                     break;
                 }
                 tick = ticks.select_next_some() => {
