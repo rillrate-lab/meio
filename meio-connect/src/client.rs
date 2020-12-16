@@ -9,7 +9,6 @@ use async_tungstenite::{
     WebSocketStream,
 };
 use futures::channel::mpsc;
-use futures::{select, FutureExt, StreamExt};
 use meio::prelude::{
     ActionHandler, Actor, Address, Interaction, InteractionHandler, LiteTask, ShutdownReceiver,
     Status,
@@ -117,10 +116,8 @@ where
     P: Protocol,
     A: Actor + InteractionHandler<WsClientStatus<P>> + ActionHandler<WsIncoming<P::ToClient>>,
 {
-    async fn connection_routine(
-        &mut self,
-        status_rx: watch::Receiver<Status>,
-    ) -> Result<(), Error> {
+    async fn connection_routine(&mut self, mut signal: ShutdownReceiver) -> Result<(), Error> {
+        let status_rx: watch::Receiver<Status> = signal.clone().into();
         while *status_rx.borrow() == Status::Alive {
             log::trace!("Ws client conencting to: {}", self.url);
             let res = connect_async(&self.url).await;
@@ -173,27 +170,7 @@ where
                 let elapsed = last_success.elapsed();
                 if elapsed < dur {
                     let remained = dur - elapsed;
-                    let mut delay = delay_for(remained).fuse();
-                    let mut signal_rx = status_rx.clone().fuse();
-                    // TODO: Refactor this loop...
-                    loop {
-                        select! {
-                            _timeout = delay => {
-                                break;
-                            }
-                            status = signal_rx.next() => {
-                                match status {
-                                    Some(Status::Stop) | None => {
-                                        log::debug!("Reconnection terminated by user for: {}", self.url);
-                                        return Ok(());
-                                    }
-                                    Some(Status::Alive) => {
-                                        // Continue working
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    signal.or(delay_for(remained)).await?;
                 }
                 log::debug!("Next attempt to connect to: {}", self.url);
             } else {
