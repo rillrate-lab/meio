@@ -2,11 +2,10 @@ use crate::{ProtocolCodec, ProtocolData, WsIncoming};
 use anyhow::Error;
 use futures::channel::mpsc;
 use futures::stream::Fuse;
-use futures::{select, FutureExt, Sink, SinkExt, Stream, StreamExt};
-use meio::prelude::{ActionHandler, Actor, Address, Status};
+use futures::{select, Sink, SinkExt, Stream, StreamExt};
+use meio::prelude::{ActionHandler, Actor, Address, ShutdownReceiver};
 use serde::ser::StdError;
 use std::fmt::Debug;
-use tokio::sync::watch;
 use tungstenite::{error::Error as TungError, Message as TungMessage};
 use warp::{ws::Message as WarpMessage, Error as WarpError};
 
@@ -102,7 +101,7 @@ pub struct Talker<T: TalkerCompatible> {
     address: Address<T::Actor>,
     connection: Fuse<T::WebSocket>,
     rx: mpsc::UnboundedReceiver<T::Outgoing>,
-    signal: watch::Receiver<Status>,
+    signal: ShutdownReceiver,
     rx_drained: bool,
     connection_drained: bool,
     interrupted: bool,
@@ -113,7 +112,7 @@ impl<T: TalkerCompatible> Talker<T> {
         address: Address<T::Actor>,
         connection: T::WebSocket,
         rx: mpsc::UnboundedReceiver<T::Outgoing>,
-        signal: watch::Receiver<Status>,
+        signal: ShutdownReceiver,
     ) -> Self {
         Self {
             address,
@@ -131,22 +130,13 @@ impl<T: TalkerCompatible> Talker<T> {
     }
 
     pub async fn routine(&mut self) -> Result<TermReason, Error> {
+        let mut done = self.signal.clone().just_done();
         loop {
             select! {
-                // TODO: tokio 0.3
-                // res = signal.changed().fuse() => {
-                //     if res.is_ok() {
-                status = self.signal.recv().fuse() => {
-                    match status {
-                        Some(Status::Stop) | None => {
-                            self.interrupted = true;
-                            // Just close the channel and wait when it will be drained
-                            self.rx.close();
-                        }
-                        Some(Status::Alive) => {
-                            // Continue working
-                        }
-                    }
+                _ = done => {
+                    self.interrupted = true;
+                    // Just close the channel and wait when it will be drained
+                    self.rx.close();
                 }
                 request = self.connection.next() => {
                     log::trace!("Incoming request: {:?}", request);

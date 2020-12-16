@@ -135,7 +135,7 @@ where
                         .await?;
                     // Interruptable by status_rx
                     let mut talker =
-                        Talker::<Self>::new(self.address.clone(), wss, rx, status_rx.clone());
+                        Talker::<Self>::new(self.address.clone(), wss, rx, signal.clone());
                     let res = talker.routine().await;
                     match res {
                         Ok(reason) => {
