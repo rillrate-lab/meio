@@ -15,6 +15,10 @@ pub struct ShutdownReceiver {
 }
 
 impl ShutdownReceiver {
+    fn new(status: watch::Receiver<Status>) -> Self {
+        Self { status }
+    }
+
     /// Converts the `Receiver` into a `Future` that just returns `()` when task finished.
     pub async fn just_done(mut self) {
         // TODO: tokio 0.3
@@ -40,9 +44,7 @@ impl<T: LiteTask> LiteRuntime<T> {
     async fn entrypoint(self, mut actor: Address<Task<T>>) {
         let name = self.task.name();
         log::info!("Starting the task: {:?}", name);
-        let shutdown_receiver = ShutdownReceiver {
-            status: self.shutdown_rx,
-        };
+        let shutdown_receiver = ShutdownReceiver::new(self.shutdown_rx);
         let res = self.task.routine(shutdown_receiver).await;
         if let Err(err) = res {
             log::error!("LiteTask {} failed with: {}", name, err);
