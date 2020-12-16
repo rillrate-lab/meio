@@ -27,6 +27,11 @@ impl ShutdownReceiver {
         Self { status }
     }
 
+    /// Returns `true` is the task can be alive.
+    pub fn is_alive(&self) -> bool {
+        *self.status.borrow() != Status::Stop
+    }
+
     /// Returns a `Future` that completed when `Done` signal received.
     pub fn just_done(self) -> Pin<Box<dyn DoneSignal>> {
         Box::pin(just_done(self.status).fuse())
