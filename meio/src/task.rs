@@ -5,7 +5,7 @@ use crate::linkage::{ActionPerformer, ActionRecipient};
 use crate::lite_runtime::{LiteTask, ShutdownReceiver};
 use anyhow::Error;
 use async_trait::async_trait;
-use futures::{select, FutureExt, StreamExt};
+use futures::{select, StreamExt};
 use std::time::Duration;
 use tokio::time::{interval, Instant};
 
@@ -37,14 +37,15 @@ impl Action for Tick {}
 
 #[async_trait]
 impl LiteTask for HeartBeat {
-    async fn routine(mut self, mut signal: ShutdownReceiver) -> Result<(), Error> {
+    async fn routine(mut self, signal: ShutdownReceiver) -> Result<(), Error> {
         let mut ticks = interval(self.duration).map(Tick).fuse();
 
         let recipient = &mut self.recipient;
+        let mut done = signal.just_done();
 
         loop {
             select! {
-                _ = signal => {
+                _ = done => {
                     break;
                 }
                 tick = ticks.select_next_some() => {
