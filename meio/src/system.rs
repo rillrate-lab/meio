@@ -38,8 +38,8 @@ impl System {
     where
         A: Actor + StartedBy<Self> + InterruptedBy<Self>,
     {
-        let mut address = System::spawn(actor);
-        let result = System::wait_or_interrupt(&mut address).await;
+        let address = System::spawn(actor);
+        let result = System::wait_or_interrupt(address).await;
         if let Err(err) = result {
             log::error!("Can't wait for the actor: {}", err);
         }
@@ -49,7 +49,7 @@ impl System {
     /// If user sends `SIGINT` signal than the `Actor` will receive `InterruptedBy<System>` event,
     /// but for the second signal the function just returned to let the app terminate without waiting
     /// for any active task.
-    pub async fn wait_or_interrupt<A>(address: &mut Address<A>) -> Result<(), Error>
+    pub async fn wait_or_interrupt<A>(mut address: Address<A>) -> Result<(), Error>
     where
         A: Actor + InterruptedBy<Self>,
     {
