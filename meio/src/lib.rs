@@ -157,7 +157,7 @@ mod tests {
         address.act(MsgOne).await?;
         let res = address.interact(MsgTwo).await?;
         assert_eq!(res, 1);
-        address.interrupt()?;
+        System::interrupt(&mut address)?;
         address.join().await;
         Ok(())
     }
@@ -171,7 +171,7 @@ mod tests {
         let interaction_recipient = address.interaction_recipient();
         let res = interaction_recipient.clone().interact(MsgTwo).await?;
         assert_eq!(res, 1);
-        address.interrupt()?;
+        System::interrupt(&mut address)?;
         address.join().await;
         Ok(())
     }
@@ -184,7 +184,7 @@ mod tests {
         address.attach(stream).await?;
         // If you acivate this line the test will wait for the `Ctrl+C` signal.
         //address.attach(signal::CtrlC::stream()).await?;
-        address.interrupt()?;
+        System::interrupt(&mut address)?;
         Ok(())
     }
 
@@ -195,7 +195,7 @@ mod tests {
         let mut link: link::MyLink = address.link();
         link.send_signal().await?;
         let mut alternative_link: link::MyAlternativeLink = address.link();
-        alternative_link.interrupt()?;
+        System::interrupt(&mut alternative_link)?;
         alternative_link.join().await;
         Ok(())
     }

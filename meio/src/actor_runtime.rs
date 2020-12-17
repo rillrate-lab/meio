@@ -96,14 +96,6 @@ pub trait Actor: Sized + Send + 'static {
         let uuid = Uuid::new_v4();
         format!("Actor:{}({})", std::any::type_name::<Self>(), uuid)
     }
-
-    /* TODO: Hide this with feature or remove
-    /// Called after every message. Useful for post-checking, for example to
-    /// carry graceful app-level termination process (pre-shutdown).
-    async fn inspection(&mut self, _ctx: &mut Context<Self>) -> Result<(), Error> {
-        Ok(())
-    }
-    */
 }
 
 /// `Context` of a `ActorRuntime` that contains `Address` and `Receiver`.
@@ -121,7 +113,7 @@ impl<A: Actor> Context<A> {
     }
 
     /// Starts and binds an `Actor`.
-    pub fn bind_actor<T>(&mut self, actor: T, group: A::GroupBy) -> Address<T>
+    pub fn spawn_actor<T>(&mut self, actor: T, group: A::GroupBy) -> Address<T>
     where
         T: Actor + StartedBy<A> + InterruptedBy<A>,
         A: Eliminated<T>,
@@ -132,13 +124,13 @@ impl<A: Actor> Context<A> {
     }
 
     /// Starts and binds an `Actor`.
-    pub fn bind_task<T>(&mut self, task: T, group: A::GroupBy) -> Address<Task<T>>
+    pub fn spawn_task<T>(&mut self, task: T, group: A::GroupBy) -> Address<Task<T>>
     where
         T: LiteTask,
         A: Eliminated<Task<T>>,
     {
         let actor = Task::new(task);
-        self.bind_actor(actor, group)
+        self.spawn_actor(actor, group)
     }
 
     /// Interrupts an `Actor`.
