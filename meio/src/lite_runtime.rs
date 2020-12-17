@@ -12,21 +12,22 @@ use thiserror::Error;
 use tokio::sync::watch;
 use uuid::Uuid;
 
-pub trait DoneSignal: Future<Output = ()> + FusedFuture + Send {}
+/// Just receives a stop signal.
+pub trait StopSignal: Future<Output = ()> + FusedFuture + Send {}
 
-impl<T> DoneSignal for T where T: Future<Output = ()> + FusedFuture + Send {}
+impl<T> StopSignal for T where T: Future<Output = ()> + FusedFuture + Send {}
 
 #[derive(Debug, Error)]
-#[error("interrupted by a signal")]
-pub struct InterruptionSignal;
+#[error("task interrupted by a signal")]
+pub struct TaskStopped;
 
 /// Contains a receiver with a status of a task.
 #[derive(Debug, Clone)]
-pub struct ShutdownReceiver {
+pub struct StopReceiver {
     status: watch::Receiver<Status>,
 }
 
-impl ShutdownReceiver {
+impl StopReceiver {
     fn new(status: watch::Receiver<Status>) -> Self {
         Self { status }
     }
@@ -37,20 +38,20 @@ impl ShutdownReceiver {
     }
 
     /// Returns a `Future` that completed when `Done` signal received.
-    pub fn just_done(self) -> Pin<Box<dyn DoneSignal>> {
+    pub fn into_future(self) -> Pin<Box<dyn StopSignal>> {
         Box::pin(just_done(self.status).fuse())
     }
 
     /// Tries to execute provided `Future` to completion if the `ShutdownReceived`
     /// won't interrupted during that time.
-    pub async fn or<Fut>(&mut self, fut: Fut) -> Result<Fut::Output, InterruptionSignal>
+    pub async fn or<Fut>(&mut self, fut: Fut) -> Result<Fut::Output, TaskStopped>
     where
         Fut: Future,
     {
         tokio::pin!(fut);
-        let either = select(self.clone().just_done(), fut).await;
+        let either = select(self.clone().into_future(), fut).await;
         match either {
-            Either::Left((_done, _rem_fut)) => Err(InterruptionSignal),
+            Either::Left((_done, _rem_fut)) => Err(TaskStopped),
             Either::Right((output, _rem_fut)) => Ok(output),
         }
     }
@@ -79,7 +80,7 @@ impl<T: LiteTask> LiteRuntime<T> {
     async fn entrypoint(self, mut actor: Address<Task<T>>) {
         let name = self.task.name();
         log::info!("Starting the task: {:?}", name);
-        let shutdown_receiver = ShutdownReceiver::new(self.shutdown_rx);
+        let shutdown_receiver = StopReceiver::new(self.shutdown_rx);
         let res = self.task.routine(shutdown_receiver).await;
         if let Err(err) = res {
             log::error!("LiteTask {} failed with: {}", name, err);
@@ -180,5 +181,5 @@ pub trait LiteTask: Sized + Send + 'static {
 
     /// Routine of the task that can contain loops.
     /// It can taks into accout provided receiver to implement graceful interruption.
-    async fn routine(self, signal: ShutdownReceiver) -> Result<(), Error>;
+    async fn routine(self, stop: StopReceiver) -> Result<(), Error>;
 }

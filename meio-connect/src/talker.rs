@@ -3,7 +3,7 @@ use anyhow::Error;
 use futures::channel::mpsc;
 use futures::stream::Fuse;
 use futures::{select, Sink, SinkExt, Stream, StreamExt};
-use meio::prelude::{ActionHandler, Actor, Address, ShutdownReceiver};
+use meio::prelude::{ActionHandler, Actor, Address, StopReceiver};
 use serde::ser::StdError;
 use std::fmt::Debug;
 use tungstenite::{error::Error as TungError, Message as TungMessage};
@@ -101,7 +101,7 @@ pub struct Talker<T: TalkerCompatible> {
     address: Address<T::Actor>,
     connection: Fuse<T::WebSocket>,
     rx: mpsc::UnboundedReceiver<T::Outgoing>,
-    signal: ShutdownReceiver,
+    stop: StopReceiver,
     rx_drained: bool,
     connection_drained: bool,
     interrupted: bool,
@@ -112,13 +112,13 @@ impl<T: TalkerCompatible> Talker<T> {
         address: Address<T::Actor>,
         connection: T::WebSocket,
         rx: mpsc::UnboundedReceiver<T::Outgoing>,
-        signal: ShutdownReceiver,
+        stop: StopReceiver,
     ) -> Self {
         Self {
             address,
             connection: connection.fuse(),
             rx,
-            signal,
+            stop,
             rx_drained: false,
             connection_drained: false,
             interrupted: false,
@@ -130,7 +130,7 @@ impl<T: TalkerCompatible> Talker<T> {
     }
 
     pub async fn routine(&mut self) -> Result<TermReason, Error> {
-        let mut done = self.signal.clone().just_done();
+        let mut done = self.stop.clone().into_future();
         loop {
             select! {
                 _ = done => {

@@ -6,7 +6,7 @@ use crate::{
 use anyhow::Error;
 use async_trait::async_trait;
 use futures::channel::mpsc;
-use meio::prelude::{ActionHandler, Actor, Address, LiteTask, ShutdownReceiver};
+use meio::prelude::{ActionHandler, Actor, Address, LiteTask, StopReceiver};
 use std::net::SocketAddr;
 use warp::{ws::WebSocket, Filter, Reply, Server};
 
@@ -36,9 +36,9 @@ where
         format!("WebServer({})", self.addr)
     }
 
-    async fn routine(self, signal: ShutdownReceiver) -> Result<(), Error> {
+    async fn routine(self, stop: StopReceiver) -> Result<(), Error> {
         self.server
-            .try_bind_with_graceful_shutdown(self.addr, signal.just_done())?
+            .try_bind_with_graceful_shutdown(self.addr, stop.into_future())?
             .1
             .await;
         Ok(())
@@ -128,13 +128,9 @@ where
         format!("WsProcessor({})", self.info.addr)
     }
 
-    async fn routine(self, signal: ShutdownReceiver) -> Result<(), Error> {
-        let mut talker = Talker::<Self>::new(
-            self.address,
-            self.info.connection,
-            self.info.rx,
-            signal.into(),
-        );
+    async fn routine(self, stop: StopReceiver) -> Result<(), Error> {
+        let mut talker =
+            Talker::<Self>::new(self.address, self.info.connection, self.info.rx, stop);
         talker.routine().await.map(drop)
     }
 }

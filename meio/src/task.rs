@@ -2,7 +2,7 @@
 
 use crate::handlers::Action;
 use crate::linkage::{ActionPerformer, ActionRecipient};
-use crate::lite_runtime::{LiteTask, ShutdownReceiver};
+use crate::lite_runtime::{LiteTask, StopReceiver};
 use anyhow::Error;
 use async_trait::async_trait;
 use futures::{select, StreamExt};
@@ -37,11 +37,11 @@ impl Action for Tick {}
 
 #[async_trait]
 impl LiteTask for HeartBeat {
-    async fn routine(mut self, signal: ShutdownReceiver) -> Result<(), Error> {
+    async fn routine(mut self, stop: StopReceiver) -> Result<(), Error> {
         let mut ticks = interval(self.duration).map(Tick).fuse();
 
         let recipient = &mut self.recipient;
-        let mut done = signal.just_done();
+        let mut done = stop.into_future();
 
         loop {
             select! {

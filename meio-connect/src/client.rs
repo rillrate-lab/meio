@@ -10,7 +10,7 @@ use async_tungstenite::{
 };
 use futures::channel::mpsc;
 use meio::prelude::{
-    ActionHandler, Actor, Address, Interaction, InteractionHandler, LiteTask, ShutdownReceiver,
+    ActionHandler, Actor, Address, Interaction, InteractionHandler, LiteTask, StopReceiver,
 };
 use std::marker::PhantomData;
 use std::time::{Duration, Instant};
@@ -104,8 +104,8 @@ where
         format!("WsClient({})", self.url)
     }
 
-    async fn routine(mut self, signal: ShutdownReceiver) -> Result<(), Error> {
-        self.connection_routine(signal.into()).await
+    async fn routine(mut self, stop: StopReceiver) -> Result<(), Error> {
+        self.connection_routine(stop).await
     }
 }
 
@@ -114,8 +114,8 @@ where
     P: Protocol,
     A: Actor + InteractionHandler<WsClientStatus<P>> + ActionHandler<WsIncoming<P::ToClient>>,
 {
-    async fn connection_routine(&mut self, mut signal: ShutdownReceiver) -> Result<(), Error> {
-        while signal.is_alive() {
+    async fn connection_routine(&mut self, mut stop: StopReceiver) -> Result<(), Error> {
+        while stop.is_alive() {
             log::trace!("Ws client conencting to: {}", self.url);
             let res = connect_async(&self.url).await;
             let mut last_success = Instant::now();
@@ -130,9 +130,9 @@ where
                     self.address
                         .interact(WsClientStatus::<P>::Connected { sender })
                         .await?;
-                    // Interruptable by a signal
+                    // Interruptable by a stop
                     let mut talker =
-                        Talker::<Self>::new(self.address.clone(), wss, rx, signal.clone());
+                        Talker::<Self>::new(self.address.clone(), wss, rx, stop.clone());
                     let res = talker.routine().await;
                     match res {
                         Ok(reason) => {
@@ -167,7 +167,7 @@ where
                 let elapsed = last_success.elapsed();
                 if elapsed < dur {
                     let remained = dur - elapsed;
-                    signal.or(delay_for(remained)).await?;
+                    stop.or(delay_for(remained)).await?;
                 }
                 log::debug!("Next attempt to connect to: {}", self.url);
             } else {
