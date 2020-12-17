@@ -24,40 +24,42 @@ impl<T: Actor> Eliminated<T> for System {
     }
 }
 
-/// Spawns a standalone `Actor` that has no `Supervisor`.
-pub fn spawn<A>(actor: A) -> Address<A>
-where
-    A: Actor + StartedBy<System>,
-{
-    crate::actor_runtime::spawn(actor, Option::<Address<System>>::None)
-}
+impl System {
+    /// Spawns a standalone `Actor` that has no `Supervisor`.
+    pub fn spawn<A>(actor: A) -> Address<A>
+    where
+        A: Actor + StartedBy<System>,
+    {
+        crate::actor_runtime::spawn(actor, Option::<Address<System>>::None)
+    }
 
-/// Waits either `Actor` interrupted or terminated.
-/// If user sends `SIGINT` signal than the `Actor` will receive `InterruptedBy<System>` event,
-/// but for the second signal the function just returned to let the app terminate without waiting
-/// for any active task.
-pub async fn wait_or_interrupt<A>(mut address: Address<A>) -> Result<(), Error>
-where
-    A: Actor + InterruptedBy<System>,
-{
-    let mut signals = signal::CtrlC::stream().fuse();
-    let mut join_addr = address.clone();
-    let mut joiner = join_addr.join().boxed().fuse();
-    let mut first_attempt = true;
-    loop {
-        select! {
-            _interrupt = signals.select_next_some() => {
-                if first_attempt {
-                    first_attempt = false;
-                    address.interrupt()?;
-                } else {
+    /// Waits either `Actor` interrupted or terminated.
+    /// If user sends `SIGINT` signal than the `Actor` will receive `InterruptedBy<System>` event,
+    /// but for the second signal the function just returned to let the app terminate without waiting
+    /// for any active task.
+    pub async fn wait_or_interrupt<A>(mut address: Address<A>) -> Result<(), Error>
+    where
+        A: Actor + InterruptedBy<System>,
+    {
+        let mut signals = signal::CtrlC::stream().fuse();
+        let mut join_addr = address.clone();
+        let mut joiner = join_addr.join().boxed().fuse();
+        let mut first_attempt = true;
+        loop {
+            select! {
+                _interrupt = signals.select_next_some() => {
+                    if first_attempt {
+                        first_attempt = false;
+                        address.interrupt()?;
+                    } else {
+                        break;
+                    }
+                }
+                _done = joiner => {
                     break;
                 }
             }
-            _done = joiner => {
-                break;
-            }
         }
+        Ok(())
     }
-    Ok(())
 }

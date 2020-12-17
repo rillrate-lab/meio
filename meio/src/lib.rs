@@ -22,14 +22,12 @@ pub mod signal;
 pub mod system;
 pub mod task;
 
-pub use system::{spawn, wait_or_interrupt};
-
 // %%%%%%%%%%%%%%%%%%%%%% TESTS %%%%%%%%%%%%%%%%%%%%%
 
 #[cfg(test)]
 mod tests {
     use super::prelude::*;
-    use super::{signal, spawn};
+    use super::signal;
     use anyhow::Error;
     use async_trait::async_trait;
     use futures::stream;
@@ -155,7 +153,7 @@ mod tests {
     #[tokio::test]
     async fn start_and_terminate() -> Result<(), Error> {
         env_logger::try_init().ok();
-        let mut address = spawn(MyActor);
+        let mut address = System::spawn(MyActor);
         address.act(MsgOne).await?;
         let res = address.interact(MsgTwo).await?;
         assert_eq!(res, 1);
@@ -167,7 +165,7 @@ mod tests {
     #[tokio::test]
     async fn test_recipient() -> Result<(), Error> {
         env_logger::try_init().ok();
-        let mut address = spawn(MyActor);
+        let mut address = System::spawn(MyActor);
         let action_recipient = address.action_recipient();
         action_recipient.clone().act(MsgOne).await?;
         let interaction_recipient = address.interaction_recipient();
@@ -181,7 +179,7 @@ mod tests {
     #[tokio::test]
     async fn test_attach() -> Result<(), Error> {
         env_logger::try_init().ok();
-        let mut address = spawn(MyActor);
+        let mut address = System::spawn(MyActor);
         let stream = stream::iter(vec![MsgOne, MsgOne, MsgOne]);
         address.attach(stream).await?;
         // If you acivate this line the test will wait for the `Ctrl+C` signal.
@@ -193,7 +191,7 @@ mod tests {
     #[tokio::test]
     async fn test_link() -> Result<(), Error> {
         env_logger::try_init().ok();
-        let address = spawn(MyActor);
+        let address = System::spawn(MyActor);
         let mut link: link::MyLink = address.link();
         link.send_signal().await?;
         let mut alternative_link: link::MyAlternativeLink = address.link();

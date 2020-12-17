@@ -10,4 +10,5 @@ pub use crate::linkage::{
     ActionPerformer, ActionRecipient, Address, InteractionPerformer, InteractionRecipient, Link,
 };
 pub use crate::lite_runtime::{LiteTask, ShutdownReceiver, Task};
+pub use crate::signal;
 pub use crate::system::System;
