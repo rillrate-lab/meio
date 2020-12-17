@@ -28,9 +28,21 @@ impl System {
     /// Spawns a standalone `Actor` that has no `Supervisor`.
     pub fn spawn<A>(actor: A) -> Address<A>
     where
-        A: Actor + StartedBy<System>,
+        A: Actor + StartedBy<Self>,
     {
-        crate::actor_runtime::spawn(actor, Option::<Address<System>>::None)
+        crate::actor_runtime::spawn(actor, Option::<Address<Self>>::None)
+    }
+
+    /// Spawns an `Actor` and wait for its termination (normally or by `SIGINT` interruption).
+    pub async fn spawn_and_wait<A>(actor: A)
+    where
+        A: Actor + StartedBy<Self> + InterruptedBy<Self>,
+    {
+        let address = System::spawn(actor);
+        let result = System::wait_or_interrupt(address).await;
+        if let Err(err) = result {
+            log::error!("Can't wait for the actor: {}", err);
+        }
     }
 
     /// Waits either `Actor` interrupted or terminated.
@@ -39,7 +51,7 @@ impl System {
     /// for any active task.
     pub async fn wait_or_interrupt<A>(mut address: Address<A>) -> Result<(), Error>
     where
-        A: Actor + InterruptedBy<System>,
+        A: Actor + InterruptedBy<Self>,
     {
         let mut signals = signal::CtrlC::stream().fuse();
         let mut join_addr = address.clone();
