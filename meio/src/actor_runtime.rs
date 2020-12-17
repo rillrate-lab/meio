@@ -7,6 +7,7 @@ use crate::ids::Id;
 use crate::lifecycle::{Awake, Done, LifecycleNotifier, LifetimeTracker};
 use crate::linkage::Address;
 use crate::lite_runtime::{LiteTask, Task};
+use anyhow::Error;
 use async_trait::async_trait;
 use futures::channel::mpsc;
 use futures::{select_biased, StreamExt};
@@ -138,6 +139,14 @@ impl<A: Actor> Context<A> {
     {
         let actor = Task::new(task);
         self.bind_actor(actor, group)
+    }
+
+    /// Interrupts an `Actor`.
+    pub fn interrupt<T>(&mut self, address: &mut Address<T>) -> Result<(), Error>
+    where
+        T: Actor + InterruptedBy<A>,
+    {
+        address.interrupt_by(self)
     }
 
     /// Returns true if the shutdown process is in progress.

@@ -157,7 +157,7 @@ impl<A: Actor> Address<A> {
     ///
     /// It required a `Context` parameter just to restrict using it in
     /// methods other from handlers.
-    pub fn interrupt_by<T>(&mut self, _ctx: &Context<T>) -> Result<(), Error>
+    pub(crate) fn interrupt_by<T>(&mut self, _ctx: &Context<T>) -> Result<(), Error>
     where
         A: InterruptedBy<T>,
         T: Actor,
