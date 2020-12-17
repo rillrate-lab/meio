@@ -62,7 +62,7 @@ impl System {
                 _interrupt = signals.select_next_some() => {
                     if first_attempt {
                         first_attempt = false;
-                        address.interrupt()?;
+                        address.interrupt_by()?;
                     } else {
                         break;
                     }
@@ -80,6 +80,6 @@ impl System {
     where
         A: Actor + InterruptedBy<Self>,
     {
-        address.interrupt()
+        address.interrupt_by()
     }
 }

@@ -1,6 +1,6 @@
 //! This module contains `Address` to interact with an `Actor`.
 
-use crate::actor_runtime::{Actor, Context, Status};
+use crate::actor_runtime::{Actor, Status};
 use crate::handlers::{
     Action, ActionHandler, Consumer, Envelope, HpEnvelope, Interact, Interaction,
     InteractionHandler, InterruptedBy, Operation, Scheduled, ScheduledItem, StreamItem,
@@ -8,7 +8,6 @@ use crate::handlers::{
 use crate::ids::{Id, IdOf};
 use crate::lifecycle::Interrupt;
 use crate::linkage::{ActionPerformer, ActionRecipient, InteractionRecipient};
-use crate::system::System;
 use anyhow::Error;
 use futures::channel::{mpsc, oneshot};
 use futures::{SinkExt, Stream, StreamExt};
@@ -157,7 +156,7 @@ impl<A: Actor> Address<A> {
     ///
     /// It required a `Context` parameter just to restrict using it in
     /// methods other from handlers.
-    pub(crate) fn interrupt_by<T>(&mut self, _ctx: &Context<T>) -> Result<(), Error>
+    pub(crate) fn interrupt_by<T>(&mut self) -> Result<(), Error>
     where
         A: InterruptedBy<T>,
         T: Actor,
@@ -198,17 +197,6 @@ impl<A: Actor> Address<A> {
         I: Interaction,
     {
         InteractionRecipient::from(self.clone())
-    }
-
-    /// Launches the interruption process.
-    ///
-    /// It's an independent interrupt signal that can be sent anywhere, but only
-    /// if the recipient `Actor` accepts interruption signals from the `System`.
-    pub(crate) fn interrupt(&mut self) -> Result<(), Error>
-    where
-        A: InterruptedBy<System>,
-    {
-        self.send_hp_direct(Operation::Forward, Interrupt::<System>::new())
     }
 }
 

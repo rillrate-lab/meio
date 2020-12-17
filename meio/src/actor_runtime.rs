@@ -146,7 +146,7 @@ impl<A: Actor> Context<A> {
     where
         T: Actor + InterruptedBy<A>,
     {
-        address.interrupt_by(self)
+        address.interrupt_by()
     }
 
     /// Returns true if the shutdown process is in progress.
