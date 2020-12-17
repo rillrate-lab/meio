@@ -36,7 +36,7 @@ where
 /// If user sends `SIGINT` signal than the `Actor` will receive `InterruptedBy<System>` event,
 /// but for the second signal the function just returned to let the app terminate without waiting
 /// for any active task.
-pub async fn wait_or_interrrupt<A>(mut address: Address<A>) -> Result<(), Error>
+pub async fn wait_or_interrupt<A>(mut address: Address<A>) -> Result<(), Error>
 where
     A: Actor + InterruptedBy<System>,
 {

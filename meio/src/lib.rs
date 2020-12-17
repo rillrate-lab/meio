@@ -22,7 +22,7 @@ pub mod signal;
 pub mod system;
 pub mod task;
 
-pub use system::spawn;
+pub use system::{spawn, wait_or_interrupt};
 
 // %%%%%%%%%%%%%%%%%%%%%% TESTS %%%%%%%%%%%%%%%%%%%%%
 
