@@ -204,7 +204,7 @@ impl<A: Actor> Address<A> {
     ///
     /// It's an independent interrupt signal that can be sent anywhere, but only
     /// if the recipient `Actor` accepts interruption signals from the `System`.
-    pub fn interrupt(&mut self) -> Result<(), Error>
+    pub(crate) fn interrupt(&mut self) -> Result<(), Error>
     where
         A: InterruptedBy<System>,
     {
