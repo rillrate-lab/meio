@@ -9,7 +9,7 @@ use crate::ids::{Id, IdOf};
 use crate::lifecycle::Interrupt;
 use crate::linkage::{ActionPerformer, ActionRecipient, InteractionRecipient};
 use crate::system::System;
-use anyhow::{anyhow, Error};
+use anyhow::Error;
 use futures::channel::{mpsc, oneshot};
 use futures::{SinkExt, Stream, StreamExt};
 use std::convert::identity;
@@ -150,7 +150,7 @@ impl<A: Actor> Address<A> {
         };
         self.hp_msg_tx
             .unbounded_send(msg)
-            .map_err(|_| anyhow!("can't send a high-priority service message"))
+            .map_err(|_| Error::msg("can't send a high-priority service message"))
     }
 
     /// Sends an `Interrupt` event.
