@@ -3,7 +3,7 @@
 pub use crate::actor_runtime::{Actor, Context, Status};
 pub use crate::handlers::{
     Action, ActionHandler, Consumer, Eliminated, Interaction, InteractionHandler, InterruptedBy,
-    Scheduled, StartedBy,
+    Scheduled, StartedBy, TryConsumer,
 };
 pub use crate::ids::{Id, IdOf};
 pub use crate::linkage::{
