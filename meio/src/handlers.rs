@@ -98,7 +98,7 @@ struct ActionHandlerImpl<I> {
 #[async_trait]
 impl<A, I> Handler<A> for ActionHandlerImpl<I>
 where
-    A: Actor + ActionHandler<I>,
+    A: ActionHandler<I>,
     I: Action,
 {
     async fn handle(&mut self, actor: &mut A, ctx: &mut Context<A>) -> Result<(), Error> {
@@ -117,7 +117,7 @@ pub trait InteractionHandler<I: Interaction>: Actor {
 #[async_trait]
 impl<T, I> ActionHandler<Interact<I>> for T
 where
-    T: Actor + InteractionHandler<I>,
+    T: InteractionHandler<I>,
     I: Interaction,
 {
     async fn handle(&mut self, input: Interact<I>, ctx: &mut Context<Self>) -> Result<(), Error> {
@@ -166,7 +166,7 @@ pub trait StartedBy<A: Actor>: Actor {
 #[async_trait]
 impl<T, S> ActionHandler<lifecycle::Awake<S>> for T
 where
-    T: Actor + StartedBy<S>,
+    T: StartedBy<S>,
     S: Actor,
 {
     async fn handle(
@@ -188,7 +188,7 @@ pub trait InterruptedBy<A: Actor>: Actor {
 #[async_trait]
 impl<T, S> ActionHandler<lifecycle::Interrupt<S>> for T
 where
-    T: Actor + InterruptedBy<S>,
+    T: InterruptedBy<S>,
     S: Actor,
 {
     async fn handle(
@@ -210,7 +210,7 @@ pub trait Eliminated<A: Actor>: Actor {
 #[async_trait]
 impl<T, C> ActionHandler<lifecycle::Done<C>> for T
 where
-    T: Actor + Eliminated<C>,
+    T: Eliminated<C>,
     C: Actor,
 {
     async fn handle(
@@ -238,7 +238,7 @@ pub trait Consumer<T>: Actor {
 #[async_trait]
 impl<T, I> ActionHandler<StreamItem<I>> for T
 where
-    T: Actor + Consumer<I>,
+    T: Consumer<I>,
     I: Send + 'static,
 {
     async fn handle(&mut self, msg: StreamItem<I>, ctx: &mut Context<Self>) -> Result<(), Error> {
@@ -276,7 +276,7 @@ pub trait Scheduled<T>: Actor {
 #[async_trait]
 impl<T, I> ActionHandler<ScheduledItem<I>> for T
 where
-    T: Actor + Scheduled<I>,
+    T: Scheduled<I>,
     I: Send + 'static,
 {
     async fn handle(
