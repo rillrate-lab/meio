@@ -12,3 +12,4 @@ pub use crate::linkage::{
 pub use crate::lite_runtime::{LiteTask, StopReceiver, StopSignal, Task};
 pub use crate::signal;
 pub use crate::system::System;
+pub use crate::task;
