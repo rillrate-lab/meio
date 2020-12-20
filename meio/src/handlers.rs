@@ -246,6 +246,36 @@ where
     }
 }
 
+/// Represents a capability to receive message from a `TryStream`.
+#[async_trait]
+pub trait TryConsumer<T>: Actor {
+    /// `Error` value that can happen in a stream.
+    type Error;
+    /// The method called when the next item received from a `Stream`.
+    async fn handle(&mut self, item: T, ctx: &mut Context<Self>) -> Result<(), Error>;
+    /// The method called when the stream received an `Error`.
+    async fn error(&mut self, error: Self::Error, ctx: &mut Context<Self>) -> Result<(), Error>;
+}
+
+#[async_trait]
+impl<T, I> Consumer<Result<I, T::Error>> for T
+where
+    T: TryConsumer<I>,
+    T::Error: Send,
+    I: Send + 'static,
+{
+    async fn handle(
+        &mut self,
+        result: Result<I, T::Error>,
+        ctx: &mut Context<Self>,
+    ) -> Result<(), Error> {
+        match result {
+            Ok(item) => TryConsumer::handle(self, item, ctx).await,
+            Err(err) => TryConsumer::error(self, err, ctx).await,
+        }
+    }
+}
+
 /// Used to wrap scheduled event.
 pub(crate) struct ScheduledItem<T> {
     pub timestamp: Instant,
