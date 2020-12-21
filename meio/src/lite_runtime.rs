@@ -1,5 +1,6 @@
 use crate::actor_runtime::{Actor, Context, Status};
 use crate::handlers::{Action, ActionHandler, InterruptedBy, StartedBy};
+use crate::ids::Id;
 use crate::linkage::Address;
 use anyhow::Error;
 use async_trait::async_trait;
@@ -20,6 +21,32 @@ impl<T> StopSignal for T where T: Future<Output = ()> + FusedFuture + Send {}
 #[derive(Debug, Error)]
 #[error("task interrupted by a signal")]
 pub struct TaskStopped;
+
+pub fn stop_channel(id: Id) -> (StopSender, StopReceiver) {
+    let (tx, rx) = watch::channel(Status::Alive);
+    let sender = StopSender { id, tx };
+    let receiver = StopReceiver { status: rx };
+    (sender, receiver)
+}
+
+// TODO: Rename to `TaskAddress`
+// TODO: Make it cloneable
+#[derive(Debug)]
+pub struct StopSender {
+    id: Id,
+    tx: watch::Sender<Status>,
+}
+
+impl StopSender {
+    // TODO: Return `IdOf`
+    pub fn id(&self) -> Id {
+        self.id.clone()
+    }
+
+    pub fn stop(&self) -> Result<(), Error> {
+        self.tx.broadcast(Status::Stop).map_err(Error::from)
+    }
+}
 
 /// Contains a receiver with a status of a task.
 #[derive(Debug, Clone)]

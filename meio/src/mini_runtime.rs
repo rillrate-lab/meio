@@ -3,18 +3,16 @@ use crate::handlers::{ActionHandler, Operation};
 use crate::ids::{Id, IdOf};
 use crate::lifecycle::{LifecycleNotifier, TaskDone};
 use crate::linkage::Address;
-use crate::lite_runtime::{LiteTask, StopReceiver};
-use anyhow::Error;
-use async_trait::async_trait;
-use uuid::Uuid;
+use crate::lite_runtime::{stop_channel, LiteTask, StopReceiver, StopSender};
 
 // TODO: Spawn lite task with no supervisor (like Actors can do)
-pub(crate) fn spawn<T, S>(task: T, supervisor: Option<Address<S>>)
+pub(crate) fn spawn<T, S>(task: T, supervisor: Option<Address<S>>) -> StopSender
 where
     T: LiteTask,
     S: Actor + ActionHandler<TaskDone<T>>,
 {
     let id = Id::of_task(&task);
+    let (stop_sender, stop_receiver) = stop_channel(id.clone());
     let id_of = IdOf::<T>::new(id.clone());
     let done_notifier = {
         match supervisor {
@@ -30,8 +28,10 @@ where
         id,
         task,
         done_notifier,
+        stop_receiver,
     };
     tokio::spawn(runtime.entrypoint());
+    stop_sender
 }
 
 struct LiteRuntime<T: LiteTask> {
@@ -39,12 +39,15 @@ struct LiteRuntime<T: LiteTask> {
     id: Id,
     task: T,
     done_notifier: Box<dyn LifecycleNotifier>,
+    stop_receiver: StopReceiver,
 }
 
 impl<T: LiteTask> LiteRuntime<T> {
     async fn entrypoint(mut self) {
         log::info!("Task started: {:?}", self.id);
-        let task = self.task.routine(todo!());
+        if let Err(err) = self.task.routine(self.stop_receiver).await {
+            log::error!("Task failed: {:?}: {}", self.id, err);
+        }
         log::info!("Task finished: {:?}", self.id);
         if let Err(err) = self.done_notifier.notify() {
             log::error!(

@@ -1,11 +1,10 @@
 //! This module contains `Actor` trait and the runtime to execute it.
 
 use crate::handlers::{
-    ActionHandler, Eliminated, Envelope, HpEnvelope, InterruptedBy, Operation, StartedBy,
-    TaskEliminated,
+    Eliminated, Envelope, HpEnvelope, InterruptedBy, Operation, StartedBy, TaskEliminated,
 };
 use crate::ids::Id;
-use crate::lifecycle::{Awake, Done, LifecycleNotifier, LifetimeTracker, TaskDone};
+use crate::lifecycle::{Awake, Done, LifecycleNotifier, LifetimeTracker};
 use crate::linkage::Address;
 use crate::lite_runtime::{LiteTask, Task};
 use anyhow::Error;
@@ -40,8 +39,8 @@ impl Status {
 // It can be possible when `Controller` and `Operator` will be removed.
 pub(crate) fn spawn<A, S>(actor: A, supervisor: Option<Address<S>>) -> Address<A>
 where
-    A: Actor + ActionHandler<Awake<S>>,
-    S: Actor + ActionHandler<Done<A>>,
+    A: Actor + StartedBy<S>,
+    S: Actor + Eliminated<A>,
 {
     let id = Id::of_actor(&actor);
     let (hp_msg_tx, hp_msg_rx) = mpsc::unbounded();
@@ -141,7 +140,9 @@ impl<A: Actor> Context<A> {
         A: TaskEliminated<T>,
     {
         use crate::mini_runtime as mini;
-        mini::spawn(task, Some(self.address.clone()));
+        let stopper = mini::spawn(task, Some(self.address.clone()));
+        // TODO: Remove ::<T>:: spec, it will be detected by stopper (later)
+        self.lifetime_tracker.insert_task::<T>(stopper, group);
         // TODO: Return stopper.
     }
 

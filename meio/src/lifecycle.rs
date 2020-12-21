@@ -4,8 +4,8 @@ use crate::actor_runtime::Actor;
 use crate::handlers::{Action, ActionHandler, Operation};
 use crate::ids::{Id, IdOf};
 use crate::linkage::Address;
-use crate::lite_runtime::LiteTask;
-use anyhow::{anyhow, Error};
+use crate::lite_runtime::{LiteTask, StopSender};
+use anyhow::Error;
 use std::collections::{HashMap, HashSet};
 use std::marker::PhantomData;
 
@@ -59,24 +59,46 @@ impl<A: Actor> LifetimeTracker<A> {
         self.terminating
     }
 
-    pub fn insert<T: Actor>(&mut self, address: Address<T>, group: A::GroupBy)
+    // TODO: Rename to `insert_actor`
+    pub fn insert<T>(&mut self, address: Address<T>, group: A::GroupBy)
     where
         T: Actor + ActionHandler<Interrupt<A>>,
     {
         let stage = self.stages.entry(group.clone()).or_default();
         let id: Id = address.id().into();
         stage.ids.insert(id.clone());
-        let notifier = LifecycleNotifier::once(address, Operation::Forward, Interrupt::new());
-        let mut record = Record { group, notifier };
+        let mut notifier = LifecycleNotifier::once(address, Operation::Forward, Interrupt::new());
         if stage.terminating {
             log::warn!(
                 "Actor added into the terminating state (interrupt it immediately): {}",
                 id
             );
-            if let Err(err) = record.notifier.notify() {
+            if let Err(err) = notifier.notify() {
                 log::error!("Can't interrupt actor {:?} immediately: {}", id, err);
             }
         }
+        let record = Record { group, notifier };
+        self.records.insert(id, record);
+    }
+
+    pub fn insert_task<T>(&mut self, stopper: StopSender, group: A::GroupBy)
+    where
+        T: LiteTask,
+    {
+        let stage = self.stages.entry(group.clone()).or_default();
+        let id = stopper.id();
+        stage.ids.insert(id.clone());
+        let mut notifier = LifecycleNotifier::stop(stopper);
+        if stage.terminating {
+            log::warn!(
+                "Task added into the terminating state (interrupt it immediately): {}",
+                id
+            );
+            if let Err(err) = notifier.notify() {
+                log::error!("Can't interrupt task {:?} immediately: {}", id, err);
+            }
+        }
+        let record = Record { group, notifier };
         self.records.insert(id, record);
     }
 
@@ -154,6 +176,10 @@ where
 }
 
 impl dyn LifecycleNotifier {
+    pub fn ignore() -> Box<Self> {
+        Box::new(|| Ok(()))
+    }
+
     pub fn once<A, M>(mut address: Address<A>, operation: Operation, msg: M) -> Box<Self>
     where
         A: Actor + ActionHandler<M>,
@@ -164,16 +190,18 @@ impl dyn LifecycleNotifier {
             if let Some(msg) = msg.take() {
                 address.send_hp_direct(operation.clone(), msg)
             } else {
-                Err(anyhow!(
-                    "Attempt to send the second notification that can be sent once only."
+                Err(Error::msg(
+                    "Attempt to send the second notification that can be sent once only.",
                 ))
             }
         };
         Box::new(notifier)
     }
 
-    pub fn ignore() -> Box<Self> {
-        Box::new(|| Ok(()))
+    // TODO: Require <T: LiteTask>
+    pub fn stop(stopper: StopSender) -> Box<Self> {
+        let notifier = move || stopper.stop();
+        Box::new(notifier)
     }
 }
 
