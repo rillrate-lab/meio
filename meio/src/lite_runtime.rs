@@ -1,5 +1,8 @@
-use crate::actor_runtime::Status;
-use crate::ids::Id;
+use crate::actor_runtime::{Actor, Status};
+use crate::handlers::{Operation, TaskEliminated};
+use crate::ids::{Id, IdOf};
+use crate::lifecycle::{LifecycleNotifier, TaskDone};
+use crate::linkage::Address;
 use anyhow::Error;
 use async_trait::async_trait;
 use futures::{
@@ -10,6 +13,34 @@ use std::pin::Pin;
 use thiserror::Error;
 use tokio::sync::watch;
 use uuid::Uuid;
+
+pub(crate) fn spawn<T, S>(task: T, supervisor: Option<Address<S>>) -> StopSender
+where
+    T: LiteTask,
+    S: Actor + TaskEliminated<T>,
+{
+    let id = Id::of_task(&task);
+    let (stop_sender, stop_receiver) = stop_channel(id.clone());
+    let id_of = IdOf::<T>::new(id.clone());
+    let done_notifier = {
+        match supervisor {
+            None => LifecycleNotifier::ignore(),
+            Some(super_addr) => {
+                let event = TaskDone::new(id_of);
+                let op = Operation::Done { id: id.clone() };
+                LifecycleNotifier::once(super_addr, op, event)
+            }
+        }
+    };
+    let runtime = LiteRuntime {
+        id,
+        task,
+        done_notifier,
+        stop_receiver,
+    };
+    tokio::spawn(runtime.entrypoint());
+    stop_sender
+}
 
 /// Just receives a stop signal.
 pub trait StopSignal: Future<Output = ()> + FusedFuture + Send {}
@@ -53,12 +84,6 @@ pub struct StopReceiver {
 }
 
 impl StopReceiver {
-    /*
-    fn new(status: watch::Receiver<Status>) -> Self {
-        Self { status }
-    }
-    */
-
     /// Returns `true` is the task can be alive.
     pub fn is_alive(&self) -> bool {
         *self.status.borrow() == Status::Alive
@@ -94,108 +119,6 @@ async fn just_done(mut status: watch::Receiver<Status>) {
     }
 }
 
-/*
-struct LiteTaskFinished;
-
-impl Action for LiteTaskFinished {}
-
-struct LiteRuntime<T: LiteTask> {
-    task: T,
-    shutdown_rx: watch::Receiver<Status>,
-}
-
-impl<T: LiteTask> LiteRuntime<T> {
-    async fn entrypoint(self, mut actor: Address<Task<T>>) {
-        let name = self.task.name();
-        log::info!("Starting the task: {:?}", name);
-        let shutdown_receiver = StopReceiver::new(self.shutdown_rx);
-        let res = self.task.routine(shutdown_receiver).await;
-        if let Err(err) = res {
-            log::error!("LiteTask {} failed with: {}", name, err);
-        }
-        log::info!("Finishing the task: {:?}", name);
-        if let Err(err) = actor.act(LiteTaskFinished).await {
-            log::error!(
-                "Can't notify a Task about LiteTask routine termination: {}",
-                err
-            );
-        }
-    }
-}
-
-/// The `Actor` that spawns and controls a `LiteTask`.
-pub struct Task<T: LiteTask> {
-    name: String,
-    runtime: Option<LiteRuntime<T>>,
-    shutdown_tx: watch::Sender<Status>,
-}
-
-impl<T: LiteTask> Task<T> {
-    pub(crate) fn new(task: T) -> Self {
-        let name = task.name();
-        let (shutdown_tx, shutdown_rx) = watch::channel(Status::Alive);
-        let runtime = LiteRuntime { task, shutdown_rx };
-        Self {
-            name,
-            runtime: Some(runtime),
-            shutdown_tx,
-        }
-    }
-}
-
-#[async_trait]
-impl<T, S> StartedBy<S> for Task<T>
-where
-    T: LiteTask,
-    S: Actor,
-{
-    async fn handle(&mut self, ctx: &mut Context<Self>) -> Result<(), Error> {
-        if let Some(runtime) = self.runtime.take() {
-            let address = ctx.address().clone();
-            tokio::spawn(runtime.entrypoint(address));
-        } else {
-            log::error!("Task runtime received the second Awake event!");
-        }
-        Ok(())
-    }
-}
-
-#[async_trait]
-impl<T, S> InterruptedBy<S> for Task<T>
-where
-    T: LiteTask,
-    S: Actor,
-{
-    async fn handle(&mut self, _ctx: &mut Context<Self>) -> Result<(), Error> {
-        self.shutdown_tx.broadcast(Status::Stop)?;
-        Ok(())
-    }
-}
-
-#[async_trait]
-impl<T> ActionHandler<LiteTaskFinished> for Task<T>
-where
-    T: LiteTask,
-{
-    async fn handle(
-        &mut self,
-        _event: LiteTaskFinished,
-        ctx: &mut Context<Self>,
-    ) -> Result<(), Error> {
-        ctx.shutdown();
-        Ok(())
-    }
-}
-
-impl<T: LiteTask> Actor for Task<T> {
-    type GroupBy = ();
-
-    fn name(&self) -> String {
-        self.name.clone()
-    }
-}
-*/
-
 /// Minimalistic actor that hasn't `Address`.
 ///
 /// **Recommended** to implement sequences or intensive loops (routines).
@@ -211,4 +134,32 @@ pub trait LiteTask: Sized + Send + 'static {
     /// Routine of the task that can contain loops.
     /// It can taks into accout provided receiver to implement graceful interruption.
     async fn routine(self, stop: StopReceiver) -> Result<(), Error>;
+}
+
+struct LiteRuntime<T: LiteTask> {
+    // TODO: Use `IdOf` here
+    id: Id,
+    task: T,
+    done_notifier: Box<dyn LifecycleNotifier>,
+    stop_receiver: StopReceiver,
+}
+
+impl<T: LiteTask> LiteRuntime<T> {
+    async fn entrypoint(mut self) {
+        log::info!("Task started: {:?}", self.id);
+        if let Err(err) = self.task.routine(self.stop_receiver).await {
+            if let Err(real_err) = err.downcast::<TaskStopped>() {
+                // Can't downcast. It was a real error.
+                log::error!("Task failed: {:?}: {}", self.id, real_err);
+            }
+        }
+        log::info!("Task finished: {:?}", self.id);
+        if let Err(err) = self.done_notifier.notify() {
+            log::error!(
+                "Can't send done notification from the task {:?}: {}",
+                self.id,
+                err
+            );
+        }
+    }
 }

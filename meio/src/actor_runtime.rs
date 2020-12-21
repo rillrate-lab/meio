@@ -6,7 +6,7 @@ use crate::handlers::{
 use crate::ids::Id;
 use crate::lifecycle::{Awake, Done, LifecycleNotifier, LifetimeTracker};
 use crate::linkage::Address;
-use crate::lite_runtime::LiteTask;
+use crate::lite_runtime::{self, LiteTask};
 use anyhow::Error;
 use async_trait::async_trait;
 use futures::channel::mpsc;
@@ -141,8 +141,7 @@ impl<A: Actor> Context<A> {
         T: LiteTask,
         A: TaskEliminated<T>,
     {
-        use crate::mini_runtime as mini;
-        let stopper = mini::spawn(task, Some(self.address.clone()));
+        let stopper = lite_runtime::spawn(task, Some(self.address.clone()));
         // TODO: Remove ::<T>:: spec, it will be detected by stopper (later)
         self.lifetime_tracker.insert_task::<T>(stopper, group);
         // TODO: Return stopper.
