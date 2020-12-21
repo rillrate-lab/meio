@@ -4,6 +4,7 @@ use crate::actor_runtime::Actor;
 use crate::handlers::{Action, ActionHandler, Operation};
 use crate::ids::{Id, IdOf};
 use crate::linkage::Address;
+use crate::lite_runtime::LiteTask;
 use anyhow::{anyhow, Error};
 use std::collections::{HashMap, HashSet};
 use std::marker::PhantomData;
@@ -240,6 +241,27 @@ impl<T: Actor> Action for Done<T> {
         // It has normal priority, because `Done` message have to be the
         // latest in a queue of messages. No other message will be generated,
         // because `Actor` is terminated when its runtime sends `Done` event.
+        false
+    }
+}
+
+#[derive(Debug)]
+pub(crate) struct TaskDone<T: LiteTask> {
+    pub id: IdOf<T>,
+}
+
+impl<T: LiteTask> TaskDone<T> {
+    pub(crate) fn new(id: IdOf<T>) -> Self {
+        Self { id }
+    }
+}
+
+impl<T: LiteTask> Action for TaskDone<T> {
+    fn is_high_priority(&self) -> bool {
+        // It has normal priority, because `Done` message have to be the
+        // latest in a queue of messages.
+        // If it will be high priority than the `Task` can send messages that will
+        // be delivered after `TaskDone` message will be received.
         false
     }
 }

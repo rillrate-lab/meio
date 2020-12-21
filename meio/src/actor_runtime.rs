@@ -2,9 +2,10 @@
 
 use crate::handlers::{
     ActionHandler, Eliminated, Envelope, HpEnvelope, InterruptedBy, Operation, StartedBy,
+    TaskEliminated,
 };
 use crate::ids::Id;
-use crate::lifecycle::{Awake, Done, LifecycleNotifier, LifetimeTracker};
+use crate::lifecycle::{Awake, Done, LifecycleNotifier, LifetimeTracker, TaskDone};
 use crate::linkage::Address;
 use crate::lite_runtime::{LiteTask, Task};
 use anyhow::Error;
@@ -131,6 +132,17 @@ impl<A: Actor> Context<A> {
     {
         let actor = Task::new(task);
         self.spawn_actor(actor, group)
+    }
+
+    /// Starts and binds a `Task`.
+    pub fn spawn_mini_task<T>(&mut self, task: T, group: A::GroupBy)
+    where
+        T: LiteTask,
+        A: TaskEliminated<T>,
+    {
+        use crate::mini_runtime as mini;
+        mini::spawn(task, Some(self.address.clone()));
+        // TODO: Return stopper.
     }
 
     /// Interrupts an `Actor`.

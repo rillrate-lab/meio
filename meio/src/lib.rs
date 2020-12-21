@@ -17,6 +17,7 @@ pub mod ids;
 mod lifecycle;
 pub mod linkage;
 mod lite_runtime;
+mod mini_runtime;
 pub mod prelude;
 pub mod signal;
 pub mod system;
