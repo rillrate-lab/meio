@@ -61,10 +61,16 @@ impl AsRef<str> for Id {
 }
 
 /// Typed if of the task or actor.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct IdOf<T> {
     id: Id,
     _origin: PhantomData<T>,
+}
+
+impl<T> Clone for IdOf<T> {
+    fn clone(&self) -> Self {
+        Self::new(self.id.clone())
+    }
 }
 
 impl<T> IdOf<T> {

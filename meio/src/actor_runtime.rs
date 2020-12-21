@@ -184,6 +184,7 @@ impl<A: Actor> Context<A> {
 
 /// `ActorRuntime` for `Actor`.
 pub struct ActorRuntime<A: Actor> {
+    // TODO: Replace with `IdOf`,
     id: Id,
     actor: A,
     context: Context<A>,

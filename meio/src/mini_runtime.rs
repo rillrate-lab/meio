@@ -26,4 +26,32 @@ where
             }
         }
     };
+    let runtime = LiteRuntime {
+        id,
+        task,
+        done_notifier,
+    };
+    tokio::spawn(runtime.entrypoint());
+}
+
+struct LiteRuntime<T: LiteTask> {
+    // TODO: Use `IdOf` here
+    id: Id,
+    task: T,
+    done_notifier: Box<dyn LifecycleNotifier>,
+}
+
+impl<T: LiteTask> LiteRuntime<T> {
+    async fn entrypoint(mut self) {
+        log::info!("Task started: {:?}", self.id);
+        let task = self.task.routine(todo!());
+        log::info!("Task finished: {:?}", self.id);
+        if let Err(err) = self.done_notifier.notify() {
+            log::error!(
+                "Can't send done notification from the task {:?}: {}",
+                self.id,
+                err
+            );
+        }
+    }
 }
