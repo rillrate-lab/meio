@@ -1,7 +1,5 @@
-use crate::actor_runtime::{Actor, Context, Status};
-use crate::handlers::{Action, ActionHandler, InterruptedBy, StartedBy};
+use crate::actor_runtime::Status;
 use crate::ids::Id;
-use crate::linkage::Address;
 use anyhow::Error;
 use async_trait::async_trait;
 use futures::{
@@ -55,9 +53,11 @@ pub struct StopReceiver {
 }
 
 impl StopReceiver {
+    /*
     fn new(status: watch::Receiver<Status>) -> Self {
         Self { status }
     }
+    */
 
     /// Returns `true` is the task can be alive.
     pub fn is_alive(&self) -> bool {
@@ -94,6 +94,7 @@ async fn just_done(mut status: watch::Receiver<Status>) {
     }
 }
 
+/*
 struct LiteTaskFinished;
 
 impl Action for LiteTaskFinished {}
@@ -193,6 +194,7 @@ impl<T: LiteTask> Actor for Task<T> {
         self.name.clone()
     }
 }
+*/
 
 /// Minimalistic actor that hasn't `Address`.
 ///

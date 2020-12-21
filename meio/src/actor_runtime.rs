@@ -6,7 +6,7 @@ use crate::handlers::{
 use crate::ids::Id;
 use crate::lifecycle::{Awake, Done, LifecycleNotifier, LifetimeTracker};
 use crate::linkage::Address;
-use crate::lite_runtime::{LiteTask, Task};
+use crate::lite_runtime::LiteTask;
 use anyhow::Error;
 use async_trait::async_trait;
 use futures::channel::mpsc;
@@ -123,6 +123,7 @@ impl<A: Actor> Context<A> {
         address
     }
 
+    /*
     /// Starts and binds an `Actor`.
     pub fn spawn_task<T>(&mut self, task: T, group: A::GroupBy) -> Address<Task<T>>
     where
@@ -132,9 +133,10 @@ impl<A: Actor> Context<A> {
         let actor = Task::new(task);
         self.spawn_actor(actor, group)
     }
+    */
 
     /// Starts and binds a `Task`.
-    pub fn spawn_mini_task<T>(&mut self, task: T, group: A::GroupBy)
+    pub fn spawn_task<T>(&mut self, task: T, group: A::GroupBy)
     where
         T: LiteTask,
         A: TaskEliminated<T>,
