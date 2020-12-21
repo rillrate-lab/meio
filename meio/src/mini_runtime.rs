@@ -3,7 +3,7 @@ use crate::handlers::{ActionHandler, Operation};
 use crate::ids::{Id, IdOf};
 use crate::lifecycle::{LifecycleNotifier, TaskDone};
 use crate::linkage::Address;
-use crate::lite_runtime::{stop_channel, LiteTask, StopReceiver, StopSender};
+use crate::lite_runtime::{stop_channel, LiteTask, StopReceiver, StopSender, TaskStopped};
 
 // TODO: Spawn lite task with no supervisor (like Actors can do)
 pub(crate) fn spawn<T, S>(task: T, supervisor: Option<Address<S>>) -> StopSender
@@ -46,7 +46,10 @@ impl<T: LiteTask> LiteRuntime<T> {
     async fn entrypoint(mut self) {
         log::info!("Task started: {:?}", self.id);
         if let Err(err) = self.task.routine(self.stop_receiver).await {
-            log::error!("Task failed: {:?}: {}", self.id, err);
+            if let Err(real_err) = err.downcast::<TaskStopped>() {
+                // Can't downcast. It was a real error.
+                log::error!("Task failed: {:?}: {}", self.id, real_err);
+            }
         }
         log::info!("Task finished: {:?}", self.id);
         if let Err(err) = self.done_notifier.notify() {
