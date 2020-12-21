@@ -2,12 +2,11 @@
 
 use crate::handlers::Action;
 use crate::linkage::{ActionPerformer, ActionRecipient};
-use crate::lite_runtime::{LiteTask, StopReceiver};
+use crate::lite_runtime::LiteTask;
 use anyhow::Error;
 use async_trait::async_trait;
-use futures::{select, StreamExt};
 use std::time::Duration;
-use tokio::time::{interval, Instant};
+use tokio::time::Instant;
 
 /// The lite task that sends ticks to a `Recipient`.
 #[derive(Debug)]
@@ -31,29 +30,20 @@ impl HeartBeat {
 
 /// `Tick` value that sent by `HeartBeat` lite task.
 #[derive(Debug)]
-pub struct Tick(pub Instant);
+pub struct Tick(pub std::time::Instant);
 
 impl Action for Tick {}
 
 #[async_trait]
 impl LiteTask for HeartBeat {
-    async fn routine(mut self, stop: StopReceiver) -> Result<(), Error> {
-        let mut ticks = interval(self.duration).map(Tick).fuse();
+    async fn repeatable_routine(&mut self) -> Result<(), Error> {
+        let tick = Tick(std::time::Instant::now());
+        // IMPORTANT: Don't use `schedule` to avoid late beats: when the task was canceled,
+        // but teh scheduled messages still remained in the actor's queue.
+        self.recipient.act(tick).await
+    }
 
-        let recipient = &mut self.recipient;
-        let mut done = stop.into_future();
-
-        loop {
-            select! {
-                _ = done => {
-                    break;
-                }
-                tick = ticks.select_next_some() => {
-                    recipient.act(tick).await?;
-                }
-            }
-        }
-
-        Ok(())
+    fn retry_at(&self, last_attempt: Instant) -> Instant {
+        last_attempt + self.duration
     }
 }
