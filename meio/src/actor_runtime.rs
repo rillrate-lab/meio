@@ -18,6 +18,23 @@ use uuid::Uuid;
 
 const MESSAGES_CHANNEL_DEPTH: usize = 32;
 
+/// The main trait. Your structs have to implement it to
+/// be compatible with `ActorRuntime` and `Address` system.
+///
+/// **Recommended** to implement reactive activities.
+#[async_trait]
+pub trait Actor: Sized + Send + 'static {
+    /// Specifies how to group child actors.
+    type GroupBy: Clone + Send + Eq + Hash;
+
+    /// Returns unique name of the `Actor`.
+    /// Uses `Uuid` by default.
+    fn name(&self) -> String {
+        let uuid = Uuid::new_v4();
+        format!("Actor:{}({})", std::any::type_name::<Self>(), uuid)
+    }
+}
+
 /// Status of the task.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Status {
@@ -79,23 +96,6 @@ where
     };
     tokio::spawn(runtime.entrypoint());
     address
-}
-
-/// The main trait. Your structs have to implement it to
-/// be compatible with `ActorRuntime` and `Address` system.
-///
-/// **Recommended** to implement reactive activities.
-#[async_trait]
-pub trait Actor: Sized + Send + 'static {
-    /// Specifies how to group child actors.
-    type GroupBy: Clone + Send + Eq + Hash;
-
-    /// Returns unique name of the `Actor`.
-    /// Uses `Uuid` by default.
-    fn name(&self) -> String {
-        let uuid = Uuid::new_v4();
-        format!("Actor:{}({})", std::any::type_name::<Self>(), uuid)
-    }
 }
 
 /// `Context` of a `ActorRuntime` that contains `Address` and `Receiver`.

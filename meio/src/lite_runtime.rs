@@ -12,7 +12,53 @@ use futures::{
 use std::pin::Pin;
 use thiserror::Error;
 use tokio::sync::watch;
+use tokio::time::{delay_until, Instant};
 use uuid::Uuid;
+
+/// Minimalistic actor that hasn't `Address`.
+///
+/// **Recommended** to implement sequences or intensive loops (routines).
+#[async_trait]
+pub trait LiteTask: Sized + Send + 'static {
+    /// Returns unique name of the `LiteTask`.
+    /// Uses `Uuid` by default.
+    fn name(&self) -> String {
+        let uuid = Uuid::new_v4();
+        format!("Task:{}({})", std::any::type_name::<Self>(), uuid)
+    }
+
+    /// Routine of the task that can contain loops.
+    /// It can taks into accout provided receiver to implement graceful interruption.
+    async fn routine(self, mut stop: StopReceiver) -> Result<(), Error> {
+        stop.or(self.interruptable_routine())
+            .await
+            .map_err(Error::from)
+            // TODO: use `flatten` instead
+            .and_then(std::convert::identity)
+    }
+
+    /// Routine that can be unconditionally interrupted.
+    async fn interruptable_routine(mut self) -> Result<(), Error> {
+        loop {
+            let last_attempt = Instant::now();
+            if let Err(err) = self.repeatable_routine().await {
+                log::error!("Routine failed: {}", err);
+            }
+            let instant = self.retry_at(last_attempt);
+            delay_until(instant).await;
+        }
+    }
+
+    /// Routine that can be retried in case of fail.
+    async fn repeatable_routine(&mut self) -> Result<(), Error> {
+        Ok(())
+    }
+
+    /// When to do the next attempt for `repeatable_routine`.
+    fn retry_at(&self, _last_attempt: Instant) -> Instant {
+        Instant::now()
+    }
+}
 
 pub(crate) fn spawn<T, S>(task: T, supervisor: Option<Address<S>>) -> StopSender
 where
@@ -117,23 +163,6 @@ async fn just_done(mut status: watch::Receiver<Status>) {
             break;
         }
     }
-}
-
-/// Minimalistic actor that hasn't `Address`.
-///
-/// **Recommended** to implement sequences or intensive loops (routines).
-#[async_trait]
-pub trait LiteTask: Sized + Send + 'static {
-    /// Returns unique name of the `LiteTask`.
-    /// Uses `Uuid` by default.
-    fn name(&self) -> String {
-        let uuid = Uuid::new_v4();
-        format!("Task:{}({})", std::any::type_name::<Self>(), uuid)
-    }
-
-    /// Routine of the task that can contain loops.
-    /// It can taks into accout provided receiver to implement graceful interruption.
-    async fn routine(self, stop: StopReceiver) -> Result<(), Error>;
 }
 
 struct LiteRuntime<T: LiteTask> {
