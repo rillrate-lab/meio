@@ -7,7 +7,8 @@ pub use crate::handlers::{
 };
 pub use crate::ids::{Id, IdOf};
 pub use crate::linkage::{
-    ActionPerformer, ActionRecipient, Address, InteractionPerformer, InteractionRecipient, Link,
+    ActionPerformer, ActionRecipient, Address, Bridge, InteractionPerformer, InteractionRecipient,
+    Link,
 };
 pub use crate::lite_runtime::{LiteTask, StopReceiver, StopSignal};
 pub use crate::signal;

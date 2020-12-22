@@ -4,6 +4,7 @@ mod address;
 pub use address::Address;
 
 pub mod bridge;
+pub use bridge::Bridge;
 
 mod link;
 pub use link::Link;
