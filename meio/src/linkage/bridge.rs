@@ -23,16 +23,16 @@ pub fn channel<L, R>() -> (Bridge<L, R>, Bridge<R, L>) {
 
 /// The `Bridge` that contains a sender to another side actor and a receiver
 /// that can be binded to an `Actor`.
-pub struct Bridge<I, O> {
+pub struct Bridge<O, I> {
     // TODO: Store `Actor`'s id?
-    rx: Option<mpsc::UnboundedReceiver<I>>,
     tx: mpsc::UnboundedSender<O>,
+    rx: Option<mpsc::UnboundedReceiver<I>>,
 }
 
-impl<I, O> Bridge<I, O>
+impl<O, I> Bridge<O, I>
 where
-    I: Send + 'static,
     O: Send + 'static,
+    I: Send + 'static,
 {
     /// Bind the bridge to this `Actor`.
     pub fn bind<A>(&mut self, address: &mut Address<A>) -> Result<(), Error>
