@@ -3,6 +3,8 @@
 mod address;
 pub use address::Address;
 
+pub mod bridge;
+
 mod link;
 pub use link::Link;
 
