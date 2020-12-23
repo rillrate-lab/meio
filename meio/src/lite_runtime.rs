@@ -42,7 +42,7 @@ pub trait LiteTask: Sized + Send + 'static {
         loop {
             let last_attempt = Instant::now();
             if let Err(err) = self.repeatable_routine().await {
-                log::error!("Routine failed: {}", err);
+                log::error!("Routine {} failed: {}", self.name(), err);
             }
             let instant = self.retry_at(last_attempt);
             delay_until(instant).await;
