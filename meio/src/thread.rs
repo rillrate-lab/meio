@@ -12,6 +12,15 @@ pub struct ScopedRuntime {
     sender: Option<term::Sender>,
 }
 
+impl ScopedRuntime {
+    /*
+    /// Don't wait for the `Worker` termination on drop of this instance.
+    pub fn no_wait(&mut self) {
+        self.sender.take();
+    }
+    */
+}
+
 impl Drop for ScopedRuntime {
     fn drop(&mut self) {
         if let Some(sender) = self.sender.take() {
