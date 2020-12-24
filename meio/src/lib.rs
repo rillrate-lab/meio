@@ -21,6 +21,7 @@ pub mod prelude;
 pub mod signal;
 pub mod system;
 pub mod task;
+pub mod thread;
 
 // %%%%%%%%%%%%%%%%%%%%%% TESTS %%%%%%%%%%%%%%%%%%%%%
 
