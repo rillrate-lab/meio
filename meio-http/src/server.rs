@@ -1,9 +1,10 @@
 use anyhow::Error;
 use async_trait::async_trait;
-use hyper::server::conn::AddrStream;
-use hyper::service::{make_service_fn, service_fn, Service};
-use hyper::{Body, Request, Response, Server};
-use meio::prelude::{Actor, LiteTask, StopReceiver};
+use hyper::service::Service;
+use hyper::{Body, Request, Response, Server, StatusCode};
+use meio::prelude::{
+    Actor, Interaction, InteractionPerformer, InteractionRecipient, LiteTask, StopReceiver,
+};
 use slab::Slab;
 use std::future::Future;
 use std::net::SocketAddr;
@@ -13,8 +14,73 @@ use std::task::{self, Poll};
 use tokio::sync::RwLock;
 
 struct Handler {
-    // TODO: Add path checker
-// TODO: Add inter_action recipient
+    route: Box<dyn TryRoute>,
+}
+
+trait Extractor: Send + Sync + 'static {
+    type Request;
+
+    fn try_extract(&self, request: &Request<Body>) -> Option<Self::Request>;
+}
+
+struct ServerInteraction<T> {
+    pub value: T,
+}
+
+impl<T: Send + 'static> Interaction for ServerInteraction<T> {
+    type Output = Response<Body>;
+}
+
+/// Checks an incoming `Request` and forward it to a recipient if it was valid.
+struct Route<T, E> {
+    extractor: E,
+    recipient: InteractionRecipient<ServerInteraction<T>>,
+}
+
+trait TryRoute: Send + Sync + 'static {
+    fn try_route(&self, request: &Request<Body>) -> Option<Box<dyn RouteExecutor>>;
+}
+
+impl<T, E> TryRoute for Route<T, E>
+where
+    Self: Sync,
+    E: Extractor<Request = T>,
+    T: Send + 'static,
+{
+    fn try_route(&self, request: &Request<Body>) -> Option<Box<dyn RouteExecutor>> {
+        if let Some(value) = self.extractor.try_extract(request) {
+            let recipient = self.recipient.clone();
+            let route_interaction = RouterExecutorImpl {
+                value: Some(value),
+                recipient,
+            };
+            Some(Box::new(route_interaction))
+        } else {
+            None
+        }
+    }
+}
+
+#[async_trait]
+trait RouteExecutor: Send {
+    async fn execute(&mut self) -> Result<Response<Body>, Error>;
+}
+
+struct RouterExecutorImpl<T> {
+    value: Option<T>,
+    recipient: InteractionRecipient<ServerInteraction<T>>,
+}
+
+#[async_trait]
+impl<T> RouteExecutor for RouterExecutorImpl<T>
+where
+    T: Send + 'static,
+{
+    async fn execute(&mut self) -> Result<Response<Body>, Error> {
+        let value = self.value.take().unwrap();
+        let msg = ServerInteraction { value };
+        self.recipient.interact(msg).await
+    }
 }
 
 #[derive(Clone, Default)]
@@ -42,25 +108,14 @@ impl Actor for HttpServer {
 
 struct ServerTask {
     addr: SocketAddr,
-}
-
-impl ServerTask {
-    async fn make_service(
-        addr_stream: &AddrStream,
-    ) -> Result<impl Service<Request<Body>>, hyper::Error> {
-        Ok(service_fn(Self::handler))
-    }
-
-    async fn handler(req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
-        todo!()
-    }
+    routing_table: RoutingTable,
 }
 
 #[async_trait]
 impl LiteTask for ServerTask {
     async fn routine(self, stop: StopReceiver) -> Result<(), Error> {
-        let make_svc =
-            make_service_fn(|addr_stream| async { Ok::<_, Error>(service_fn(Self::handler)) });
+        let routing_table = self.routing_table.clone();
+        let make_svc = MakeSvc { routing_table };
         let server = Server::bind(&self.addr).serve(make_svc);
         server.with_graceful_shutdown(stop.into_future()).await?;
         Ok(())
@@ -83,9 +138,34 @@ impl Service<Request<Body>> for Svc {
     fn call(&mut self, req: Request<Body>) -> Self::Future {
         let routing_table = self.routing_table.clone();
         let fut = async move {
-            let handlers = routing_table.handlers.read().await;
-            for (_idx, handler) in handlers.iter() {}
-            todo!()
+            let mut route = None;
+            {
+                let handlers = routing_table.handlers.read().await;
+                for (_idx, handler) in handlers.iter() {
+                    route = handler.route.try_route(&req);
+                    if route.is_some() {
+                        break;
+                    }
+                }
+            }
+            let mut response;
+            if let Some(mut route) = route {
+                let resp = route.execute().await;
+                match resp {
+                    Ok(resp) => {
+                        response = resp;
+                    }
+                    Err(err) => {
+                        log::error!("Server error for {}: {}", req.uri(), err);
+                        response = Response::new(Body::empty());
+                        *response.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
+                    }
+                }
+            } else {
+                response = Response::new(Body::empty());
+                *response.status_mut() = StatusCode::NOT_FOUND;
+            }
+            Ok(response)
         };
         Box::pin(fut)
     }
