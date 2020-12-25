@@ -1,0 +1,30 @@
+[package]
+name = "meio-http"
+version = "0.40.0"
+authors = [
+    "Denis Kolodin <deniskolodin@gmail.com>",
+    "overfloat <rillrate@gmail.com>",
+]
+edition = "2018"
+repository = "https://github.com/rate-technology/meio"
+homepage = "https://github.com/rate-technology/meio"
+documentation = "https://docs.rs/meio-ws/"
+license = "MIT/Apache-2.0"
+readme = "README.md"
+keywords = ["async", "actors"]
+categories = ["concurrency"]
+description = "Set of connectors for MEIO framework"
+
+[dependencies]
+anyhow = "1.0.33"
+async-trait = "0.1.41"
+async-tungstenite = { version = "0.9.3", features = ["tokio-runtime"] }
+futures = "0.3.6"
+hyper = "0.13.9"
+log = "0.4.11"
+meio = { version = "0.40.0", path = "../meio" }
+serde = "1.0.117"
+thiserror = "1.0.22"
+tokio = "0.2.22"
+tungstenite = "0.11.1"
+warp = "0.2.5"
