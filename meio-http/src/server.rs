@@ -3,8 +3,8 @@ use async_trait::async_trait;
 use hyper::service::Service;
 use hyper::{Body, Request, Response, Server, StatusCode};
 use meio::prelude::{
-    Actor, Context, IdOf, Interaction, InteractionPerformer, InteractionRecipient, LiteTask,
-    StartedBy, StopReceiver, TaskEliminated,
+    Actor, Context, IdOf, Interaction, InteractionPerformer, InteractionRecipient, InterruptedBy,
+    LiteTask, StartedBy, StopReceiver, TaskEliminated,
 };
 use slab::Slab;
 use std::future::Future;
@@ -115,6 +115,14 @@ impl<T: Actor> StartedBy<T> for HttpServer {
             routing_table: self.routing_table.clone(),
         };
         ctx.spawn_task(server_task, ());
+        Ok(())
+    }
+}
+
+#[async_trait]
+impl<T: Actor> InterruptedBy<T> for HttpServer {
+    async fn handle(&mut self, ctx: &mut Context<Self>) -> Result<(), Error> {
+        ctx.shutdown();
         Ok(())
     }
 }
