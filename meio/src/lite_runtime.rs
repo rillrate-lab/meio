@@ -10,9 +10,10 @@ use futures::{
     Future, FutureExt,
 };
 use std::pin::Pin;
+use std::time::{Duration, Instant};
 use thiserror::Error;
 use tokio::sync::watch;
-use tokio::time::{delay_until, Instant};
+use tokio::time::delay_until;
 use uuid::Uuid;
 
 /// Minimalistic actor that hasn't `Address`.
@@ -29,6 +30,9 @@ pub trait LiteTask: Sized + Send + 'static {
 
     /// Routine of the task that can contain loops.
     /// It can taks into accout provided receiver to implement graceful interruption.
+    ///
+    /// By default uses the following calling chain that you can override at any step:
+    /// `routine` -> `interruptable_routine` -> `repeatable_routine` -> `retry_at` -> `retry_delay`
     async fn routine(self, mut stop: StopReceiver) -> Result<(), Error> {
         stop.or(self.interruptable_routine())
             .await
@@ -45,7 +49,7 @@ pub trait LiteTask: Sized + Send + 'static {
                 log::error!("Routine {} failed: {}", self.name(), err);
             }
             let instant = self.retry_at(last_attempt);
-            delay_until(instant).await;
+            delay_until(instant.into()).await;
         }
     }
 
@@ -56,7 +60,12 @@ pub trait LiteTask: Sized + Send + 'static {
 
     /// When to do the next attempt for `repeatable_routine`.
     fn retry_at(&self, _last_attempt: Instant) -> Instant {
-        Instant::now()
+        Instant::now() + self.retry_delay(_last_attempt)
+    }
+
+    /// How long to wait to retry. Called by `retry_at` method.
+    fn retry_delay(&self, _last_attempt: Instant) -> Duration {
+        Duration::from_secs(5)
     }
 }
 
