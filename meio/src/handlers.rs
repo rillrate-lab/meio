@@ -6,7 +6,7 @@ use crate::actor_runtime::{Actor, Context};
 use crate::ids::{Id, IdOf};
 use crate::lifecycle;
 use crate::lite_runtime::LiteTask;
-use anyhow::{anyhow, Error};
+use anyhow::Error;
 use async_trait::async_trait;
 use futures::channel::oneshot;
 use std::time::Instant;
@@ -127,7 +127,9 @@ where
         // TODO: How to improve that???
         match send_res {
             Ok(()) => Ok(()),
-            Err(Ok(_)) => Err(anyhow!("Can't send the successful result of interaction")),
+            Err(Ok(_)) => Err(Error::msg(
+                "Can't send the successful result of interaction",
+            )),
             Err(Err(err)) => Err(err),
         }
     }

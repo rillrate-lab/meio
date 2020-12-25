@@ -18,6 +18,7 @@ description = "Set of connectors for MEIO framework"
 [dependencies]
 anyhow = "1.0.33"
 async-trait = "0.1.41"
+derive_more = "0.99.11"
 async-tungstenite = { version = "0.9.3", features = ["tokio-runtime"] }
 futures = "0.3.6"
 hyper = "0.13.9"
