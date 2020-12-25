@@ -1,10 +1,12 @@
+use crate::link;
 use anyhow::Error;
 use async_trait::async_trait;
 use hyper::service::Service;
 use hyper::{Body, Request, Response, Server, StatusCode};
 use meio::prelude::{
-    ActionHandler, Actor, Context, IdOf, Interaction, InteractionHandler, InteractionPerformer,
-    InteractionRecipient, InterruptedBy, LiteTask, StartedBy, StopReceiver, TaskEliminated,
+    ActionHandler, Actor, Address, Context, IdOf, Interaction, InteractionHandler,
+    InteractionPerformer, InteractionRecipient, InterruptedBy, LiteTask, StartedBy, StopReceiver,
+    TaskEliminated,
 };
 use slab::Slab;
 use std::future::Future;
@@ -18,87 +20,52 @@ struct Handler {
     route: Box<dyn Route>,
 }
 
-#[async_trait]
-pub trait Route: Send + Sync {
-    async fn try_route(&self, request: &Request<Body>) -> Option<Response<Body>>;
-}
-
-/*
-#[async_trait]
-pub trait RequestHandler<T>: Actor {
-    async fn handle(&mut self, request: T, ctx: &mut Context<Self>) -> Result<Response<Body>, Error>;
-}
-
-pub struct HttpRequest<T> {
-    pub value: T,
-}
-
-impl<T: Send + 'static> Interaction for HttpRequest<T> {
-    type Output = Response<Body>;
-}
-
-struct Handler {
-    route: Box<dyn TryRoute>,
+pub(crate) trait Route: Send + Sync {
+    fn try_route(
+        &self,
+        request: &Request<Body>,
+    ) -> Option<Pin<Box<dyn Future<Output = Response<Body>>>>>;
 }
 
 pub trait Extractor: Send + Sync + 'static {
-    type Request: Send + Sync + 'static;
+    type Request;
 
     fn try_extract(&self, request: &Request<Body>) -> Option<Self::Request>;
 }
 
-/// Checks an incoming `Request` and forward it to a recipient if it was valid.
-pub(crate) struct Route<T, E> {
-    pub extractor: E,
-    pub recipient: InteractionRecipient<HttpRequest<T>>,
-}
-
-pub(crate) trait TryRoute: Send + Sync + 'static {
-    fn try_route(&self, request: &Request<Body>) -> Option<Box<dyn RouteExecutor>>;
-}
-
-impl<T, E> TryRoute for Route<T, E>
+pub(crate) struct RouteImpl<E, A>
 where
-    Self: Sync,
-    E: Extractor<Request = T>,
-    T: Send + Sync + 'static,
+    E: Extractor,
+    A: Actor,
 {
-    fn try_route(&self, request: &Request<Body>) -> Option<Box<dyn RouteExecutor>> {
-        if let Some(value) = self.extractor.try_extract(request) {
-            let recipient = self.recipient.clone();
-            let route_interaction = RouterExecutorImpl {
-                value: Some(value),
-                recipient,
+    pub extractor: E,
+    pub address: Address<A>,
+}
+
+impl<E, A> Route for RouteImpl<E, A>
+where
+    E: Extractor,
+    E::Request: Interaction<Output = (u16, String)>,
+    A: Actor + InteractionHandler<E::Request>,
+{
+    fn try_route(
+        &self,
+        request: &Request<Body>,
+    ) -> Option<Pin<Box<dyn Future<Output = Response<Body>>>>> {
+        if let Some(req) = self.extractor.try_extract(request) {
+            let mut address = self.address.clone();
+            let fut = async move {
+                let out = address.interact(req).await;
+                // TODO: Don't unwrap here!
+                let (code, s) = out.unwrap();
+                Response::new(s.into())
             };
-            Some(Box::new(route_interaction))
+            Some(Box::pin(fut))
         } else {
             None
         }
     }
 }
-
-#[async_trait]
-pub(crate) trait RouteExecutor: Send {
-    async fn execute(&mut self) -> Result<Response<Body>, Error>;
-}
-
-struct RouterExecutorImpl<T> {
-    value: Option<T>,
-    recipient: InteractionRecipient<HttpRequest<T>>,
-}
-
-#[async_trait]
-impl<T> RouteExecutor for RouterExecutorImpl<T>
-where
-    T: Send + 'static,
-{
-    async fn execute(&mut self) -> Result<Response<Body>, Error> {
-        let value = self.value.take().unwrap();
-        let msg = HttpRequest { value };
-        self.recipient.interact(msg).await
-    }
-}
-*/
 
 #[derive(Clone, Default)]
 struct RoutingTable {
@@ -155,6 +122,16 @@ impl TaskEliminated<HyperRoutine> for HttpServer {
     }
 }
 
+#[async_trait]
+impl ActionHandler<link::AddRoute> for HttpServer {
+    async fn handle(&mut self, msg: link::AddRoute, ctx: &mut Context<Self>) -> Result<(), Error> {
+        let mut handlers = self.routing_table.handlers.write().await;
+        let handler = Handler { route: msg.route };
+        handlers.insert(handler);
+        Ok(())
+    }
+}
+
 struct HyperRoutine {
     addr: SocketAddr,
     routing_table: RoutingTable,
@@ -189,8 +166,8 @@ impl Service<Request<Body>> for Svc {
         let fut = async move {
             let handlers = routing_table.handlers.read().await;
             for (_idx, handler) in handlers.iter() {
-                if let Some(resp) = handler.route.try_route(&req).await {
-                    return Ok(resp);
+                if let Some(resp_fut) = handler.route.try_route(&req) {
+                    todo!("Release the lock to call...");
                 }
             }
             let mut response = Response::new(Body::empty());

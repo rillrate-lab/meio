@@ -1,8 +1,10 @@
 use super::HttpServer;
-use crate::server::Route;
+use crate::server::{Extractor, Route, RouteImpl};
 use anyhow::Error;
 use derive_more::From;
-use meio::prelude::{Actor, Address, InteractionHandler, InteractionRecipient};
+use meio::prelude::{
+    Action, Actor, Address, Interaction, InteractionHandler, InteractionRecipient,
+};
 
 #[derive(Debug, Clone, From)]
 pub struct HttpServerLink {
@@ -10,25 +12,22 @@ pub struct HttpServerLink {
 }
 
 pub(super) struct AddRoute {
-    route: Box<dyn Route>,
+    pub route: Box<dyn Route>,
 }
 
-/*
+impl Action for AddRoute {}
+
 impl HttpServerLink {
-    pub async fn add_route<E, I>(&mut self, extractor: E, recipient: impl Into<InteractionRecipient<HttpRequest<I>>>) -> Result<(), Error>
+    pub async fn add_route<E, A>(&mut self, extractor: E, address: Address<A>) -> Result<(), Error>
     where
-        E: Extractor<Request = I>,
-        //A: Actor + InteractionHandler<HttpRequest<I>>,
-        I: Send + Sync + 'static,
+        E: Extractor,
+        E::Request: Interaction<Output = (u16, String)>,
+        A: Actor + InteractionHandler<E::Request>,
     {
-        let route = Route {
-            extractor,
-            recipient: recipient.into(),
-        };
+        let route = RouteImpl { extractor, address };
         let msg = AddRoute {
             route: Box::new(route),
         };
-        Ok(())
+        self.address.act(msg).await
     }
 }
-*/
