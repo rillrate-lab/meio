@@ -3,7 +3,8 @@ use async_trait::async_trait;
 use hyper::service::Service;
 use hyper::{Body, Request, Response, Server, StatusCode};
 use meio::prelude::{
-    Actor, Interaction, InteractionPerformer, InteractionRecipient, LiteTask, StopReceiver,
+    Actor, Context, IdOf, Interaction, InteractionPerformer, InteractionRecipient, LiteTask,
+    StartedBy, StopReceiver, TaskEliminated,
 };
 use slab::Slab;
 use std::future::Future;
@@ -106,13 +107,37 @@ impl Actor for HttpServer {
     type GroupBy = ();
 }
 
-struct ServerTask {
+#[async_trait]
+impl<T: Actor> StartedBy<T> for HttpServer {
+    async fn handle(&mut self, ctx: &mut Context<Self>) -> Result<(), Error> {
+        let server_task = HyperRoutine {
+            addr: self.addr.clone(),
+            routing_table: self.routing_table.clone(),
+        };
+        ctx.spawn_task(server_task, ());
+        Ok(())
+    }
+}
+
+#[async_trait]
+impl TaskEliminated<HyperRoutine> for HttpServer {
+    async fn handle(
+        &mut self,
+        _id: IdOf<HyperRoutine>,
+        ctx: &mut Context<Self>,
+    ) -> Result<(), Error> {
+        ctx.shutdown();
+        Ok(())
+    }
+}
+
+struct HyperRoutine {
     addr: SocketAddr,
     routing_table: RoutingTable,
 }
 
 #[async_trait]
-impl LiteTask for ServerTask {
+impl LiteTask for HyperRoutine {
     async fn routine(self, stop: StopReceiver) -> Result<(), Error> {
         let routing_table = self.routing_table.clone();
         let make_svc = MakeSvc { routing_table };
