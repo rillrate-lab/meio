@@ -16,6 +16,24 @@ use std::sync::Arc;
 use std::task::{self, Poll};
 use tokio::sync::RwLock;
 
+pub trait DirectPath: Default + Sized + Send + Sync + 'static {
+    fn paths() -> &'static [&'static str];
+}
+
+impl<T> FromRequest for T
+where
+    T: DirectPath,
+{
+    fn from_request(request: &Request<Body>) -> Option<Self> {
+        let path = request.uri().path();
+        if Self::paths().iter().any(|p| p == &path) {
+            Some(Self::default())
+        } else {
+            None
+        }
+    }
+}
+
 pub trait FromRequest: Sized + Send + Sync + 'static {
     fn from_request(request: &Request<Body>) -> Option<Self>;
 }

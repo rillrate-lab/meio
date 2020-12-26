@@ -1,7 +1,7 @@
 pub use hyper;
 
 pub mod server;
-pub use server::{FromRequest, HttpServer, Req};
+pub use server::{DirectPath, FromRequest, HttpServer, Req};
 
 pub mod link;
 pub use link::HttpServerLink;
