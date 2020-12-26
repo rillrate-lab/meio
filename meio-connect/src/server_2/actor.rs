@@ -155,7 +155,7 @@ where
             });
             *res.status_mut() = StatusCode::SWITCHING_PROTOCOLS;
             res.headers_mut()
-                .insert(header::UPGRADE, HeaderValue::from_static("protocol"));
+                .insert(header::UPGRADE, HeaderValue::from_static("websocket"));
             let fut = futures::future::ready(Ok(res));
             Ok(Box::pin(fut))
         } else {
