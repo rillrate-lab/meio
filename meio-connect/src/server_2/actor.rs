@@ -8,7 +8,6 @@ use async_trait::async_trait;
 //use async_tungstenite::{tokio::TokioAdapter, WebSocketStream};
 use futures::channel::mpsc;
 use headers::HeaderMapExt;
-use hyper::header;
 use hyper::server::conn::AddrStream;
 use hyper::service::Service;
 use hyper::upgrade::Upgraded;
@@ -133,9 +132,11 @@ where
         if let Some(value) = E::from_request(&request) {
             let mut res = Response::new(Body::empty());
             let mut address = self.address.clone();
-            if !request.headers().contains_key(header::UPGRADE) {
+            if request.headers().typed_get::<headers::Upgrade>().is_none() {
                 *res.status_mut() = StatusCode::BAD_REQUEST;
+                // TODO: Return error
             }
+            let ws_key = request.headers().typed_get::<headers::SecWebsocketKey>();
             let addr = *addr;
             tokio::task::spawn(async move {
                 let res = request.into_body().on_upgrade().await;
@@ -166,6 +167,10 @@ where
                 .typed_insert(headers::Connection::upgrade());
             res.headers_mut()
                 .typed_insert(headers::Upgrade::websocket());
+            if let Some(value) = ws_key {
+                res.headers_mut()
+                    .typed_insert(headers::SecWebsocketAccept::from(value));
+            }
             let fut = futures::future::ready(Ok(res));
             Ok(Box::pin(fut))
         } else {
