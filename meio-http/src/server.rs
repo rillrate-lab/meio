@@ -20,9 +20,7 @@ pub trait FromRequest: Sized + Send + Sync + 'static {
     fn from_request(request: &Request<Body>) -> Option<Self>;
 }
 
-pub struct Req<T> {
-    pub value: T,
-}
+pub struct Req<T>(pub T);
 
 impl<T: Send + 'static> Interaction for Req<T> {
     type Output = Response<Body>;
@@ -54,7 +52,7 @@ where
     ) -> Option<Pin<Box<dyn Future<Output = Result<Response<Body>, Error>> + Send>>> {
         if let Some(value) = E::from_request(request) {
             let mut address = self.address.clone();
-            let msg = Req { value };
+            let msg = Req(value);
             let fut = async move { address.interact(msg).await };
             Some(Box::pin(fut))
         } else {
