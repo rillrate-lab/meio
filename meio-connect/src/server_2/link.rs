@@ -1,5 +1,6 @@
 use super::actor::{FromRequest, Req, Route, RouteImpl, WsReq, WsRouteImpl};
 use super::HttpServer;
+use crate::Protocol;
 use anyhow::Error;
 use derive_more::From;
 use meio::prelude::{Action, ActionHandler, Actor, Address, InteractionHandler};
@@ -32,14 +33,15 @@ impl HttpServerLink {
         self.address.act(msg).await
     }
 
-    /*
-    pub async fn add_ws_route<E, A>(&mut self, address: Address<A>) -> Result<(), Error>
+    pub async fn add_ws_route<E, A, P>(&mut self, address: Address<A>) -> Result<(), Error>
     where
         E: FromRequest,
-        A: Actor + ActionHandler<WsReq<E>>,
+        A: Actor + ActionHandler<WsReq<E, P>>,
+        P: Protocol + Sync,
     {
         let route = WsRouteImpl {
             extracted: PhantomData,
+            protocol: PhantomData,
             address,
         };
         let msg = AddRoute {
@@ -47,5 +49,4 @@ impl HttpServerLink {
         };
         self.address.act(msg).await
     }
-    */
 }

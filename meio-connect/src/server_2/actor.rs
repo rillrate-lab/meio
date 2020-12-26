@@ -58,6 +58,7 @@ impl<T: Send + 'static> Interaction for Req<T> {
 pub(crate) trait Route: Send + Sync {
     fn try_route(
         &self,
+        addr: &SocketAddr,
         request: Request<Body>,
     ) -> Result<Pin<Box<dyn Future<Output = Result<Response<Body>, Error>> + Send>>, Request<Body>>;
 }
@@ -77,6 +78,7 @@ where
 {
     fn try_route(
         &self,
+        _addr: &SocketAddr,
         request: Request<Body>,
     ) -> Result<Pin<Box<dyn Future<Output = Result<Response<Body>, Error>> + Send>>, Request<Body>>
     {
@@ -121,6 +123,7 @@ where
 {
     fn try_route(
         &self,
+        addr: &SocketAddr,
         request: Request<Body>,
     ) -> Result<Pin<Box<dyn Future<Output = Result<Response<Body>, Error>> + Send>>, Request<Body>>
     {
@@ -130,12 +133,13 @@ where
             if !request.headers().contains_key(header::UPGRADE) {
                 *res.status_mut() = StatusCode::BAD_REQUEST;
             }
+            let addr = *addr;
             tokio::task::spawn(async move {
                 let res = request.into_body().on_upgrade().await;
                 match res {
                     Ok(upgraded) => {
                         let websocket = async_tungstenite::tokio::accept_async(upgraded).await?;
-                        let stream = WsHandler::new(todo!(), websocket);
+                        let stream = WsHandler::new(addr, websocket);
                         let msg = WsReq {
                             request: value,
                             stream,
@@ -258,6 +262,7 @@ impl Service<Request<Body>> for Svc {
         let uri = req.uri().to_owned();
         log::trace!("Incoming request path: {}", uri.path());
         let routing_table = self.routing_table.clone();
+        let addr = self.addr.clone();
         let fut = async move {
             let mut route = None;
             {
@@ -265,7 +270,7 @@ impl Service<Request<Body>> for Svc {
                 let mut opt_req = Some(req);
                 for (_idx, r) in routes.iter() {
                     if let Some(req) = opt_req.take() {
-                        let res = r.try_route(req);
+                        let res = r.try_route(&addr, req);
                         match res {
                             Ok(r) => {
                                 route = Some(r);
