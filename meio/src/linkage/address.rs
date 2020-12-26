@@ -7,7 +7,7 @@ use crate::handlers::{
 };
 use crate::ids::{Id, IdOf};
 use crate::lifecycle::Interrupt;
-use crate::linkage::{ActionPerformer, ActionRecipient, InteractionRecipient};
+use crate::linkage::{ActionRecipient, InteractionRecipient};
 use anyhow::Error;
 use futures::channel::{mpsc, oneshot};
 use futures::{SinkExt, Stream, StreamExt};

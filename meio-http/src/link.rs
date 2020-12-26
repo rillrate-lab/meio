@@ -3,9 +3,7 @@ use crate::server::{Extractor, Route, RouteImpl};
 use anyhow::Error;
 use derive_more::From;
 use hyper::{Body, Response};
-use meio::prelude::{
-    Action, Actor, Address, Interaction, InteractionHandler, InteractionRecipient,
-};
+use meio::prelude::{Action, Actor, Address, Interaction, InteractionHandler};
 
 #[derive(Debug, Clone, From)]
 pub struct HttpServerLink {

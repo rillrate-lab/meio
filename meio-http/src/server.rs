@@ -4,9 +4,8 @@ use async_trait::async_trait;
 use hyper::service::Service;
 use hyper::{Body, Request, Response, Server, StatusCode};
 use meio::prelude::{
-    ActionHandler, Actor, Address, Context, IdOf, Interaction, InteractionHandler,
-    InteractionPerformer, InteractionRecipient, InterruptedBy, LiteTask, StartedBy, StopReceiver,
-    TaskEliminated,
+    ActionHandler, Actor, Address, Context, IdOf, Interaction, InteractionHandler, InterruptedBy,
+    LiteTask, StartedBy, StopReceiver, TaskEliminated,
 };
 use slab::Slab;
 use std::future::Future;
@@ -119,7 +118,7 @@ impl TaskEliminated<HyperRoutine> for HttpServer {
 
 #[async_trait]
 impl ActionHandler<link::AddRoute> for HttpServer {
-    async fn handle(&mut self, msg: link::AddRoute, ctx: &mut Context<Self>) -> Result<(), Error> {
+    async fn handle(&mut self, msg: link::AddRoute, _ctx: &mut Context<Self>) -> Result<(), Error> {
         let mut handlers = self.routing_table.handlers.write().await;
         let handler = Handler { route: msg.route };
         handlers.insert(handler);
