@@ -49,8 +49,8 @@ impl<T: Send + 'static> Interaction for Req<T> {
 pub(crate) trait Route: Send + Sync {
     fn try_route(
         &self,
-        request: &Request<Body>,
-    ) -> Option<Pin<Box<dyn Future<Output = Result<Response<Body>, Error>> + Send>>>;
+        request: Request<Body>,
+    ) -> Result<Pin<Box<dyn Future<Output = Result<Response<Body>, Error>> + Send>>, Request<Body>>;
 }
 
 pub(crate) struct RouteImpl<E, A>
@@ -68,15 +68,16 @@ where
 {
     fn try_route(
         &self,
-        request: &Request<Body>,
-    ) -> Option<Pin<Box<dyn Future<Output = Result<Response<Body>, Error>> + Send>>> {
-        if let Some(value) = E::from_request(request) {
+        request: Request<Body>,
+    ) -> Result<Pin<Box<dyn Future<Output = Result<Response<Body>, Error>> + Send>>, Request<Body>>
+    {
+        if let Some(value) = E::from_request(&request) {
             let mut address = self.address.clone();
             let msg = Req { request: value };
             let fut = async move { address.interact(msg).await };
-            Some(Box::pin(fut))
+            Ok(Box::pin(fut))
         } else {
-            None
+            Err(request)
         }
     }
 }
@@ -103,9 +104,10 @@ where
 {
     fn try_route(
         &self,
-        request: &Request<Body>,
-    ) -> Option<Pin<Box<dyn Future<Output = Result<Response<Body>, Error>> + Send>>> {
-        if let Some(value) = E::from_request(request) {
+        request: Request<Body>,
+    ) -> Result<Pin<Box<dyn Future<Output = Result<Response<Body>, Error>> + Send>>, Request<Body>>
+    {
+        if let Some(value) = E::from_request(&request) {
             let mut address = self.address.clone();
             let msg = WsReq {
                 request: value,
@@ -117,7 +119,7 @@ where
             */
             todo!()
         } else {
-            None
+            Err(request)
         }
     }
 }
@@ -216,16 +218,26 @@ impl Service<Request<Body>> for Svc {
     }
 
     fn call(&mut self, req: Request<Body>) -> Self::Future {
-        log::trace!("Incoming request path: {}", req.uri().path());
+        let uri = req.uri().to_owned();
+        log::trace!("Incoming request path: {}", uri.path());
         let routing_table = self.routing_table.clone();
         let fut = async move {
             let mut route = None;
             {
                 let routes = routing_table.routes.read().await;
+                let mut opt_req = Some(req);
                 for (_idx, r) in routes.iter() {
-                    route = r.try_route(&req);
-                    if route.is_some() {
-                        break;
+                    if let Some(req) = opt_req.take() {
+                        let res = r.try_route(req);
+                        match res {
+                            Ok(r) => {
+                                route = Some(r);
+                                break;
+                            }
+                            Err(req) => {
+                                opt_req = Some(req);
+                            }
+                        }
                     }
                 }
             }
@@ -237,7 +249,7 @@ impl Service<Request<Body>> for Svc {
                         response = resp;
                     }
                     Err(err) => {
-                        log::error!("Server error for {}: {}", req.uri(), err);
+                        log::error!("Server error for {}: {}", uri, err);
                         response = Response::new(Body::empty());
                         *response.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
                     }
