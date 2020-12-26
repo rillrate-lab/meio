@@ -33,11 +33,11 @@ impl HttpServerLink {
         self.address.act(msg).await
     }
 
-    pub async fn add_ws_route<E, A, P>(&mut self, address: Address<A>) -> Result<(), Error>
+    pub async fn add_ws_route<E, P, A>(&mut self, address: Address<A>) -> Result<(), Error>
     where
         E: FromRequest,
-        A: Actor + ActionHandler<WsReq<E, P>>,
         P: Protocol + Sync,
+        A: Actor + ActionHandler<WsReq<E, P>>,
     {
         let route = WsRouteImpl {
             extracted: PhantomData,
