@@ -9,6 +9,7 @@ use meio::prelude::{
 };
 use slab::Slab;
 use std::future::Future;
+use std::marker::PhantomData;
 use std::net::SocketAddr;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -26,34 +27,39 @@ pub(crate) trait Route: Send + Sync {
     ) -> Option<Pin<Box<dyn Future<Output = Result<Response<Body>, Error>> + Send>>>;
 }
 
-pub trait Extractor: Send + Sync + 'static {
-    type Request;
-
-    fn try_extract(&self, request: &Request<Body>) -> Option<Self::Request>;
-}
-
 pub(crate) struct RouteImpl<E, A>
 where
-    E: Extractor,
     A: Actor,
 {
-    pub extractor: E,
+    pub extracted: PhantomData<E>,
     pub address: Address<A>,
+}
+
+pub trait FromRequest: Sized + Send + Sync + 'static {
+    fn from_request(request: &Request<Body>) -> Option<Self>;
+}
+
+pub struct Req<T> {
+    pub value: T,
+}
+
+impl<T: Send + 'static> Interaction for Req<T> {
+    type Output = Response<Body>;
 }
 
 impl<E, A> Route for RouteImpl<E, A>
 where
-    E: Extractor,
-    E::Request: Interaction<Output = Response<Body>>,
-    A: Actor + InteractionHandler<E::Request>,
+    E: FromRequest,
+    A: Actor + InteractionHandler<Req<E>>,
 {
     fn try_route(
         &self,
         request: &Request<Body>,
     ) -> Option<Pin<Box<dyn Future<Output = Result<Response<Body>, Error>> + Send>>> {
-        if let Some(req) = self.extractor.try_extract(request) {
+        if let Some(value) = E::from_request(request) {
             let mut address = self.address.clone();
-            let fut = async move { address.interact(req).await };
+            let msg = Req { value };
+            let fut = async move { address.interact(msg).await };
             Some(Box::pin(fut))
         } else {
             None
