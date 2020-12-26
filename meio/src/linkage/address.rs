@@ -179,7 +179,7 @@ impl<A: Actor> Address<A> {
     }
 
     /// Generates `ActionRecipient`.
-    #[deprecated(since = "0.40.0", note = "Use custom traits over addresses instead.")]
+    #[deprecated(since = "0.41.0", note = "Use custom traits over addresses instead.")]
     pub fn action_recipient<I>(&self) -> ActionRecipient<I>
     where
         A: ActionHandler<I>,
@@ -189,7 +189,7 @@ impl<A: Actor> Address<A> {
     }
 
     /// Generates `InteractionRecipient`.
-    #[deprecated(since = "0.40.0", note = "Use custom traits over addresses instead.")]
+    #[deprecated(since = "0.41.0", note = "Use custom traits over addresses instead.")]
     pub fn interaction_recipient<I>(&self) -> InteractionRecipient<I>
     where
         A: InteractionHandler<I>,
