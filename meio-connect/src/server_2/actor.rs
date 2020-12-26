@@ -8,6 +8,7 @@ use async_trait::async_trait;
 use async_tungstenite::{tokio::TokioAdapter, WebSocketStream};
 use futures::channel::mpsc;
 use hyper::header::{self, HeaderValue};
+use hyper::server::conn::AddrStream;
 use hyper::service::Service;
 use hyper::upgrade::Upgraded;
 use hyper::{Body, Request, Response, Server, StatusCode};
@@ -240,6 +241,7 @@ impl LiteTask for HyperRoutine {
 }
 
 struct Svc {
+    addr: SocketAddr,
     routing_table: RoutingTable,
 }
 
@@ -303,7 +305,7 @@ struct MakeSvc {
     routing_table: RoutingTable,
 }
 
-impl<T> Service<T> for MakeSvc {
+impl<'a> Service<&'a AddrStream> for MakeSvc {
     type Response = Svc;
     type Error = hyper::Error;
     type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
@@ -312,9 +314,15 @@ impl<T> Service<T> for MakeSvc {
         Poll::Ready(Ok(()))
     }
 
-    fn call(&mut self, _: T) -> Self::Future {
+    fn call(&mut self, addr_stream: &'a AddrStream) -> Self::Future {
         let routing_table = self.routing_table.clone();
-        let fut = async move { Ok(Svc { routing_table }) };
+        let addr = addr_stream.remote_addr();
+        let fut = async move {
+            Ok(Svc {
+                addr,
+                routing_table,
+            })
+        };
         Box::pin(fut)
     }
 }
