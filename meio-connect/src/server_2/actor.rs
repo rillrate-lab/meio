@@ -348,14 +348,6 @@ pub struct WsHandler<P: Protocol> {
     tx: mpsc::UnboundedSender<P::ToClient>,
 }
 
-/*
-impl<P: Protocol, T: Section> From<WsRequest<T>> for WsHandler<P> {
-    fn from(request: WsRequest<T>) -> Self {
-        Self::new(request.addr, request.websocket)
-    }
-}
-*/
-
 impl<P: Protocol> WsHandler<P> {
     fn new(addr: SocketAddr, websocket: WebSocket) -> Self {
         let (tx, rx) = mpsc::unbounded();
