@@ -16,7 +16,6 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::time::Instant;
 use tokio::sync::watch;
-use tokio::task::JoinHandle;
 
 /// `Address` to send messages to `Actor`.
 ///
@@ -165,7 +164,7 @@ impl<A: Actor> Address<A> {
     }
 
     /// Attaches a `Stream` of event to an `Actor`.
-    pub fn attach<S>(&self, stream: S) -> JoinHandle<()>
+    pub fn attach<S>(&self, stream: S)
     where
         A: Consumer<S::Item>,
         S: Stream + Send + Unpin + 'static,
@@ -175,7 +174,9 @@ impl<A: Actor> Address<A> {
             stream,
             address: self.clone(),
         };
-        tokio::spawn(forwarder.entrypoint())
+        // WARNING! Don't return `JoinHandle` because user can
+        // accidentally `.await` it and block a handler.
+        tokio::spawn(forwarder.entrypoint());
     }
 
     /// Generates `ActionRecipient`.
