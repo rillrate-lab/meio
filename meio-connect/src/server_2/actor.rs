@@ -5,7 +5,7 @@ use crate::{
 };
 use anyhow::Error;
 use async_trait::async_trait;
-use async_tungstenite::{tokio::TokioAdapter, WebSocketStream};
+//use async_tungstenite::{tokio::TokioAdapter, WebSocketStream};
 use futures::channel::mpsc;
 use hyper::header::{self, HeaderValue};
 use hyper::server::conn::AddrStream;
@@ -24,6 +24,8 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{self, Poll};
 use tokio::sync::RwLock;
+use tokio_tungstenite::WebSocketStream;
+use tungstenite::protocol::Role;
 
 pub trait DirectPath: Default + Sized + Send + Sync + 'static {
     fn paths() -> &'static [&'static str];
@@ -138,7 +140,12 @@ where
                 let res = request.into_body().on_upgrade().await;
                 match res {
                     Ok(upgraded) => {
-                        let websocket = async_tungstenite::tokio::accept_async(upgraded).await?;
+                        let websocket = tokio_tungstenite::WebSocketStream::from_raw_socket(
+                            upgraded,
+                            Role::Server,
+                            None,
+                        )
+                        .await;
                         let stream = WsHandler::new(addr, websocket);
                         let msg = WsReq {
                             request: value,
@@ -332,7 +339,7 @@ impl<'a> Service<&'a AddrStream> for MakeSvc {
     }
 }
 
-pub type WebSocket = WebSocketStream<TokioAdapter<Upgraded>>;
+pub type WebSocket = WebSocketStream<Upgraded>;
 
 struct WsInfo<P: Protocol> {
     addr: SocketAddr,
