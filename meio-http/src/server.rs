@@ -155,6 +155,7 @@ impl Service<Request<Body>> for Svc {
     }
 
     fn call(&mut self, req: Request<Body>) -> Self::Future {
+        log::trace!("Incoming request path: {}", req.uri().path());
         let routing_table = self.routing_table.clone();
         let fut = async move {
             let mut route = None;
