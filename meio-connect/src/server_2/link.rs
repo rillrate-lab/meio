@@ -32,6 +32,7 @@ impl HttpServerLink {
         self.address.act(msg).await
     }
 
+    /*
     pub async fn add_ws_route<E, A>(&mut self, address: Address<A>) -> Result<(), Error>
     where
         E: FromRequest,
@@ -46,4 +47,5 @@ impl HttpServerLink {
         };
         self.address.act(msg).await
     }
+    */
 }

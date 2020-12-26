@@ -1,7 +1,12 @@
 use super::link;
+use crate::{
+    talker::{Talker, TalkerCompatible},
+    Protocol, WsIncoming,
+};
 use anyhow::Error;
 use async_trait::async_trait;
 use async_tungstenite::{tokio::TokioAdapter, WebSocketStream};
+use futures::channel::mpsc;
 use hyper::header::{self, HeaderValue};
 use hyper::service::Service;
 use hyper::upgrade::Upgraded;
@@ -85,25 +90,33 @@ where
     }
 }
 
-pub struct WsReq<T> {
+pub struct WsReq<T, P: Protocol> {
     pub request: T,
-    pub stream: WebSocketStream<TokioAdapter<Upgraded>>,
+    pub stream: WsHandler<P>,
 }
 
-impl<T: Send + 'static> Action for WsReq<T> {}
+impl<T, P> Action for WsReq<T, P>
+where
+    T: Send + 'static,
+    P: Protocol,
+{
+}
 
-pub(crate) struct WsRouteImpl<E, A>
+pub(crate) struct WsRouteImpl<E, A, P>
 where
     A: Actor,
+    P: Protocol,
 {
     pub extracted: PhantomData<E>,
+    pub protocol: PhantomData<P>,
     pub address: Address<A>,
 }
 
-impl<E, A> Route for WsRouteImpl<E, A>
+impl<E, A, P> Route for WsRouteImpl<E, A, P>
 where
     E: FromRequest,
-    A: Actor + ActionHandler<WsReq<E>>,
+    A: Actor + ActionHandler<WsReq<E, P>>,
+    P: Protocol + Sync,
 {
     fn try_route(
         &self,
@@ -120,7 +133,8 @@ where
                 let res = request.into_body().on_upgrade().await;
                 match res {
                     Ok(upgraded) => {
-                        let stream = async_tungstenite::tokio::accept_async(upgraded).await?;
+                        let websocket = async_tungstenite::tokio::accept_async(upgraded).await?;
+                        let stream = WsHandler::new(todo!(), websocket);
                         let msg = WsReq {
                             request: value,
                             stream,
@@ -302,5 +316,99 @@ impl<T> Service<T> for MakeSvc {
         let routing_table = self.routing_table.clone();
         let fut = async move { Ok(Svc { routing_table }) };
         Box::pin(fut)
+    }
+}
+
+pub type WebSocket = WebSocketStream<TokioAdapter<Upgraded>>;
+
+struct WsInfo<P: Protocol> {
+    addr: SocketAddr,
+    connection: WebSocket,
+    rx: mpsc::UnboundedReceiver<P::ToClient>,
+}
+
+/// This struct wraps a `WebSocket` connection
+/// and produces processors for every incoming connection.
+pub struct WsHandler<P: Protocol> {
+    addr: SocketAddr,
+    info: Option<WsInfo<P>>,
+    tx: mpsc::UnboundedSender<P::ToClient>,
+}
+
+/*
+impl<P: Protocol, T: Section> From<WsRequest<T>> for WsHandler<P> {
+    fn from(request: WsRequest<T>) -> Self {
+        Self::new(request.addr, request.websocket)
+    }
+}
+*/
+
+impl<P: Protocol> WsHandler<P> {
+    fn new(addr: SocketAddr, websocket: WebSocket) -> Self {
+        let (tx, rx) = mpsc::unbounded();
+        let info = WsInfo {
+            addr,
+            connection: websocket,
+            rx,
+        };
+        Self {
+            addr,
+            info: Some(info),
+            tx,
+        }
+    }
+
+    pub fn addr(&self) -> SocketAddr {
+        self.addr
+    }
+
+    pub fn worker<A>(&mut self, address: Address<A>) -> WsProcessor<P, A>
+    where
+        A: Actor + ActionHandler<WsIncoming<P::ToServer>>,
+    {
+        let info = self.info.take().expect("already started");
+        WsProcessor { info, address }
+    }
+
+    pub fn send(&mut self, msg: P::ToClient) {
+        if let Err(err) = self.tx.unbounded_send(msg) {
+            log::error!("Can't send outgoing WS message: {}", err);
+        }
+    }
+}
+
+pub struct WsProcessor<P: Protocol, A: Actor> {
+    info: WsInfo<P>,
+    address: Address<A>,
+}
+
+impl<P, A> TalkerCompatible for WsProcessor<P, A>
+where
+    P: Protocol,
+    A: Actor + ActionHandler<WsIncoming<P::ToServer>>,
+{
+    type WebSocket = WebSocket;
+    type Message = tungstenite::Message;
+    type Error = tungstenite::Error;
+    type Actor = A;
+    type Codec = P::Codec;
+    type Incoming = P::ToServer;
+    type Outgoing = P::ToClient;
+}
+
+#[async_trait]
+impl<P, A> LiteTask for WsProcessor<P, A>
+where
+    P: Protocol,
+    A: Actor + ActionHandler<WsIncoming<P::ToServer>>,
+{
+    fn name(&self) -> String {
+        format!("WsProcessor({})", self.info.addr)
+    }
+
+    async fn routine(self, stop: StopReceiver) -> Result<(), Error> {
+        let mut talker =
+            Talker::<Self>::new(self.address, self.info.connection, self.info.rx, stop);
+        talker.routine().await.map(drop)
     }
 }
