@@ -1,6 +1,7 @@
 use crate::link;
 use anyhow::Error;
 use async_trait::async_trait;
+use async_tungstenite::{tokio::TokioAdapter, WebSocketStream};
 use hyper::header::{self, HeaderValue};
 use hyper::service::Service;
 use hyper::upgrade::Upgraded;
@@ -86,7 +87,7 @@ where
 
 pub struct WsReq<T> {
     pub request: T,
-    pub stream: Upgraded,
+    pub stream: WebSocketStream<TokioAdapter<Upgraded>>,
 }
 
 impl<T: Send + 'static> Action for WsReq<T> {}
@@ -119,9 +120,10 @@ where
                 let res = request.into_body().on_upgrade().await;
                 match res {
                     Ok(upgraded) => {
+                        let stream = async_tungstenite::tokio::accept_async(upgraded).await?;
                         let msg = WsReq {
                             request: value,
-                            stream: upgraded,
+                            stream,
                         };
                         address.act(msg).await?;
                         Ok(())
