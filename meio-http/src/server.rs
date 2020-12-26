@@ -24,7 +24,7 @@ pub(crate) trait Route: Send + Sync {
     fn try_route(
         &self,
         request: &Request<Body>,
-    ) -> Option<Pin<Box<dyn Future<Output = Response<Body>>>>>;
+    ) -> Option<Pin<Box<dyn Future<Output = Response<Body>> + Send>>>;
 }
 
 pub trait Extractor: Send + Sync + 'static {
@@ -51,14 +51,16 @@ where
     fn try_route(
         &self,
         request: &Request<Body>,
-    ) -> Option<Pin<Box<dyn Future<Output = Response<Body>>>>> {
+    ) -> Option<Pin<Box<dyn Future<Output = Response<Body>> + Send>>> {
         if let Some(req) = self.extractor.try_extract(request) {
             let mut address = self.address.clone();
             let fut = async move {
-                let out = address.interact(req).await;
-                // TODO: Don't unwrap here!
-                let (code, s) = out.unwrap();
-                Response::new(s.into())
+                let res = address.interact(req).await;
+                // TODO: Use sttatus codes
+                match res {
+                    Ok((code, s)) => Response::new(Body::from(s)),
+                    Err(err) => Response::new(Body::from(err.to_string())),
+                }
             };
             Some(Box::pin(fut))
         } else {
@@ -164,35 +166,37 @@ impl Service<Request<Body>> for Svc {
     fn call(&mut self, req: Request<Body>) -> Self::Future {
         let routing_table = self.routing_table.clone();
         let fut = async move {
-            let handlers = routing_table.handlers.read().await;
-            for (_idx, handler) in handlers.iter() {
-                if let Some(resp_fut) = handler.route.try_route(&req) {
-                    todo!("Release the lock to call...");
+            let mut route = None;
+            {
+                let handlers = routing_table.handlers.read().await;
+                for (_idx, handler) in handlers.iter() {
+                    route = handler.route.try_route(&req);
+                    if route.is_some() {
+                        break;
+                    }
                 }
             }
-            let mut response = Response::new(Body::empty());
-            *response.status_mut() = StatusCode::NOT_FOUND;
-            Ok(response)
+            if let Some(route) = route {
+                let response = route.await;
+                Ok(response)
             /*
-            let mut response;
-            if let Some(mut route) = route {
-                let resp = route.execute().await;
-                match resp {
-                    Ok(resp) => {
-                        response = resp;
-                    }
-                    Err(err) => {
-                        log::error!("Server error for {}: {}", req.uri(), err);
-                        response = Response::new(Body::empty());
-                        *response.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
-                    }
+            let resp = route.await;
+            match resp {
+                Ok(resp) => {
+                    response = resp;
                 }
-            } else {
-                response = Response::new(Body::empty());
-                *response.status_mut() = StatusCode::NOT_FOUND;
+                Err(err) => {
+                    log::error!("Server error for {}: {}", req.uri(), err);
+                    response = Response::new(Body::empty());
+                    *response.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
+                }
             }
-            Ok(response)
             */
+            } else {
+                let mut response = Response::new(Body::empty());
+                *response.status_mut() = StatusCode::NOT_FOUND;
+                Ok(response)
+            }
         };
         Box::pin(fut)
     }
