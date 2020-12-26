@@ -24,7 +24,7 @@ pub(crate) trait Route: Send + Sync {
     fn try_route(
         &self,
         request: &Request<Body>,
-    ) -> Option<Pin<Box<dyn Future<Output = Response<Body>> + Send>>>;
+    ) -> Option<Pin<Box<dyn Future<Output = Result<Response<Body>, Error>> + Send>>>;
 }
 
 pub trait Extractor: Send + Sync + 'static {
@@ -45,23 +45,16 @@ where
 impl<E, A> Route for RouteImpl<E, A>
 where
     E: Extractor,
-    E::Request: Interaction<Output = (u16, String)>,
+    E::Request: Interaction<Output = Response<Body>>,
     A: Actor + InteractionHandler<E::Request>,
 {
     fn try_route(
         &self,
         request: &Request<Body>,
-    ) -> Option<Pin<Box<dyn Future<Output = Response<Body>> + Send>>> {
+    ) -> Option<Pin<Box<dyn Future<Output = Result<Response<Body>, Error>> + Send>>> {
         if let Some(req) = self.extractor.try_extract(request) {
             let mut address = self.address.clone();
-            let fut = async move {
-                let res = address.interact(req).await;
-                // TODO: Use sttatus codes
-                match res {
-                    Ok((code, s)) => Response::new(Body::from(s)),
-                    Err(err) => Response::new(Body::from(err.to_string())),
-                }
-            };
+            let fut = async move { address.interact(req).await };
             Some(Box::pin(fut))
         } else {
             None
@@ -176,27 +169,24 @@ impl Service<Request<Body>> for Svc {
                     }
                 }
             }
+            let mut response;
             if let Some(route) = route {
-                let response = route.await;
-                Ok(response)
-            /*
-            let resp = route.await;
-            match resp {
-                Ok(resp) => {
-                    response = resp;
+                let resp = route.await;
+                match resp {
+                    Ok(resp) => {
+                        response = resp;
+                    }
+                    Err(err) => {
+                        log::error!("Server error for {}: {}", req.uri(), err);
+                        response = Response::new(Body::empty());
+                        *response.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
+                    }
                 }
-                Err(err) => {
-                    log::error!("Server error for {}: {}", req.uri(), err);
-                    response = Response::new(Body::empty());
-                    *response.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
-                }
-            }
-            */
             } else {
-                let mut response = Response::new(Body::empty());
+                response = Response::new(Body::empty());
                 *response.status_mut() = StatusCode::NOT_FOUND;
-                Ok(response)
             }
+            Ok(response)
         };
         Box::pin(fut)
     }
