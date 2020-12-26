@@ -16,8 +16,16 @@ use std::sync::Arc;
 use std::task::{self, Poll};
 use tokio::sync::RwLock;
 
-struct Handler {
-    route: Box<dyn Route>,
+pub trait FromRequest: Sized + Send + Sync + 'static {
+    fn from_request(request: &Request<Body>) -> Option<Self>;
+}
+
+pub struct Req<T> {
+    pub value: T,
+}
+
+impl<T: Send + 'static> Interaction for Req<T> {
+    type Output = Response<Body>;
 }
 
 pub(crate) trait Route: Send + Sync {
@@ -33,18 +41,6 @@ where
 {
     pub extracted: PhantomData<E>,
     pub address: Address<A>,
-}
-
-pub trait FromRequest: Sized + Send + Sync + 'static {
-    fn from_request(request: &Request<Body>) -> Option<Self>;
-}
-
-pub struct Req<T> {
-    pub value: T,
-}
-
-impl<T: Send + 'static> Interaction for Req<T> {
-    type Output = Response<Body>;
 }
 
 impl<E, A> Route for RouteImpl<E, A>
@@ -69,7 +65,7 @@ where
 
 #[derive(Clone, Default)]
 struct RoutingTable {
-    handlers: Arc<RwLock<Slab<Handler>>>,
+    routes: Arc<RwLock<Slab<Box<dyn Route>>>>,
 }
 
 pub struct HttpServer {
@@ -125,9 +121,8 @@ impl TaskEliminated<HyperRoutine> for HttpServer {
 #[async_trait]
 impl ActionHandler<link::AddRoute> for HttpServer {
     async fn handle(&mut self, msg: link::AddRoute, _ctx: &mut Context<Self>) -> Result<(), Error> {
-        let mut handlers = self.routing_table.handlers.write().await;
-        let handler = Handler { route: msg.route };
-        handlers.insert(handler);
+        let mut routes = self.routing_table.routes.write().await;
+        routes.insert(msg.route);
         Ok(())
     }
 }
@@ -166,9 +161,9 @@ impl Service<Request<Body>> for Svc {
         let fut = async move {
             let mut route = None;
             {
-                let handlers = routing_table.handlers.read().await;
-                for (_idx, handler) in handlers.iter() {
-                    route = handler.route.try_route(&req);
+                let routes = routing_table.routes.read().await;
+                for (_idx, r) in routes.iter() {
+                    route = r.try_route(&req);
                     if route.is_some() {
                         break;
                     }
