@@ -19,11 +19,16 @@ description = "Set of connectors for MEIO framework"
 anyhow = "1.0.33"
 async-trait = "0.1.41"
 async-tungstenite = { version = "0.9.3", features = ["tokio-runtime"] }
+derive_more = "0.99.11"
 futures = "0.3.6"
+# TODO: And this when possible (
+hyper = "0.13.9"
 log = "0.4.11"
 meio = { version = "0.41.0", path = "../meio" }
 serde = "1.0.117"
+slab = "0.4.2"
 thiserror = "1.0.22"
 tokio = "0.2.22"
 tungstenite = "0.11.1"
+# TODO: Remove this shit
 warp = "0.2.5"
