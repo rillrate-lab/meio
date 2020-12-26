@@ -1,7 +1,9 @@
 use crate::link;
 use anyhow::Error;
 use async_trait::async_trait;
+use hyper::header::{self, HeaderValue};
 use hyper::service::Service;
+use hyper::upgrade::Upgraded;
 use hyper::{Body, Request, Response, Server, StatusCode};
 use meio::prelude::{
     Action, ActionHandler, Actor, Address, Context, IdOf, Interaction, InteractionHandler,
@@ -84,7 +86,7 @@ where
 
 pub struct WsReq<T> {
     pub request: T,
-    pub stream: (),
+    pub stream: Upgraded,
 }
 
 impl<T: Send + 'static> Action for WsReq<T> {}
@@ -108,16 +110,33 @@ where
     ) -> Result<Pin<Box<dyn Future<Output = Result<Response<Body>, Error>> + Send>>, Request<Body>>
     {
         if let Some(value) = E::from_request(&request) {
+            let mut res = Response::new(Body::empty());
             let mut address = self.address.clone();
-            let msg = WsReq {
-                request: value,
-                stream: (),
-            };
-            /*
-            let fut = async move { address.interact(msg).await };
-            Some(Box::pin(fut))
-            */
-            todo!()
+            if !request.headers().contains_key(header::UPGRADE) {
+                *res.status_mut() = StatusCode::BAD_REQUEST;
+            }
+            tokio::task::spawn(async move {
+                let res = request.into_body().on_upgrade().await;
+                match res {
+                    Ok(upgraded) => {
+                        let msg = WsReq {
+                            request: value,
+                            stream: upgraded,
+                        };
+                        address.act(msg).await?;
+                        Ok(())
+                    }
+                    Err(err) => {
+                        log::error!("upgrade error: {}", err);
+                        Err(Error::from(err))
+                    }
+                }
+            });
+            *res.status_mut() = StatusCode::SWITCHING_PROTOCOLS;
+            res.headers_mut()
+                .insert(header::UPGRADE, HeaderValue::from_static("protocol"));
+            let fut = futures::future::ready(Ok(res));
+            Ok(Box::pin(fut))
         } else {
             Err(request)
         }
