@@ -165,23 +165,21 @@ impl<A: Actor> Address<A> {
     }
 
     /// Attaches a `Stream` of event to an `Actor`.
-    pub fn attach<S>(&mut self, stream: S) -> JoinHandle<()>
+    pub fn attach<S>(&self, stream: S) -> JoinHandle<()>
     where
         A: Consumer<S::Item>,
         S: Stream + Send + Unpin + 'static,
         S::Item: Send + 'static,
     {
-        let recipient = self.action_recipient();
-        let id = self.id.clone();
         let forwarder = Forwarder {
-            id,
             stream,
-            recipient,
+            address: self.clone(),
         };
         tokio::spawn(forwarder.entrypoint())
     }
 
     /// Generates `ActionRecipient`.
+    #[deprecated(since = "0.40.0", note = "Use custom traits over addresses instead.")]
     pub fn action_recipient<I>(&self) -> ActionRecipient<I>
     where
         A: ActionHandler<I>,
@@ -191,6 +189,7 @@ impl<A: Actor> Address<A> {
     }
 
     /// Generates `InteractionRecipient`.
+    #[deprecated(since = "0.40.0", note = "Use custom traits over addresses instead.")]
     pub fn interaction_recipient<I>(&self) -> InteractionRecipient<I>
     where
         A: InteractionHandler<I>,
@@ -202,24 +201,24 @@ impl<A: Actor> Address<A> {
 
 /// This worker receives items from a stream and send them as actions
 /// into an `Actor`.
-struct Forwarder<S: Stream> {
-    id: Id,
+struct Forwarder<S: Stream, A: Actor> {
     stream: S,
-    recipient: ActionRecipient<StreamItem<S::Item>>,
+    address: Address<A>,
 }
 
-impl<S> Forwarder<S>
+impl<S, A> Forwarder<S, A>
 where
     S: Stream + Unpin,
     S::Item: Send + 'static,
+    A: Actor + ActionHandler<StreamItem<S::Item>>,
 {
     async fn entrypoint(mut self) {
         while let Some(item) = self.stream.next().await {
             let action = StreamItem { item };
-            if let Err(err) = self.recipient.act(action).await {
+            if let Err(err) = self.address.act(action).await {
                 log::error!(
                     "Can't send an event to {:?} form a background stream: {}. Breaking...",
-                    self.id,
+                    self.address.id(),
                     err
                 );
                 break;
