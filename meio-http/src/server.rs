@@ -4,8 +4,8 @@ use async_trait::async_trait;
 use hyper::service::Service;
 use hyper::{Body, Request, Response, Server, StatusCode};
 use meio::prelude::{
-    ActionHandler, Actor, Address, Context, IdOf, Interaction, InteractionHandler, InterruptedBy,
-    LiteTask, StartedBy, StopReceiver, TaskEliminated,
+    Action, ActionHandler, Actor, Address, Context, IdOf, Interaction, InteractionHandler,
+    InterruptedBy, LiteTask, StartedBy, StopReceiver, TaskEliminated,
 };
 use slab::Slab;
 use std::future::Future;
@@ -38,7 +38,9 @@ pub trait FromRequest: Sized + Send + Sync + 'static {
     fn from_request(request: &Request<Body>) -> Option<Self>;
 }
 
-pub struct Req<T>(pub T);
+pub struct Req<T> {
+    pub request: T,
+}
 
 impl<T: Send + 'static> Interaction for Req<T> {
     type Output = Response<Body>;
@@ -70,9 +72,50 @@ where
     ) -> Option<Pin<Box<dyn Future<Output = Result<Response<Body>, Error>> + Send>>> {
         if let Some(value) = E::from_request(request) {
             let mut address = self.address.clone();
-            let msg = Req(value);
+            let msg = Req { request: value };
             let fut = async move { address.interact(msg).await };
             Some(Box::pin(fut))
+        } else {
+            None
+        }
+    }
+}
+
+pub struct WsReq<T> {
+    pub request: T,
+    pub stream: (),
+}
+
+impl<T: Send + 'static> Action for WsReq<T> {}
+
+pub(crate) struct WsRouteImpl<E, A>
+where
+    A: Actor,
+{
+    pub extracted: PhantomData<E>,
+    pub address: Address<A>,
+}
+
+impl<E, A> Route for WsRouteImpl<E, A>
+where
+    E: FromRequest,
+    A: Actor + ActionHandler<WsReq<E>>,
+{
+    fn try_route(
+        &self,
+        request: &Request<Body>,
+    ) -> Option<Pin<Box<dyn Future<Output = Result<Response<Body>, Error>> + Send>>> {
+        if let Some(value) = E::from_request(request) {
+            let mut address = self.address.clone();
+            let msg = WsReq {
+                request: value,
+                stream: (),
+            };
+            /*
+            let fut = async move { address.interact(msg).await };
+            Some(Box::pin(fut))
+            */
+            todo!()
         } else {
             None
         }
