@@ -7,7 +7,8 @@ use anyhow::Error;
 use async_trait::async_trait;
 //use async_tungstenite::{tokio::TokioAdapter, WebSocketStream};
 use futures::channel::mpsc;
-use hyper::header::{self, HeaderValue};
+use headers::HeaderMapExt;
+use hyper::header;
 use hyper::server::conn::AddrStream;
 use hyper::service::Service;
 use hyper::upgrade::Upgraded;
@@ -162,7 +163,9 @@ where
             });
             *res.status_mut() = StatusCode::SWITCHING_PROTOCOLS;
             res.headers_mut()
-                .insert(header::UPGRADE, HeaderValue::from_static("websocket"));
+                .typed_insert(headers::Connection::upgrade());
+            res.headers_mut()
+                .typed_insert(headers::Upgrade::websocket());
             let fut = futures::future::ready(Ok(res));
             Ok(Box::pin(fut))
         } else {
