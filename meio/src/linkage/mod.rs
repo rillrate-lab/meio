@@ -5,3 +5,6 @@ pub use address::Address;
 
 mod link;
 pub use link::Link;
+
+mod recipient;
+pub use recipient::ActionRecipient;
