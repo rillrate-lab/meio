@@ -177,6 +177,17 @@ impl<A: Actor> Address<A> {
         // accidentally `.await` it and block a handler.
         tokio::spawn(forwarder.entrypoint());
     }
+
+    /// Returns a `Link` to an `Actor`.
+    /// `Link` is a convenient concept for creating wrappers for
+    /// `Address` that provides methods instead of using message types
+    /// directly. It allows also to use private message types opaquely.
+    pub fn link<T>(&self) -> T
+    where
+        T: From<Self>,
+    {
+        T::from(self.clone())
+    }
 }
 
 /// This worker receives items from a stream and send them as actions
