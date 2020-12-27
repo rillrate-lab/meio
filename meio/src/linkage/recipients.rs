@@ -1,3 +1,8 @@
+//! If you need abstract recipients it's better to create own trait
+//! that covers all you needed methods and message, but not only one like
+//! former implementations did.
+
+/*
 //! This module contains recipients that works like addresses with
 //! a single incoming message type.
 
@@ -137,3 +142,4 @@ where
         }
     }
 }
+*/

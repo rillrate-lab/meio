@@ -6,10 +6,7 @@ pub use crate::handlers::{
     Scheduled, StartedBy, TaskEliminated, TryConsumer,
 };
 pub use crate::ids::{Id, IdOf};
-pub use crate::linkage::{
-    ActionPerformer, ActionRecipient, Address, Bridge, InteractionPerformer, InteractionRecipient,
-    Link,
-};
+pub use crate::linkage::{ActionPerformer, Address, Bridge, InteractionPerformer, Link};
 pub use crate::lite_runtime::{LiteTask, StopReceiver, StopSignal};
 pub use crate::signal;
 pub use crate::system::System;

@@ -11,6 +11,3 @@ pub use link::Link;
 
 mod performers;
 pub use performers::{ActionPerformer, InteractionPerformer};
-
-mod recipients;
-pub use recipients::{ActionRecipient, InteractionRecipient};

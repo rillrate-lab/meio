@@ -7,7 +7,6 @@ use crate::handlers::{
 };
 use crate::ids::{Id, IdOf};
 use crate::lifecycle::Interrupt;
-use crate::linkage::{ActionRecipient, InteractionRecipient};
 use anyhow::Error;
 use futures::channel::{mpsc, oneshot};
 use futures::{SinkExt, Stream, StreamExt};
@@ -179,6 +178,7 @@ impl<A: Actor> Address<A> {
         tokio::spawn(forwarder.entrypoint());
     }
 
+    /*
     /// Generates `ActionRecipient`.
     #[deprecated(since = "0.41.0", note = "Use custom traits over addresses instead.")]
     pub fn action_recipient<I>(&self) -> ActionRecipient<I>
@@ -198,6 +198,7 @@ impl<A: Actor> Address<A> {
     {
         InteractionRecipient::from(self.clone())
     }
+    */
 }
 
 /// This worker receives items from a stream and send them as actions
