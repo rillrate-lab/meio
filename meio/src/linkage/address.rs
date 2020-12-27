@@ -1,5 +1,6 @@
 //! This module contains `Address` to interact with an `Actor`.
 
+use super::{ActionRecipient, InteractionRecipient};
 use crate::actor_runtime::{Actor, Status};
 use crate::handlers::{
     Action, ActionHandler, Consumer, Envelope, HpEnvelope, Interact, Interaction,
@@ -187,6 +188,44 @@ impl<A: Actor> Address<A> {
         T: From<Self>,
     {
         T::from(self.clone())
+    }
+
+    /// Returns an `ActionRecipient` instance.
+    pub fn action_recipient<T>(&self) -> Box<dyn ActionRecipient<T>>
+    where
+        T: Action,
+        A: ActionHandler<T>,
+    {
+        Box::new(self.clone())
+    }
+
+    /// Returns an `InteractionRecipient` instance.
+    pub fn interaction_recipient<T>(&self) -> Box<dyn InteractionRecipient<T>>
+    where
+        T: Interaction,
+        A: InteractionHandler<T>,
+    {
+        Box::new(self.clone())
+    }
+}
+
+impl<T, A> Into<Box<dyn ActionRecipient<T>>> for Address<A>
+where
+    T: Action,
+    A: Actor + ActionHandler<T>,
+{
+    fn into(self) -> Box<dyn ActionRecipient<T>> {
+        Box::new(self)
+    }
+}
+
+impl<T, A> Into<Box<dyn InteractionRecipient<T>>> for Address<A>
+where
+    T: Interaction,
+    A: Actor + InteractionHandler<T>,
+{
+    fn into(self) -> Box<dyn InteractionRecipient<T>> {
+        Box::new(self)
     }
 }
 

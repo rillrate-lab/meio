@@ -182,7 +182,7 @@ mod tests {
         env_logger::try_init().ok();
         let mut address = System::spawn(MyActor);
         let stream = stream::iter(vec![MsgOne, MsgOne, MsgOne]);
-        address.attach(stream).await?;
+        address.attach(stream);
         // If you acivate this line the test will wait for the `Ctrl+C` signal.
         //address.attach(signal::CtrlC::stream()).await?;
         System::interrupt(&mut address)?;

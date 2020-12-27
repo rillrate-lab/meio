@@ -4,15 +4,22 @@ use crate::handlers::{Action, ActionHandler, Interaction, InteractionHandler};
 use anyhow::Error;
 use async_trait::async_trait;
 use std::fmt::Debug;
-use std::hash::Hash;
+//use std::hash::Hash;
 
 /// Abstract `Address` to the `Actor` that can handle a specific message type.
 #[async_trait]
-pub trait ActionRecipient<T: Action>:
-    Debug + Clone + Eq + PartialEq + Hash + Send + 'static
-{
+pub trait ActionRecipient<T: Action>: Debug + Send + 'static {
     /// Send an `Action` to an `Actor`.
     async fn act(&mut self, msg: T) -> Result<(), Error>;
+
+    #[doc(hidden)]
+    fn dyn_clone(&self) -> Box<dyn ActionRecipient<T>>;
+}
+
+impl<T: Action> Clone for Box<dyn ActionRecipient<T>> {
+    fn clone(&self) -> Self {
+        self.dyn_clone()
+    }
 }
 
 #[async_trait]
@@ -24,15 +31,26 @@ where
     async fn act(&mut self, msg: T) -> Result<(), Error> {
         Address::act(self, msg).await
     }
+
+    fn dyn_clone(&self) -> Box<dyn ActionRecipient<T>> {
+        Box::new(self.clone())
+    }
 }
 
 /// Abstract `Address` to the `Actor` that can handle an interaction.
 #[async_trait]
-pub trait InteractionRecipient<T: Interaction>:
-    Debug + Clone + Eq + PartialEq + Hash + Send + 'static
-{
+pub trait InteractionRecipient<T: Interaction>: Debug + Send + 'static {
     /// Interact with an `Actor`.
     async fn interact(&mut self, msg: T) -> Result<T::Output, Error>;
+
+    #[doc(hidden)]
+    fn dyn_clone(&self) -> Box<dyn InteractionRecipient<T>>;
+}
+
+impl<T: Interaction> Clone for Box<dyn InteractionRecipient<T>> {
+    fn clone(&self) -> Self {
+        self.dyn_clone()
+    }
 }
 
 #[async_trait]
@@ -43,5 +61,9 @@ where
 {
     async fn interact(&mut self, msg: T) -> Result<T::Output, Error> {
         Address::interact(self, msg).await
+    }
+
+    fn dyn_clone(&self) -> Box<dyn InteractionRecipient<T>> {
+        Box::new(self.clone())
     }
 }
