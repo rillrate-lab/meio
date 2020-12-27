@@ -177,28 +177,6 @@ impl<A: Actor> Address<A> {
         // accidentally `.await` it and block a handler.
         tokio::spawn(forwarder.entrypoint());
     }
-
-    /*
-    /// Generates `ActionRecipient`.
-    #[deprecated(since = "0.41.0", note = "Use custom traits over addresses instead.")]
-    pub fn action_recipient<I>(&self) -> ActionRecipient<I>
-    where
-        A: ActionHandler<I>,
-        I: Action,
-    {
-        ActionRecipient::from(self.clone())
-    }
-
-    /// Generates `InteractionRecipient`.
-    #[deprecated(since = "0.41.0", note = "Use custom traits over addresses instead.")]
-    pub fn interaction_recipient<I>(&self) -> InteractionRecipient<I>
-    where
-        A: InteractionHandler<I>,
-        I: Interaction,
-    {
-        InteractionRecipient::from(self.clone())
-    }
-    */
 }
 
 /// This worker receives items from a stream and send them as actions
