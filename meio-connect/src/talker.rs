@@ -7,7 +7,6 @@ use meio::prelude::{ActionHandler, Actor, Address, StopReceiver};
 use serde::ser::StdError;
 use std::fmt::Debug;
 use tungstenite::{error::Error as TungError, Message as TungMessage};
-use warp::{ws::Message as WarpMessage, Error as WarpError};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TermReason {
@@ -23,8 +22,6 @@ impl TermReason {
 
 pub trait WsError: Debug + StdError + Sync + Send + 'static {}
 
-impl WsError for WarpError {}
-
 impl WsError for TungError {}
 
 pub trait WsMessage: Debug + Sized {
@@ -35,30 +32,6 @@ pub trait WsMessage: Debug + Sized {
     fn is_binary(&self) -> bool;
     fn is_close(&self) -> bool;
     fn into_bytes(self) -> Vec<u8>;
-}
-
-impl WsMessage for WarpMessage {
-    fn binary(data: Vec<u8>) -> Self {
-        WarpMessage::binary(data)
-    }
-    fn is_ping(&self) -> bool {
-        WarpMessage::is_ping(self)
-    }
-    fn is_pong(&self) -> bool {
-        WarpMessage::is_pong(self)
-    }
-    fn is_text(&self) -> bool {
-        WarpMessage::is_text(self)
-    }
-    fn is_binary(&self) -> bool {
-        WarpMessage::is_binary(self)
-    }
-    fn is_close(&self) -> bool {
-        WarpMessage::is_close(self)
-    }
-    fn into_bytes(self) -> Vec<u8> {
-        WarpMessage::into_bytes(self)
-    }
 }
 
 impl WsMessage for TungMessage {
