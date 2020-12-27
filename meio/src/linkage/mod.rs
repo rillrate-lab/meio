@@ -8,6 +8,3 @@ pub use bridge::Bridge;
 
 mod link;
 pub use link::Link;
-
-mod performers;
-pub use performers::{ActionPerformer, InteractionPerformer};
