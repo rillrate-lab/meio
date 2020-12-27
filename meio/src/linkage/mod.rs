@@ -7,4 +7,4 @@ mod link;
 pub use link::Link;
 
 mod recipient;
-pub use recipient::ActionRecipient;
+pub use recipient::{ActionRecipient, InteractionRecipient};
