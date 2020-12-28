@@ -266,10 +266,17 @@ impl<T: Actor> Done<T> {
 
 impl<T: Actor> Action for Done<T> {
     fn is_high_priority(&self) -> bool {
+        /*
         // It has normal priority, because `Done` message have to be the
         // latest in a queue of messages. No other message will be generated,
         // because `Actor` is terminated when its runtime sends `Done` event.
         false
+        */
+
+        // This type of messages can be send in hp queue only, because if the
+        // normal channel will be full that this message can block the thread
+        // that have to notify the actor. It can be high-priority only.
+        true
     }
 }
 
@@ -287,10 +294,16 @@ impl<T: LiteTask> TaskDone<T> {
 
 impl<T: LiteTask> Action for TaskDone<T> {
     fn is_high_priority(&self) -> bool {
+        /*
         // It has normal priority, because `Done` message have to be the
         // latest in a queue of messages.
         // If it will be high priority than the `Task` can send messages that will
         // be delivered after `TaskDone` message will be received.
         false
+        */
+
+        // It's high priority, because it's impossible to use a channel with limited
+        // size for this type of messages.
+        true
     }
 }
