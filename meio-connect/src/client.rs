@@ -116,6 +116,7 @@ where
     P: Protocol,
     A: Actor + InteractionHandler<WsClientStatus<P>> + ActionHandler<WsIncoming<P::ToClient>>,
 {
+    // TODO: Return fail `TermReason` like server does
     async fn connection_routine(&mut self, mut stop: StopReceiver) -> Result<(), Error> {
         while stop.is_alive() {
             log::trace!("Ws client conencting to: {}", self.url);
