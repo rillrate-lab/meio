@@ -10,6 +10,7 @@ use anyhow::Error;
 use meio::prelude::Action;
 use serde::{de::DeserializeOwned, Serialize};
 use std::fmt::Debug;
+pub use talker::TermReason;
 
 pub trait ProtocolData: Serialize + DeserializeOwned + Debug + Send + 'static {}
 
