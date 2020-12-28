@@ -3,7 +3,7 @@
 use crate::handlers::{
     Eliminated, Envelope, HpEnvelope, InterruptedBy, Operation, StartedBy, TaskEliminated,
 };
-use crate::ids::Id;
+use crate::ids::{Id, IdOf};
 use crate::lifecycle::{Awake, Done, LifecycleNotifier, LifetimeTracker};
 use crate::linkage::Address;
 use crate::lite_runtime::{self, LiteTask};
@@ -85,7 +85,7 @@ where
         //terminator: Terminator::new(id.clone()),
     };
     let runtime = ActorRuntime {
-        id,
+        id: address.id(),
         actor,
         context,
         awake_envelope: Some(awake_envelope),
@@ -186,8 +186,7 @@ impl<A: Actor> Context<A> {
 
 /// `ActorRuntime` for `Actor`.
 pub struct ActorRuntime<A: Actor> {
-    // TODO: Replace with `IdOf`,
-    id: Id,
+    id: IdOf<A>,
     actor: A,
     context: Context<A>,
     awake_envelope: Option<Envelope<A>>,

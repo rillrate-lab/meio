@@ -84,14 +84,14 @@ where
         match supervisor {
             None => LifecycleNotifier::ignore(),
             Some(super_addr) => {
-                let event = TaskDone::new(id_of);
+                let event = TaskDone::new(id_of.clone());
                 let op = Operation::Done { id: id.clone() };
                 LifecycleNotifier::once(super_addr, op, event)
             }
         }
     };
     let runtime = LiteRuntime {
-        id,
+        id: id_of,
         task,
         done_notifier,
         stop_receiver,
@@ -178,8 +178,7 @@ async fn just_done(mut status: watch::Receiver<Status>) {
 }
 
 struct LiteRuntime<T: LiteTask> {
-    // TODO: Use `IdOf` here
-    id: Id,
+    id: IdOf<T>,
     task: T,
     done_notifier: Box<dyn LifecycleNotifier<Result<T::Output, Error>>>,
     stop_receiver: StopReceiver,
