@@ -108,6 +108,35 @@ where
     }
 }
 
+/// The high-priority action.
+pub trait InstantAction: Send + 'static {}
+
+/// Type of `Handler` to process high-priority messages.
+#[async_trait]
+pub trait InstantActionHandler<I: InstantAction>: Actor {
+    /// Asyncronous method that receives incoming message.
+    async fn handle(&mut self, input: I, _ctx: &mut Context<Self>) -> Result<(), Error>;
+}
+
+struct InstantActionHandlerImpl<I> {
+    input: Option<I>,
+}
+
+#[async_trait]
+impl<A, I> Handler<A> for InstantActionHandlerImpl<I>
+where
+    A: InstantActionHandler<I>,
+    I: InstantAction,
+{
+    async fn handle(&mut self, actor: &mut A, ctx: &mut Context<A>) -> Result<(), Error> {
+        let input = self
+            .input
+            .take()
+            .expect("instant action handler called twice");
+        actor.handle(input, ctx).await
+    }
+}
+
 /// Implements an interaction with an `Actor`.
 #[async_trait]
 pub trait InteractionHandler<I: Interaction>: Actor {
