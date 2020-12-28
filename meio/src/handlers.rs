@@ -5,7 +5,7 @@
 use crate::actor_runtime::{Actor, Context};
 use crate::ids::{Id, IdOf};
 use crate::lifecycle;
-use crate::lite_runtime::LiteTask;
+use crate::lite_runtime::{LiteTask, TaskError};
 use anyhow::Error;
 use async_trait::async_trait;
 use futures::channel::oneshot;
@@ -229,7 +229,12 @@ where
 #[async_trait]
 pub trait TaskEliminated<T: LiteTask>: Actor {
     /// Called when the `Task` finished.
-    async fn handle(&mut self, id: IdOf<T>, ctx: &mut Context<Self>) -> Result<(), Error>;
+    async fn handle(
+        &mut self,
+        id: IdOf<T>,
+        result: Result<T::Output, TaskError>,
+        ctx: &mut Context<Self>,
+    ) -> Result<(), Error>;
 }
 
 #[async_trait]
@@ -243,7 +248,7 @@ where
         done: lifecycle::TaskDone<C>,
         ctx: &mut Context<Self>,
     ) -> Result<(), Error> {
-        TaskEliminated::handle(self, done.id, ctx).await
+        TaskEliminated::handle(self, done.id, done.result, ctx).await
     }
 }
 

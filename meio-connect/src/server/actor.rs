@@ -13,7 +13,7 @@ use hyper::upgrade::Upgraded;
 use hyper::{Body, Request, Response, Server, StatusCode};
 use meio::prelude::{
     Action, ActionHandler, Actor, Address, Context, IdOf, Interaction, InteractionHandler,
-    InterruptedBy, LiteTask, StartedBy, StopReceiver, TaskEliminated,
+    InterruptedBy, LiteTask, StartedBy, StopReceiver, TaskEliminated, TaskError,
 };
 use slab::Slab;
 use std::future::Future;
@@ -226,6 +226,7 @@ impl TaskEliminated<HyperRoutine> for HttpServer {
     async fn handle(
         &mut self,
         _id: IdOf<HyperRoutine>,
+        _result: Result<(), TaskError>,
         ctx: &mut Context<Self>,
     ) -> Result<(), Error> {
         ctx.shutdown();
