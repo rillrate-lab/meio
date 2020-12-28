@@ -188,6 +188,7 @@ impl dyn LifecycleNotifier {
         let mut msg = Some(msg);
         let notifier = move || {
             if let Some(msg) = msg.take() {
+                // TODO: Take the priority into account (don't put all in hp)
                 address.send_hp_direct(operation.clone(), msg)
             } else {
                 Err(Error::msg(
@@ -276,11 +277,12 @@ impl<T: Actor> Action for Done<T> {
 #[derive(Debug)]
 pub(crate) struct TaskDone<T: LiteTask> {
     pub id: IdOf<T>,
+    pub output: Option<T::Output>,
 }
 
 impl<T: LiteTask> TaskDone<T> {
     pub(crate) fn new(id: IdOf<T>) -> Self {
-        Self { id }
+        Self { id, output: None }
     }
 }
 

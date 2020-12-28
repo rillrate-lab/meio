@@ -22,7 +22,7 @@ use uuid::Uuid;
 #[async_trait]
 pub trait LiteTask: Sized + Send + 'static {
     /// The result of a finished task.
-    type Output;
+    type Output: Send;
 
     /// Returns unique name of the `LiteTask`.
     /// Uses `Uuid` by default.
