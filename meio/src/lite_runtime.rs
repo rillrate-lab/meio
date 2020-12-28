@@ -177,6 +177,29 @@ async fn just_done(mut status: watch::Receiver<Status>) {
     }
 }
 
+#[derive(Debug, Error)]
+pub enum TaskError {
+    #[error("task was interrupted")]
+    Interrupted,
+    #[error("task failed: {0}")]
+    Other(Error),
+}
+
+impl TaskError {
+    pub fn is_interrupted(&self) -> bool {
+        matches!(self, Self::Interrupted)
+    }
+}
+
+impl From<Error> for TaskError {
+    fn from(error: Error) -> Self {
+        match error.downcast::<TaskStopped>() {
+            Ok(_stopped) => Self::Interrupted,
+            Err(other) => Self::Other(other),
+        }
+    }
+}
+
 struct LiteRuntime<T: LiteTask> {
     id: IdOf<T>,
     task: T,
@@ -188,9 +211,13 @@ struct LiteRuntime<T: LiteTask> {
 impl<T: LiteTask> LiteRuntime<T> {
     async fn entrypoint(mut self) {
         log::info!("Task started: {:?}", self.id);
-        let res = self.task.routine(self.stop_receiver).await;
+        let res = self
+            .task
+            .routine(self.stop_receiver)
+            .await
+            .map_err(TaskError::from);
         if let Err(err) = res.as_ref() {
-            if err.downcast_ref::<TaskStopped>().is_none() {
+            if err.is_interrupted() {
                 // Can't downcast. It was a real error.
                 log::error!("Task failed: {:?}: {}", self.id, err);
             }

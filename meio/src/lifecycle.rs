@@ -4,7 +4,7 @@ use crate::actor_runtime::Actor;
 use crate::handlers::{Action, ActionHandler, Operation};
 use crate::ids::{Id, IdOf};
 use crate::linkage::Address;
-use crate::lite_runtime::{LiteTask, StopSender};
+use crate::lite_runtime::{LiteTask, StopSender, TaskError};
 use anyhow::Error;
 use std::collections::{HashMap, HashSet};
 use std::marker::PhantomData;
@@ -276,11 +276,11 @@ impl<T: Actor> Action for Done<T> {
 #[derive(Debug)]
 pub(crate) struct TaskDone<T: LiteTask> {
     pub id: IdOf<T>,
-    pub result: Result<T::Output, Error>,
+    pub result: Result<T::Output, TaskError>,
 }
 
 impl<T: LiteTask> TaskDone<T> {
-    pub(crate) fn new(id: IdOf<T>, result: Result<T::Output, Error>) -> Self {
+    pub(crate) fn new(id: IdOf<T>, result: Result<T::Output, TaskError>) -> Self {
         Self { id, result }
     }
 }
