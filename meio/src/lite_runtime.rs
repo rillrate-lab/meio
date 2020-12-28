@@ -84,9 +84,9 @@ where
         match supervisor {
             None => LifecycleNotifier::ignore(),
             Some(super_addr) => {
-                let event = TaskDone::new(id_of.clone());
+                //let event = TaskDone::new(id_of.clone());
                 let op = Operation::Done { id: id.clone() };
-                LifecycleNotifier::once(super_addr, op, event)
+                LifecycleNotifier::once(super_addr, op)
             }
         }
     };
@@ -180,7 +180,8 @@ async fn just_done(mut status: watch::Receiver<Status>) {
 struct LiteRuntime<T: LiteTask> {
     id: IdOf<T>,
     task: T,
-    done_notifier: Box<dyn LifecycleNotifier<Result<T::Output, Error>>>,
+    // TODO: Add T::Output to TaskDone
+    done_notifier: Box<dyn LifecycleNotifier<TaskDone<T>>>,
     stop_receiver: StopReceiver,
 }
 
@@ -195,7 +196,9 @@ impl<T: LiteTask> LiteRuntime<T> {
             }
         }
         log::info!("Task finished: {:?}", self.id);
-        if let Err(err) = self.done_notifier.notify(res) {
+        // TODO: Add result to it
+        let task_done = TaskDone::new(self.id.clone());
+        if let Err(err) = self.done_notifier.notify(task_done) {
             log::error!(
                 "Can't send done notification from the task {:?}: {}",
                 self.id,

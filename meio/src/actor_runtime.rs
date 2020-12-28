@@ -72,9 +72,8 @@ where
         match supervisor {
             None => LifecycleNotifier::ignore(),
             Some(super_addr) => {
-                let event = Done::new(address.id());
                 let op = Operation::Done { id: id.clone() };
-                LifecycleNotifier::once(super_addr, op, event)
+                LifecycleNotifier::once(super_addr, op)
             }
         }
     };
@@ -190,7 +189,7 @@ pub struct ActorRuntime<A: Actor> {
     actor: A,
     context: Context<A>,
     awake_envelope: Option<Envelope<A>>,
-    done_notifier: Box<dyn LifecycleNotifier<()>>,
+    done_notifier: Box<dyn LifecycleNotifier<Done<A>>>,
     /// `Receiver` that have to be used to receive incoming messages.
     msg_rx: mpsc::Receiver<Envelope<A>>,
     /// High-priority receiver
@@ -223,7 +222,8 @@ impl<A: Actor> ActorRuntime<A> {
             }
         }
         log::info!("Actor finished: {:?}", self.id);
-        if let Err(err) = self.done_notifier.notify(()) {
+        let done_event = Done::new(self.id.clone());
+        if let Err(err) = self.done_notifier.notify(done_event) {
             log::error!(
                 "Can't send done notification from the actor {:?}: {}",
                 self.id,

@@ -29,17 +29,17 @@ impl Stage {
     }
 }
 
-struct Record<T> {
-    group: T,
-    notifier: Box<dyn LifecycleNotifier<()>>,
+struct Record<A: Actor> {
+    group: A::GroupBy,
+    notifier: Box<dyn LifecycleNotifier<Interrupt<A>>>,
 }
 
 // TODO: Rename to Terminator again
-pub(crate) struct LifetimeTracker<T: Actor> {
+pub(crate) struct LifetimeTracker<A: Actor> {
     terminating: bool,
-    prioritized: Vec<T::GroupBy>,
-    stages: HashMap<T::GroupBy, Stage>,
-    records: HashMap<Id, Record<T::GroupBy>>,
+    prioritized: Vec<A::GroupBy>,
+    stages: HashMap<A::GroupBy, Stage>,
+    records: HashMap<Id, Record<A>>,
 }
 
 // TODO: Change T to A
@@ -67,13 +67,14 @@ impl<A: Actor> LifetimeTracker<A> {
         let stage = self.stages.entry(group.clone()).or_default();
         let id: Id = address.id().into();
         stage.ids.insert(id.clone());
-        let mut notifier = LifecycleNotifier::once(address, Operation::Forward, Interrupt::new());
+        let mut notifier = LifecycleNotifier::once(address, Operation::Forward);
         if stage.terminating {
             log::warn!(
                 "Actor added into the terminating state (interrupt it immediately): {}",
                 id
             );
-            if let Err(err) = notifier.notify(()) {
+            let interrupt_event = Interrupt::new();
+            if let Err(err) = notifier.notify(interrupt_event) {
                 log::error!("Can't interrupt actor {:?} immediately: {}", id, err);
             }
         }
@@ -94,7 +95,10 @@ impl<A: Actor> LifetimeTracker<A> {
                 "Task added into the terminating state (interrupt it immediately): {}",
                 id
             );
-            if let Err(err) = notifier.notify(()) {
+            // But this event will never received, because LiteTasks can't do that.
+            // Instead it will set stop signal to watcher.
+            let interrupt_event = Interrupt::new();
+            if let Err(err) = notifier.notify(interrupt_event) {
                 log::error!("Can't interrupt task {:?} immediately: {}", id, err);
             }
         }
@@ -139,7 +143,8 @@ impl<A: Actor> LifetimeTracker<A> {
                     stage.terminating = true;
                     for id in stage.ids.iter() {
                         if let Some(record) = self.records.get_mut(id) {
-                            if let Err(err) = record.notifier.notify(()) {
+                            let interrupt_event = Interrupt::new();
+                            if let Err(err) = record.notifier.notify(interrupt_event) {
                                 log::error!(
                                     "Can't notify the supervisor about actor with {:?} termination: {}",
                                     id,
@@ -180,22 +185,15 @@ impl<P> dyn LifecycleNotifier<P> {
         Box::new(|_| Ok(()))
     }
 
-    // TODO: Move message `M` to `P`
-    pub fn once<A, M>(mut address: Address<A>, operation: Operation, msg: M) -> Box<Self>
+    // TODO: Make it `async` and take priorities into account
+    pub fn once<A>(mut address: Address<A>, operation: Operation) -> Box<Self>
     where
-        A: Actor + ActionHandler<M>,
-        M: Action,
+        A: Actor + ActionHandler<P>,
+        P: Action,
     {
-        let mut msg = Some(msg);
-        let notifier = move |_| {
-            if let Some(msg) = msg.take() {
-                // TODO: Take the priority into account (don't put all in hp)
-                address.send_hp_direct(operation.clone(), msg)
-            } else {
-                Err(Error::msg(
-                    "Attempt to send the second notification that can be sent once only.",
-                ))
-            }
+        let notifier = move |msg| {
+            // TODO: Take the priority into account (don't put all in hp)
+            address.send_hp_direct(operation.clone(), msg)
         };
         Box::new(notifier)
     }
