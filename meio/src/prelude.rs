@@ -7,7 +7,7 @@ pub use crate::handlers::{
 };
 pub use crate::ids::{Id, IdOf};
 pub use crate::linkage::{ActionRecipient, Address, InteractionRecipient};
-pub use crate::lite_runtime::{LiteTask, StopReceiver, StopSignal};
+pub use crate::lite_runtime::{LiteTask, StopReceiver, StopSignal, TaskError};
 pub use crate::signal;
 pub use crate::system::System;
 pub use crate::task;

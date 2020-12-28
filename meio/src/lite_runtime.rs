@@ -177,15 +177,19 @@ async fn just_done(mut status: watch::Receiver<Status>) {
     }
 }
 
+/// An error that can happen in a task.
 #[derive(Debug, Error)]
 pub enum TaskError {
+    /// The task was interrupted.
     #[error("task was interrupted")]
     Interrupted,
+    /// Task had any other error.
     #[error("task failed: {0}")]
     Other(Error),
 }
 
 impl TaskError {
+    /// If the task was interrupted it returs `true`.
     pub fn is_interrupted(&self) -> bool {
         matches!(self, Self::Interrupted)
     }
@@ -217,7 +221,7 @@ impl<T: LiteTask> LiteRuntime<T> {
             .await
             .map_err(TaskError::from);
         if let Err(err) = res.as_ref() {
-            if err.is_interrupted() {
+            if !err.is_interrupted() {
                 // Can't downcast. It was a real error.
                 log::error!("Task failed: {:?}: {}", self.id, err);
             }
