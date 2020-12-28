@@ -22,6 +22,7 @@ use tokio::sync::watch;
 /// Can be compared each other to identify senders to
 /// the same `Actor`.
 pub struct Address<A: Actor> {
+    // Plain `Id` used (not `IdOf`), because it's `Sync`.
     id: Id,
     /// High-priority messages sender
     hp_msg_tx: mpsc::UnboundedSender<HpEnvelope<A>>,
