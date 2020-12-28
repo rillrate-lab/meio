@@ -181,21 +181,22 @@ struct LiteRuntime<T: LiteTask> {
     // TODO: Use `IdOf` here
     id: Id,
     task: T,
-    done_notifier: Box<dyn LifecycleNotifier>,
+    done_notifier: Box<dyn LifecycleNotifier<Result<T::Output, Error>>>,
     stop_receiver: StopReceiver,
 }
 
 impl<T: LiteTask> LiteRuntime<T> {
     async fn entrypoint(mut self) {
         log::info!("Task started: {:?}", self.id);
-        if let Err(err) = self.task.routine(self.stop_receiver).await {
-            if let Err(real_err) = err.downcast::<TaskStopped>() {
+        let res = self.task.routine(self.stop_receiver).await;
+        if let Err(err) = res.as_ref() {
+            if let Some(real_err) = err.downcast_ref::<TaskStopped>() {
                 // Can't downcast. It was a real error.
                 log::error!("Task failed: {:?}: {}", self.id, real_err);
             }
         }
         log::info!("Task finished: {:?}", self.id);
-        if let Err(err) = self.done_notifier.notify() {
+        if let Err(err) = self.done_notifier.notify(res) {
             log::error!(
                 "Can't send done notification from the task {:?}: {}",
                 self.id,

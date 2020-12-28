@@ -191,7 +191,7 @@ pub struct ActorRuntime<A: Actor> {
     actor: A,
     context: Context<A>,
     awake_envelope: Option<Envelope<A>>,
-    done_notifier: Box<dyn LifecycleNotifier>,
+    done_notifier: Box<dyn LifecycleNotifier<()>>,
     /// `Receiver` that have to be used to receive incoming messages.
     msg_rx: mpsc::Receiver<Envelope<A>>,
     /// High-priority receiver
@@ -224,7 +224,7 @@ impl<A: Actor> ActorRuntime<A> {
             }
         }
         log::info!("Actor finished: {:?}", self.id);
-        if let Err(err) = self.done_notifier.notify() {
+        if let Err(err) = self.done_notifier.notify(()) {
             log::error!(
                 "Can't send done notification from the actor {:?}: {}",
                 self.id,

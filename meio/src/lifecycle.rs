@@ -31,7 +31,7 @@ impl Stage {
 
 struct Record<T> {
     group: T,
-    notifier: Box<dyn LifecycleNotifier>,
+    notifier: Box<dyn LifecycleNotifier<()>>,
 }
 
 // TODO: Rename to Terminator again
@@ -73,7 +73,7 @@ impl<A: Actor> LifetimeTracker<A> {
                 "Actor added into the terminating state (interrupt it immediately): {}",
                 id
             );
-            if let Err(err) = notifier.notify() {
+            if let Err(err) = notifier.notify(()) {
                 log::error!("Can't interrupt actor {:?} immediately: {}", id, err);
             }
         }
@@ -94,7 +94,7 @@ impl<A: Actor> LifetimeTracker<A> {
                 "Task added into the terminating state (interrupt it immediately): {}",
                 id
             );
-            if let Err(err) = notifier.notify() {
+            if let Err(err) = notifier.notify(()) {
                 log::error!("Can't interrupt task {:?} immediately: {}", id, err);
             }
         }
@@ -139,7 +139,7 @@ impl<A: Actor> LifetimeTracker<A> {
                     stage.terminating = true;
                     for id in stage.ids.iter() {
                         if let Some(record) = self.records.get_mut(id) {
-                            if let Err(err) = record.notifier.notify() {
+                            if let Err(err) = record.notifier.notify(()) {
                                 log::error!(
                                     "Can't notify the supervisor about actor with {:?} termination: {}",
                                     id,
@@ -161,32 +161,33 @@ impl<A: Actor> LifetimeTracker<A> {
     }
 }
 
-pub(crate) trait LifecycleNotifier: Send {
-    fn notify(&mut self) -> Result<(), Error>;
+pub(crate) trait LifecycleNotifier<P>: Send {
+    fn notify(&mut self, parameter: P) -> Result<(), Error>;
 }
 
-impl<T> LifecycleNotifier for T
+impl<T, P> LifecycleNotifier<P> for T
 where
-    T: FnMut() -> Result<(), Error>,
+    T: FnMut(P) -> Result<(), Error>,
     T: Send,
 {
-    fn notify(&mut self) -> Result<(), Error> {
-        (self)()
+    fn notify(&mut self, parameter: P) -> Result<(), Error> {
+        (self)(parameter)
     }
 }
 
-impl dyn LifecycleNotifier {
+impl<P> dyn LifecycleNotifier<P> {
     pub fn ignore() -> Box<Self> {
-        Box::new(|| Ok(()))
+        Box::new(|_| Ok(()))
     }
 
+    // TODO: Move message `M` to `P`
     pub fn once<A, M>(mut address: Address<A>, operation: Operation, msg: M) -> Box<Self>
     where
         A: Actor + ActionHandler<M>,
         M: Action,
     {
         let mut msg = Some(msg);
-        let notifier = move || {
+        let notifier = move |_| {
             if let Some(msg) = msg.take() {
                 // TODO: Take the priority into account (don't put all in hp)
                 address.send_hp_direct(operation.clone(), msg)
@@ -201,7 +202,7 @@ impl dyn LifecycleNotifier {
 
     // TODO: Require <T: LiteTask>
     pub fn stop(stopper: StopSender) -> Box<Self> {
-        let notifier = move || stopper.stop();
+        let notifier = move |_| stopper.stop();
         Box::new(notifier)
     }
 }
