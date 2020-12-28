@@ -197,7 +197,7 @@ impl<T: LiteTask> LiteRuntime<T> {
         }
         log::info!("Task finished: {:?}", self.id);
         // TODO: Add result to it
-        let task_done = TaskDone::new(self.id.clone());
+        let task_done = TaskDone::new(self.id.clone(), res);
         if let Err(err) = self.done_notifier.notify(task_done) {
             log::error!(
                 "Can't send done notification from the task {:?}: {}",

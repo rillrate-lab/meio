@@ -276,12 +276,12 @@ impl<T: Actor> Action for Done<T> {
 #[derive(Debug)]
 pub(crate) struct TaskDone<T: LiteTask> {
     pub id: IdOf<T>,
-    pub output: Option<T::Output>,
+    pub result: Result<T::Output, Error>,
 }
 
 impl<T: LiteTask> TaskDone<T> {
-    pub(crate) fn new(id: IdOf<T>) -> Self {
-        Self { id, output: None }
+    pub(crate) fn new(id: IdOf<T>, result: Result<T::Output, Error>) -> Self {
+        Self { id, result }
     }
 }
 
