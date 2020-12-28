@@ -190,9 +190,9 @@ impl<T: LiteTask> LiteRuntime<T> {
         log::info!("Task started: {:?}", self.id);
         let res = self.task.routine(self.stop_receiver).await;
         if let Err(err) = res.as_ref() {
-            if let Some(real_err) = err.downcast_ref::<TaskStopped>() {
+            if err.downcast_ref::<TaskStopped>().is_none() {
                 // Can't downcast. It was a real error.
-                log::error!("Task failed: {:?}: {}", self.id, real_err);
+                log::error!("Task failed: {:?}: {}", self.id, err);
             }
         }
         log::info!("Task finished: {:?}", self.id);
