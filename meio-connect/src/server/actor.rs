@@ -1,11 +1,10 @@
 use super::link;
 use crate::{
-    talker::{Talker, TalkerCompatible},
+    talker::{Talker, TalkerCompatible, TermReason},
     Protocol, WsIncoming,
 };
 use anyhow::Error;
 use async_trait::async_trait;
-//use async_tungstenite::{tokio::TokioAdapter, WebSocketStream};
 use futures::channel::mpsc;
 use headers::HeaderMapExt;
 use hyper::server::conn::AddrStream;
@@ -250,7 +249,9 @@ struct HyperRoutine {
 
 #[async_trait]
 impl LiteTask for HyperRoutine {
-    async fn routine(self, stop: StopReceiver) -> Result<(), Error> {
+    type Output = ();
+
+    async fn routine(self, stop: StopReceiver) -> Result<Self::Output, Error> {
         let routing_table = self.routing_table.clone();
         let make_svc = MakeSvc { routing_table };
         let server = Server::bind(&self.addr).serve(make_svc);
@@ -422,13 +423,15 @@ where
     P: Protocol,
     A: Actor + ActionHandler<WsIncoming<P::ToServer>>,
 {
+    type Output = TermReason;
+
     fn name(&self) -> String {
         format!("WsProcessor({})", self.info.addr)
     }
 
-    async fn routine(self, stop: StopReceiver) -> Result<(), Error> {
+    async fn routine(self, stop: StopReceiver) -> Result<Self::Output, Error> {
         let mut talker =
             Talker::<Self>::new(self.address, self.info.connection, self.info.rx, stop);
-        talker.routine().await.map(drop)
+        talker.routine().await
     }
 }

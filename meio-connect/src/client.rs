@@ -100,11 +100,13 @@ where
     P: Protocol,
     A: Actor + InteractionHandler<WsClientStatus<P>> + ActionHandler<WsIncoming<P::ToClient>>,
 {
+    type Output = ();
+
     fn name(&self) -> String {
         format!("WsClient({})", self.url)
     }
 
-    async fn routine(mut self, stop: StopReceiver) -> Result<(), Error> {
+    async fn routine(mut self, stop: StopReceiver) -> Result<Self::Output, Error> {
         self.connection_routine(stop).await
     }
 }

@@ -54,7 +54,9 @@ impl Action for Tick {}
 
 #[async_trait]
 impl LiteTask for HeartBeat {
-    async fn repeatable_routine(&mut self) -> Result<(), Error> {
+    type Output = ();
+
+    async fn repeatable_routine(&mut self) -> Result<Self::Output, Error> {
         // IMPORTANT: Don't use `schedule` to avoid late beats: when the task was canceled,
         // but teh scheduled messages still remained in the actor's queue.
         self.recipient.tick().await

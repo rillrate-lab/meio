@@ -21,6 +21,9 @@ use uuid::Uuid;
 /// **Recommended** to implement sequences or intensive loops (routines).
 #[async_trait]
 pub trait LiteTask: Sized + Send + 'static {
+    /// The result of a finished task.
+    type Output;
+
     /// Returns unique name of the `LiteTask`.
     /// Uses `Uuid` by default.
     fn name(&self) -> String {
@@ -33,7 +36,7 @@ pub trait LiteTask: Sized + Send + 'static {
     ///
     /// By default uses the following calling chain that you can override at any step:
     /// `routine` -> `interruptable_routine` -> `repeatable_routine` -> `retry_at` -> `retry_delay`
-    async fn routine(self, mut stop: StopReceiver) -> Result<(), Error> {
+    async fn routine(self, mut stop: StopReceiver) -> Result<Self::Output, Error> {
         stop.or(self.interruptable_routine())
             .await
             .map_err(Error::from)
@@ -42,7 +45,7 @@ pub trait LiteTask: Sized + Send + 'static {
     }
 
     /// Routine that can be unconditionally interrupted.
-    async fn interruptable_routine(mut self) -> Result<(), Error> {
+    async fn interruptable_routine(mut self) -> Result<Self::Output, Error> {
         loop {
             let last_attempt = Instant::now();
             if let Err(err) = self.repeatable_routine().await {
