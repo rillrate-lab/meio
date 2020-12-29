@@ -10,7 +10,7 @@ use async_tungstenite::{
 };
 use futures::channel::mpsc;
 use meio::prelude::{
-    ActionHandler, Actor, Address, Interaction, InteractionHandler, LiteTask, StopReceiver,
+    ActionHandler, Actor, Address, InstantAction, InstantActionHandler, LiteTask, StopReceiver,
 };
 use std::marker::PhantomData;
 use std::time::{Duration, Instant};
@@ -47,13 +47,7 @@ pub enum WsFailReason {
     ServerNotAvailable,
 }
 
-impl<P: Protocol> Interaction for WsClientStatus<P> {
-    type Output = ();
-
-    fn is_high_priority(&self) -> bool {
-        true
-    }
-}
+impl<P: Protocol> InstantAction for WsClientStatus<P> {}
 
 pub struct WsClient<P, A>
 where
@@ -68,7 +62,7 @@ where
 impl<P, A> WsClient<P, A>
 where
     P: Protocol,
-    A: Actor + InteractionHandler<WsClientStatus<P>> + ActionHandler<WsIncoming<P::ToClient>>,
+    A: Actor + InstantActionHandler<WsClientStatus<P>> + ActionHandler<WsIncoming<P::ToClient>>,
 {
     pub fn new(url: String, repeat_interval: Option<Duration>, address: Address<A>) -> Self {
         Self {
@@ -83,7 +77,7 @@ where
 impl<P, A> TalkerCompatible for WsClient<P, A>
 where
     P: Protocol,
-    A: Actor + InteractionHandler<WsClientStatus<P>> + ActionHandler<WsIncoming<P::ToClient>>,
+    A: Actor + InstantActionHandler<WsClientStatus<P>> + ActionHandler<WsIncoming<P::ToClient>>,
 {
     type WebSocket = WebSocketStream<TokioAdapter<TcpStream>>;
     type Message = tungstenite::Message;
@@ -98,7 +92,7 @@ where
 impl<P, A> LiteTask for WsClient<P, A>
 where
     P: Protocol,
-    A: Actor + InteractionHandler<WsClientStatus<P>> + ActionHandler<WsIncoming<P::ToClient>>,
+    A: Actor + InstantActionHandler<WsClientStatus<P>> + ActionHandler<WsIncoming<P::ToClient>>,
 {
     type Output = ();
 
@@ -114,7 +108,7 @@ where
 impl<P, A> WsClient<P, A>
 where
     P: Protocol,
-    A: Actor + InteractionHandler<WsClientStatus<P>> + ActionHandler<WsIncoming<P::ToClient>>,
+    A: Actor + InstantActionHandler<WsClientStatus<P>> + ActionHandler<WsIncoming<P::ToClient>>,
 {
     // TODO: Return fail `TermReason` like server does
     async fn connection_routine(&mut self, mut stop: StopReceiver) -> Result<(), Error> {
@@ -131,8 +125,7 @@ where
                     let (tx, rx) = mpsc::unbounded();
                     let sender = WsSender { tx };
                     self.address
-                        .interact(WsClientStatus::<P>::Connected { sender })
-                        .await?;
+                        .instant(WsClientStatus::<P>::Connected { sender })?;
                     // Interruptable by a stop
                     let mut talker =
                         Talker::<Self>::new(self.address.clone(), wss, rx, stop.clone());
@@ -161,11 +154,9 @@ where
                     original_err = err.into();
                 }
             }
-            self.address
-                .interact(WsClientStatus::<P>::Failed {
-                    reason: fail_reason.clone(),
-                })
-                .await?;
+            self.address.instant(WsClientStatus::<P>::Failed {
+                reason: fail_reason.clone(),
+            })?;
             if let Some(dur) = self.repeat_interval.clone() {
                 let elapsed = last_success.elapsed();
                 if elapsed < dur {
