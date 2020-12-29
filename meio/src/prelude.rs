@@ -2,8 +2,8 @@
 
 pub use crate::actor_runtime::{Actor, Context, Status};
 pub use crate::handlers::{
-    Action, ActionHandler, Consumer, Eliminated, Interaction, InteractionHandler, InterruptedBy,
-    Scheduled, StartedBy, TaskEliminated, TryConsumer,
+    Action, ActionHandler, Consumer, Eliminated, InstantAction, InstantActionHandler, Interaction,
+    InteractionHandler, InterruptedBy, Scheduled, StartedBy, TaskEliminated, TryConsumer,
 };
 pub use crate::ids::{Id, IdOf};
 pub use crate::linkage::{ActionRecipient, Address, InteractionRecipient};

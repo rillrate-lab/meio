@@ -3,8 +3,9 @@
 use super::{ActionRecipient, InteractionRecipient};
 use crate::actor_runtime::{Actor, Status};
 use crate::handlers::{
-    Action, ActionHandler, Consumer, Envelope, HpEnvelope, Interact, Interaction,
-    InteractionHandler, InterruptedBy, Operation, Scheduled, ScheduledItem, StreamItem,
+    Action, ActionHandler, Consumer, Envelope, HpEnvelope, InstantAction, InstantActionHandler,
+    Interact, Interaction, InteractionHandler, InterruptedBy, Operation, Scheduled, ScheduledItem,
+    StreamItem,
 };
 use crate::ids::{Id, IdOf};
 use crate::lifecycle::Interrupt;
@@ -89,12 +90,17 @@ impl<A: Actor> Address<A> {
         I: Action,
         A: ActionHandler<I>,
     {
-        if input.is_high_priority() {
-            self.send_hp_direct(Operation::Forward, input)
-        } else {
-            let envelope = Envelope::new(input);
-            self.msg_tx.send(envelope).await.map_err(Error::from)
-        }
+        let envelope = Envelope::new(input);
+        self.msg_tx.send(envelope).await.map_err(Error::from)
+    }
+
+    /// Just sends an `Action` to the `Actor`.
+    pub fn instant<I>(&mut self, input: I) -> Result<(), Error>
+    where
+        I: InstantAction,
+        A: InstantActionHandler<I>,
+    {
+        self.send_hp_direct(Operation::Forward, input)
     }
 
     /// Just sends an `Action` to the `Actor`.
@@ -139,10 +145,10 @@ impl<A: Actor> Address<A> {
     /// Sends a service message using the high-priority queue.
     pub(crate) fn send_hp_direct<I>(&mut self, operation: Operation, input: I) -> Result<(), Error>
     where
-        I: Action,
-        A: ActionHandler<I>,
+        I: InstantAction,
+        A: InstantActionHandler<I>,
     {
-        let envelope = Envelope::new(input);
+        let envelope = Envelope::instant(input);
         let msg = HpEnvelope {
             operation,
             envelope,

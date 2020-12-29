@@ -1,7 +1,7 @@
 //! Contains message of the `Actor`'s lifecycle.
 
 use crate::actor_runtime::Actor;
-use crate::handlers::{Action, ActionHandler, Operation};
+use crate::handlers::{InstantAction, InstantActionHandler, Operation};
 use crate::ids::{Id, IdOf};
 use crate::linkage::Address;
 use crate::lite_runtime::{LiteTask, StopSender, TaskError};
@@ -62,7 +62,7 @@ impl<A: Actor> LifetimeTracker<A> {
     // TODO: Rename to `insert_actor`
     pub fn insert<T>(&mut self, address: Address<T>, group: A::GroupBy)
     where
-        T: Actor + ActionHandler<Interrupt<A>>,
+        T: Actor + InstantActionHandler<Interrupt<A>>,
     {
         let stage = self.stages.entry(group.clone()).or_default();
         let id: Id = address.id().into();
@@ -188,8 +188,8 @@ impl<P> dyn LifecycleNotifier<P> {
     // TODO: Make it `async` and take priorities into account
     pub fn once<A>(mut address: Address<A>, operation: Operation) -> Box<Self>
     where
-        A: Actor + ActionHandler<P>,
-        P: Action,
+        A: Actor + InstantActionHandler<P>,
+        P: InstantAction,
     {
         let notifier = move |msg| {
             // TODO: Take the priority into account (don't put all in hp)
@@ -219,15 +219,8 @@ impl<T: Actor> Awake<T> {
     }
 }
 
-impl<T: Actor> Action for Awake<T> {
-    fn is_high_priority(&self) -> bool {
-        // Normal priority, because it's a special event
-        // that never sent by channels and used in-place.
-        // But the type implements `Action` to be used by
-        // ordinary handler type.
-        false
-    }
-}
+// High priority to indicate it will be called first.
+impl<T: Actor> InstantAction for Awake<T> {}
 
 /// The event to ask an `Actor` to interrupt its activity.
 #[derive(Debug)]
@@ -243,14 +236,10 @@ impl<T: Actor> Interrupt<T> {
     }
 }
 
-impl<T: Actor> Action for Interrupt<T> {
-    fn is_high_priority(&self) -> bool {
-        // Only `Interrupt` event has high-priority,
-        // because all actors have to react to it as fast
-        // as possible even in case when all queues are full.
-        true
-    }
-}
+// `Interrupt` event has high-priority,
+// because all actors have to react to it as fast
+// as possible even in case when all queues are full.
+impl<T: Actor> InstantAction for Interrupt<T> {}
 
 /// Notifies when `Actor`'s activity is completed.
 #[derive(Debug)]
@@ -264,21 +253,10 @@ impl<T: Actor> Done<T> {
     }
 }
 
-impl<T: Actor> Action for Done<T> {
-    fn is_high_priority(&self) -> bool {
-        /*
-        // It has normal priority, because `Done` message have to be the
-        // latest in a queue of messages. No other message will be generated,
-        // because `Actor` is terminated when its runtime sends `Done` event.
-        false
-        */
-
-        // This type of messages can be send in hp queue only, because if the
-        // normal channel will be full that this message can block the thread
-        // that have to notify the actor. It can be high-priority only.
-        true
-    }
-}
+// This type of messages can be send in hp queue only, because if the
+// normal channel will be full that this message can block the thread
+// that have to notify the actor. It can be high-priority only.
+impl<T: Actor> InstantAction for Done<T> {}
 
 #[derive(Debug)]
 pub(crate) struct TaskDone<T: LiteTask> {
@@ -292,18 +270,6 @@ impl<T: LiteTask> TaskDone<T> {
     }
 }
 
-impl<T: LiteTask> Action for TaskDone<T> {
-    fn is_high_priority(&self) -> bool {
-        /*
-        // It has normal priority, because `Done` message have to be the
-        // latest in a queue of messages.
-        // If it will be high priority than the `Task` can send messages that will
-        // be delivered after `TaskDone` message will be received.
-        false
-        */
-
-        // It's high priority, because it's impossible to use a channel with limited
-        // size for this type of messages.
-        true
-    }
-}
+// It's high priority, because it's impossible to use a channel with limited
+// size for this type of messages.
+impl<T: LiteTask> InstantAction for TaskDone<T> {}

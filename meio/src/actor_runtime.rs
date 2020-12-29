@@ -67,7 +67,7 @@ where
     let id: Id = address.id().into();
     // There is `Envelope` here, because it will be processed at start and
     // will never been sent to prevent other messages come before the `Awake`.
-    let awake_envelope = Envelope::new(Awake::new());
+    let awake_envelope = Envelope::instant(Awake::new());
     let done_notifier = {
         match supervisor {
             None => LifecycleNotifier::ignore(),
