@@ -314,6 +314,7 @@ impl Service<Request<Body>> for Svc {
                     }
                 }
             } else {
+                log::warn!("No route for {}", uri);
                 response = Response::new(Body::empty());
                 *response.status_mut() = StatusCode::NOT_FOUND;
             }
