@@ -6,11 +6,12 @@ use crate::linkage::Address;
 use crate::lite_runtime::LiteTask;
 use anyhow::Error;
 use async_trait::async_trait;
+use std::fmt::Debug;
 use std::time::{Duration, Instant};
 
 /// Any `Address` of an `Actor` that can receive `Tick` actions.
 #[async_trait]
-trait TickRecipient: Send + 'static {
+trait TickRecipient: Debug + Send + 'static {
     /// Send `Tick` to an `Actor`.
     async fn tick(&mut self) -> Result<(), Error>;
 }
@@ -27,7 +28,7 @@ where
 }
 
 /// The lite task that sends ticks to a `Recipient`.
-//#[derive(Debug)]
+#[derive(Debug)]
 pub struct HeartBeat {
     duration: Duration,
     recipient: Box<dyn TickRecipient>,
