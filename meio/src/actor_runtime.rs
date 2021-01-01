@@ -93,7 +93,7 @@ where
         hp_msg_rx,
         join_tx,
     };
-    tokio::spawn(runtime.entrypoint());
+    crate::spawn_async(runtime.entrypoint());
     address
 }
 

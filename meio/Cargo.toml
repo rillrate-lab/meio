@@ -22,9 +22,14 @@ derive_more = "0.99.11"
 futures = "0.3.6"
 log = "0.4.11"
 thiserror = "1.0.22"
-tokio = { version = "0.2.22", features = ["full"] }
+tokio = { version = "0.2.22", features = ["full"], optional = true }
 uuid = { version = "0.8.1", features = ["v4"] }
+wasm-bindgen-futures = { version = "0.4.19", optional = true }
 
 [dev-dependencies]
 env_logger = "0.7.1"
 hyper = "0.13.8"
+
+[features]
+server = ["tokio"]
+client = ["wasm-bindgen-futures", "uuid/wasm-bindgen"]

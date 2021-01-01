@@ -183,7 +183,7 @@ impl<A: Actor> Address<A> {
         };
         // WARNING! Don't return `JoinHandle` because user can
         // accidentally `.await` it and block a handler.
-        tokio::spawn(forwarder.entrypoint());
+        crate::spawn_async(forwarder.entrypoint());
     }
 
     /// Returns a `Link` to an `Actor`.

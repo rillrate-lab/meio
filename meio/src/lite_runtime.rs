@@ -158,7 +158,7 @@ impl StopReceiver {
     where
         Fut: Future,
     {
-        tokio::pin!(fut);
+        let fut = Box::pin(fut);
         let either = select(self.clone().into_future(), fut).await;
         match either {
             Either::Left((_done, _rem_fut)) => Err(TaskStopped),

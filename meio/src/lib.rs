@@ -18,10 +18,33 @@ mod lifecycle;
 pub mod linkage;
 mod lite_runtime;
 pub mod prelude;
+#[cfg(feature = "server")]
 pub mod signal;
 pub mod system;
 pub mod task;
+#[cfg(feature = "server")]
 pub mod thread;
+
+fn spawn_async<F>(future: F)
+where
+    F: futures::Future<Output = ()> + 'static,
+{
+    /*
+    let fut = future.map(|res| {
+        if let Err(err) = res {
+            log::error!("Async future failed: {}", err);
+        }
+    });
+    */
+    #[cfg(feature = "server")]
+    {
+        tokio::spawn(future);
+    }
+    #[cfg(feature = "client")]
+    {
+        wasm_bindgen_futures::spawn_local(future);
+    }
+}
 
 // %%%%%%%%%%%%%%%%%%%%%% TESTS %%%%%%%%%%%%%%%%%%%%%
 
