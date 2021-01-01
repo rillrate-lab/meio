@@ -32,6 +32,7 @@ env_logger = "0.7.1"
 hyper = "0.13.8"
 
 [features]
+default = ["server"]
 server = ["tokio"]
 client = [
     "wasm-bindgen-futures",
