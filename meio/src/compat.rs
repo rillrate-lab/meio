@@ -100,7 +100,7 @@ mod delay_queue {
         }
 
         pub fn insert_at<Z>(&mut self, _: Z, deadline: Instant) {
-            todo!();
+            // TODO: Implement
         }
     }
 
@@ -108,7 +108,8 @@ mod delay_queue {
         type Item = Result<Expired<T>, Error>;
 
         fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-            todo!()
+            // TODO: Implement
+            Poll::Pending
         }
     }
 }
