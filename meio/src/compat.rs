@@ -26,7 +26,9 @@ pub async fn delay_until(deadline: std::time::Instant) {
     }
     #[cfg(feature = "client")]
     {
-        wasm_timer::Delay::new_at(deadline).await;
+        use std::time::Instant;
+        let duration = deadline.duration_since(Instant::now());
+        futures_timer::Delay::new(duration).await;
     }
 }
 
