@@ -111,6 +111,12 @@ mod delay_queue {
     }
 }
 
+#[cfg(feature = "server")]
+pub mod watch {
+    pub use tokio::sync::watch::*;
+}
+
+#[cfg(feature = "client")]
 pub mod watch {
     use anyhow::Error;
     use std::marker::PhantomData;
