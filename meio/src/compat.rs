@@ -73,7 +73,7 @@ mod delay_queue {
     use anyhow::Error;
     use futures::task::{Context, Poll};
     use futures::Stream;
-    use futures_delay_queue::DelayQueue as WasmDelayQueue;
+    //use futures_delay_queue::DelayQueue as WasmDelayQueue;
     use std::marker::PhantomData;
     use std::pin::Pin;
     use std::time::Instant;
