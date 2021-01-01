@@ -19,11 +19,11 @@ mod lifecycle;
 pub mod linkage;
 mod lite_runtime;
 pub mod prelude;
-#[cfg(feature = "server")]
+#[cfg(not(feature = "wasm"))]
 pub mod signal;
 pub mod system;
 pub mod task;
-#[cfg(feature = "server")]
+#[cfg(not(feature = "wasm"))]
 pub mod thread;
 
 // %%%%%%%%%%%%%%%%%%%%%% TESTS %%%%%%%%%%%%%%%%%%%%%

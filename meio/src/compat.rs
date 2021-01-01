@@ -116,6 +116,7 @@ pub mod watch {
 pub mod watch {
     use anyhow::Error;
     use std::marker::PhantomData;
+    use std::time::Duration;
 
     #[derive(Debug)]
     pub struct Sender<T> {
@@ -141,7 +142,9 @@ pub mod watch {
 
         pub async fn recv(&mut self) -> Option<&T> {
             // TODO: Implement
-            None
+            let duration = Duration::from_secs(5);
+            futures_timer::Delay::new(duration).await;
+            Some(&self.value)
         }
     }
 
