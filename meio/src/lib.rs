@@ -12,6 +12,7 @@
 #![recursion_limit = "512"]
 
 mod actor_runtime;
+mod compat;
 pub mod handlers;
 pub mod ids;
 mod lifecycle;
@@ -24,38 +25,6 @@ pub mod system;
 pub mod task;
 #[cfg(feature = "server")]
 pub mod thread;
-
-fn spawn_async<F>(future: F)
-where
-    F: futures::Future<Output = ()> + Send + 'static,
-{
-    /*
-    let fut = future.map(|res| {
-        if let Err(err) = res {
-            log::error!("Async future failed: {}", err);
-        }
-    });
-    */
-    #[cfg(feature = "server")]
-    {
-        tokio::spawn(future);
-    }
-    #[cfg(feature = "client")]
-    {
-        wasm_bindgen_futures::spawn_local(future);
-    }
-}
-
-async fn delay_until(deadline: std::time::Instant) {
-    #[cfg(feature = "server")]
-    {
-        tokio::time::delay_until(deadline.into()).await;
-    }
-    #[cfg(feature = "client")]
-    {
-        wasm_timer::Delay::new_at(deadline).await;
-    }
-}
 
 // %%%%%%%%%%%%%%%%%%%%%% TESTS %%%%%%%%%%%%%%%%%%%%%
 

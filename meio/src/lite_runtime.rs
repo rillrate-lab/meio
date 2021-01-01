@@ -51,7 +51,7 @@ pub trait LiteTask: Sized + Send + 'static {
                 log::error!("Routine {} failed: {}", self.name(), err);
             }
             let instant = self.retry_at(last_attempt);
-            crate::delay_until(instant).await;
+            crate::compat::delay_until(instant).await;
         }
     }
 
@@ -95,7 +95,7 @@ where
         done_notifier,
         stop_receiver,
     };
-    crate::spawn_async(runtime.entrypoint());
+    crate::compat::spawn_async(runtime.entrypoint());
     stop_sender
 }
 

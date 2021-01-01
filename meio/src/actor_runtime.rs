@@ -13,7 +13,6 @@ use futures::channel::mpsc;
 use futures::{select_biased, StreamExt};
 use std::hash::Hash;
 use tokio::sync::watch;
-use tokio::time::DelayQueue;
 use uuid::Uuid;
 
 const MESSAGES_CHANNEL_DEPTH: usize = 32;
@@ -93,7 +92,7 @@ where
         hp_msg_rx,
         join_tx,
     };
-    crate::spawn_async(runtime.entrypoint());
+    crate::compat::spawn_async(runtime.entrypoint());
     address
 }
 
@@ -240,7 +239,7 @@ impl<A: Actor> ActorRuntime<A> {
     }
 
     async fn routine(&mut self) {
-        let mut scheduled_queue = DelayQueue::<Envelope<A>>::new().fuse();
+        let mut scheduled_queue = crate::compat::DelayQueue::<Envelope<A>>::new().fuse();
         while self.context.alive {
             select_biased! {
                 hp_envelope = self.hp_msg_rx.next() => {
