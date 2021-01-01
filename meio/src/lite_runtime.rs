@@ -13,7 +13,6 @@ use std::pin::Pin;
 use std::time::{Duration, Instant};
 use thiserror::Error;
 use tokio::sync::watch;
-use tokio::time::delay_until;
 use uuid::Uuid;
 
 /// Minimalistic actor that hasn't `Address`.
@@ -52,7 +51,7 @@ pub trait LiteTask: Sized + Send + 'static {
                 log::error!("Routine {} failed: {}", self.name(), err);
             }
             let instant = self.retry_at(last_attempt);
-            delay_until(instant.into()).await;
+            crate::delay_until(instant).await;
         }
     }
 
@@ -96,7 +95,7 @@ where
         done_notifier,
         stop_receiver,
     };
-    tokio::spawn(runtime.entrypoint());
+    crate::spawn_async(runtime.entrypoint());
     stop_sender
 }
 

@@ -25,6 +25,7 @@ thiserror = "1.0.22"
 tokio = { version = "0.2.22", features = ["full"], optional = true }
 uuid = { version = "0.8.1", features = ["v4"] }
 wasm-bindgen-futures = { version = "0.4.19", optional = true }
+wasm-timer = { version = "0.2.5", optional = true }
 
 [dev-dependencies]
 env_logger = "0.7.1"
@@ -32,4 +33,4 @@ hyper = "0.13.8"
 
 [features]
 server = ["tokio"]
-client = ["wasm-bindgen-futures", "uuid/wasm-bindgen"]
+client = ["wasm-bindgen-futures", "wasm-timer", "uuid/wasm-bindgen"]
