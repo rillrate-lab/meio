@@ -4,11 +4,11 @@ use crate::actor_runtime::{Actor, Context};
 use crate::handlers::{Eliminated, InterruptedBy, StartedBy};
 use crate::ids::IdOf;
 use crate::linkage::Address;
-#[cfg(feature = "server")]
+#[cfg(not(feature = "wasm"))]
 use crate::signal;
 use anyhow::Error;
 use async_trait::async_trait;
-#[cfg(feature = "server")]
+#[cfg(not(feature = "wasm"))]
 use futures::{select, FutureExt, StreamExt};
 
 /// Virtual actor that represents the system/environment.
@@ -36,7 +36,7 @@ impl System {
     }
 
     /// Spawns an `Actor` and wait for its termination (normally or by `SIGINT` interruption).
-    #[cfg(feature = "server")]
+    #[cfg(not(feature = "wasm"))]
     pub async fn spawn_and_wait<A>(actor: A)
     where
         A: Actor + StartedBy<Self> + InterruptedBy<Self>,
@@ -52,7 +52,7 @@ impl System {
     /// If user sends `SIGINT` signal than the `Actor` will receive `InterruptedBy<System>` event,
     /// but for the second signal the function just returned to let the app terminate without waiting
     /// for any active task.
-    #[cfg(feature = "server")]
+    #[cfg(not(feature = "wasm"))]
     pub async fn wait_or_interrupt<A>(mut address: Address<A>) -> Result<(), Error>
     where
         A: Actor + InterruptedBy<Self>,
