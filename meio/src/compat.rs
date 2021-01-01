@@ -130,26 +130,30 @@ pub mod watch {
 
     impl<T> Sender<T> {
         pub fn broadcast(&self, value: T) -> Result<(), Error> {
-            todo!();
+            // TODO: Implement
+            Ok(())
         }
     }
 
     #[derive(Debug, Clone)]
     pub struct Receiver<T> {
-        _type: PhantomData<T>,
+        value: T,
     }
 
     impl<T> Receiver<T> {
         pub fn borrow(&self) -> &T {
-            todo!();
+            &self.value
         }
 
         pub async fn recv(&mut self) -> Option<&T> {
-            todo!();
+            // TODO: Implement
+            None
         }
     }
 
     pub fn channel<T>(value: T) -> (Sender<T>, Receiver<T>) {
-        todo!();
+        let sender = Sender { _type: PhantomData };
+        let receiver = Receiver { value };
+        (sender, receiver)
     }
 }
