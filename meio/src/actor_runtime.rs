@@ -1,5 +1,6 @@
 //! This module contains `Actor` trait and the runtime to execute it.
 
+use crate::compat::watch;
 use crate::handlers::{
     Eliminated, Envelope, HpEnvelope, InterruptedBy, Operation, StartedBy, TaskEliminated,
 };
@@ -12,7 +13,6 @@ use async_trait::async_trait;
 use futures::channel::mpsc;
 use futures::{select_biased, StreamExt};
 use std::hash::Hash;
-use tokio::sync::watch;
 use uuid::Uuid;
 
 const MESSAGES_CHANNEL_DEPTH: usize = 32;
@@ -259,7 +259,7 @@ impl<A: Actor> ActorRuntime<A> {
                                 process_envelope = Some(envelope);
                             }
                             Operation::Schedule { deadline } => {
-                                scheduled_queue.get_mut().insert_at(envelope, deadline.into());
+                                scheduled_queue.get_mut().insert_at(envelope, deadline);
                                 process_envelope = None;
                             }
                         }

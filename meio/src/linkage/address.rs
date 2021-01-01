@@ -2,6 +2,7 @@
 
 use super::{ActionRecipient, InteractionRecipient};
 use crate::actor_runtime::{Actor, Status};
+use crate::compat::watch;
 use crate::handlers::{
     Action, ActionHandler, Consumer, Envelope, HpEnvelope, InstantAction, InstantActionHandler,
     Interact, Interaction, InteractionHandler, InterruptedBy, Operation, Scheduled, ScheduledItem,
@@ -16,7 +17,6 @@ use std::convert::identity;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::time::Instant;
-use tokio::sync::watch;
 
 /// `Address` to send messages to `Actor`.
 ///

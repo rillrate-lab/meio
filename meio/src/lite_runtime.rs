@@ -1,4 +1,5 @@
 use crate::actor_runtime::{Actor, Status};
+use crate::compat::watch;
 use crate::handlers::{Operation, TaskEliminated};
 use crate::ids::{Id, IdOf};
 use crate::lifecycle::{LifecycleNotifier, TaskDone};
@@ -12,7 +13,6 @@ use futures::{
 use std::pin::Pin;
 use std::time::{Duration, Instant};
 use thiserror::Error;
-use tokio::sync::watch;
 use uuid::Uuid;
 
 /// Minimalistic actor that hasn't `Address`.
