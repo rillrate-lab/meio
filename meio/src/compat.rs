@@ -30,16 +30,50 @@ pub async fn delay_until(deadline: std::time::Instant) {
     }
 }
 
-//#[cfg(feature = "server")]
-//pub use tokio::time::DelayQueue;
-
 pub use delay_queue::DelayQueue;
 
+#[cfg(feature = "server")]
 mod delay_queue {
-    //pub use futures_delay_queue::DelayQueue;
+    use futures::task::{Context, Poll};
+    use futures::Stream;
+    use std::pin::Pin;
+    use std::time::Instant;
+    pub use tokio::time::delay_queue::Expired;
+    use tokio::time::DelayQueue as TokioDelayQueue;
+    use tokio::time::Error;
+
+    pub struct DelayQueue<T> {
+        queue: TokioDelayQueue<T>,
+    }
+
+    impl<T> DelayQueue<T> {
+        pub fn new() -> Self {
+            Self {
+                queue: TokioDelayQueue::new(),
+            }
+        }
+
+        pub fn insert_at(&mut self, value: T, deadline: Instant) {
+            self.queue.insert_at(value, deadline.into());
+        }
+    }
+
+    impl<T> Stream for DelayQueue<T> {
+        type Item = Result<Expired<T>, Error>;
+
+        fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+            let queue = unsafe { self.map_unchecked_mut(|this| &mut this.queue) };
+            queue.poll_next(cx)
+        }
+    }
+}
+
+#[cfg(feature = "client")]
+mod delay_queue {
     use anyhow::Error;
     use futures::task::{Context, Poll};
     use futures::Stream;
+    use futures_delay_queue::DelayQueue as WasmDelayQueue;
     use std::marker::PhantomData;
     use std::pin::Pin;
     use std::time::Instant;
