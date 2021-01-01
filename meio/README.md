@@ -6,7 +6,9 @@ Lightweight async actor framework for Rust.
 
 It has experimental WASM support. To activate use:
 
+```toml
 meio = { default-features = false, feautres = ["wasm"] }
+```
 
 ## Usage
 
