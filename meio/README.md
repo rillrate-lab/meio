@@ -2,6 +2,12 @@
 
 Lightweight async actor framework for Rust.
 
+## WASM
+
+It has experimental WASM support. To activate use:
+
+meio = { default-features = false, feautres = ["wasm"] }
+
 ## Usage
 
 Check tests in `lib.rs` file to see how it works.

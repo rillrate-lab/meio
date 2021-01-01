@@ -2,29 +2,22 @@ pub fn spawn_async<F>(future: F)
 where
     F: futures::Future<Output = ()> + Send + 'static,
 {
-    /*
-    let fut = future.map(|res| {
-        if let Err(err) = res {
-            log::error!("Async future failed: {}", err);
-        }
-    });
-    */
-    #[cfg(feature = "server")]
+    #[cfg(not(feature = "wasm"))]
     {
         tokio::spawn(future);
     }
-    #[cfg(feature = "client")]
+    #[cfg(feature = "wasm")]
     {
         wasm_bindgen_futures::spawn_local(future);
     }
 }
 
 pub async fn delay_until(deadline: std::time::Instant) {
-    #[cfg(feature = "server")]
+    #[cfg(not(feature = "wasm"))]
     {
         tokio::time::delay_until(deadline.into()).await;
     }
-    #[cfg(feature = "client")]
+    #[cfg(feature = "wasm")]
     {
         use std::time::Instant;
         let duration = deadline.duration_since(Instant::now());
@@ -34,7 +27,7 @@ pub async fn delay_until(deadline: std::time::Instant) {
 
 pub use delay_queue::DelayQueue;
 
-#[cfg(feature = "server")]
+#[cfg(not(feature = "wasm"))]
 mod delay_queue {
     use futures::task::{Context, Poll};
     use futures::Stream;
@@ -70,7 +63,7 @@ mod delay_queue {
     }
 }
 
-#[cfg(feature = "client")]
+#[cfg(feature = "wasm")]
 mod delay_queue {
     use anyhow::Error;
     use futures::task::{Context, Poll};
@@ -114,12 +107,12 @@ mod delay_queue {
     }
 }
 
-#[cfg(feature = "server")]
+#[cfg(not(feature = "wasm"))]
 pub mod watch {
     pub use tokio::sync::watch::*;
 }
 
-#[cfg(feature = "client")]
+#[cfg(feature = "wasm")]
 pub mod watch {
     use anyhow::Error;
     use std::marker::PhantomData;
