@@ -1,0 +1,20 @@
+[package]
+name = "meio-protocol"
+version = "0.62.0"
+authors = [
+    "Denis Kolodin <deniskolodin@gmail.com>",
+    "overfloat <rillrate@gmail.com>",
+]
+edition = "2018"
+repository = "https://github.com/rate-technology/meio"
+homepage = "https://github.com/rate-technology/meio"
+documentation = "https://docs.rs/meio-ws/"
+license = "MIT/Apache-2.0"
+readme = "README.md"
+keywords = ["async", "actors"]
+categories = ["concurrency"]
+description = "Basic protocol traits of MEIO framework"
+
+[dependencies]
+anyhow = "1.0.37"
+serde = "1.0.118"

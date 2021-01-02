@@ -1,7 +1,4 @@
-use crate::{
-    talker::{Talker, TalkerCompatible},
-    Protocol, ProtocolData, WsIncoming,
-};
+use crate::talker::{Talker, TalkerCompatible, WsIncoming};
 use anyhow::Error;
 use async_trait::async_trait;
 use async_tungstenite::{
@@ -12,6 +9,7 @@ use futures::channel::mpsc;
 use meio::prelude::{
     ActionHandler, Actor, Address, InstantAction, InstantActionHandler, LiteTask, StopReceiver,
 };
+use meio_protocol::{Protocol, ProtocolData};
 use std::marker::PhantomData;
 use std::time::{Duration, Instant};
 use thiserror::Error;

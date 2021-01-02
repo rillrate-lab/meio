@@ -1,8 +1,5 @@
 use super::link;
-use crate::{
-    talker::{Talker, TalkerCompatible, TermReason},
-    Protocol, WsIncoming,
-};
+use crate::talker::{Talker, TalkerCompatible, TermReason, WsIncoming};
 use anyhow::Error;
 use async_trait::async_trait;
 use futures::channel::mpsc;
@@ -15,6 +12,7 @@ use meio::prelude::{
     Action, ActionHandler, Actor, Address, Context, IdOf, Interaction, InteractionHandler,
     InterruptedBy, LiteTask, StartedBy, StopReceiver, TaskEliminated, TaskError,
 };
+use meio_protocol::Protocol;
 use slab::Slab;
 use std::future::Future;
 use std::marker::PhantomData;

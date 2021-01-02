@@ -1,9 +1,9 @@
 use super::actor::{FromRequest, Req, Route, RouteImpl, WsReq, WsRouteImpl};
 use super::HttpServer;
-use crate::Protocol;
 use anyhow::Error;
 use derive_more::From;
 use meio::prelude::{Action, ActionHandler, Actor, Address, InteractionHandler};
+use meio_protocol::Protocol;
 use std::marker::PhantomData;
 
 #[derive(Debug, Clone, From)]

@@ -1,12 +1,18 @@
-use crate::{ProtocolCodec, ProtocolData, WsIncoming};
 use anyhow::Error;
 use futures::channel::mpsc;
 use futures::stream::Fuse;
 use futures::{select, Sink, SinkExt, Stream, StreamExt};
-use meio::prelude::{ActionHandler, Actor, Address, StopReceiver};
+use meio::prelude::{Action, ActionHandler, Actor, Address, StopReceiver};
+use meio_protocol::{ProtocolCodec, ProtocolData};
 use serde::ser::StdError;
 use std::fmt::Debug;
 use tungstenite::{error::Error as TungError, Message as TungMessage};
+
+/// Incoming message of the choosen `Protocol`.
+#[derive(Debug)]
+pub struct WsIncoming<T: ProtocolData>(pub T);
+
+impl<T: ProtocolData> Action for WsIncoming<T> {}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TermReason {
