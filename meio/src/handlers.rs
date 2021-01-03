@@ -140,6 +140,15 @@ where
     }
 }
 
+/// The synchronous action (useful for rendering routines).
+pub trait SyncAction {}
+
+/// Handler of sync actions.
+pub trait SyncActionHandler<I: SyncAction>: Actor {
+    /// The method called in synchronous context.
+    fn handle(&self) -> Result<(), Error>;
+}
+
 /// Implements an interaction with an `Actor`.
 #[async_trait]
 pub trait InteractionHandler<I: Interaction>: Actor {
