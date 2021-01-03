@@ -84,6 +84,10 @@ impl<A: Actor> Address<A> {
         IdOf::new(self.id.clone())
     }
 
+    pub(crate) fn raw_id(&self) -> &Id {
+        &self.id
+    }
+
     /// Just sends an `Action` to the `Actor`.
     pub async fn act<I>(&mut self, input: I) -> Result<(), Error>
     where

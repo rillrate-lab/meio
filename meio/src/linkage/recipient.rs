@@ -1,6 +1,7 @@
 use super::Address;
 use crate::actor_runtime::Actor;
 use crate::handlers::{Action, ActionHandler, Interaction, InteractionHandler};
+use crate::ids::Id;
 use anyhow::Error;
 use async_trait::async_trait;
 use std::fmt::Debug;
@@ -14,6 +15,9 @@ pub trait ActionRecipient<T: Action>: Debug + Send + 'static {
 
     #[doc(hidden)]
     fn dyn_clone(&self) -> Box<dyn ActionRecipient<T>>;
+
+    #[doc(hidden)]
+    fn id_ref(&self) -> &Id;
 }
 
 impl<T: Action> Clone for Box<dyn ActionRecipient<T>> {
@@ -21,6 +25,14 @@ impl<T: Action> Clone for Box<dyn ActionRecipient<T>> {
         self.dyn_clone()
     }
 }
+
+impl<T: Action> PartialEq for Box<dyn ActionRecipient<T>> {
+    fn eq(&self, other: &Self) -> bool {
+        PartialEq::eq(self.id_ref(), other.id_ref())
+    }
+}
+
+impl<T: Action> Eq for Box<dyn ActionRecipient<T>> {}
 
 #[async_trait]
 impl<T, A> ActionRecipient<T> for Address<A>
@@ -34,6 +46,10 @@ where
 
     fn dyn_clone(&self) -> Box<dyn ActionRecipient<T>> {
         Box::new(self.clone())
+    }
+
+    fn id_ref(&self) -> &Id {
+        self.raw_id()
     }
 }
 
