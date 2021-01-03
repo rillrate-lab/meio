@@ -5,7 +5,7 @@ use crate::ids::Id;
 use anyhow::Error;
 use async_trait::async_trait;
 use std::fmt::Debug;
-//use std::hash::Hash;
+use std::hash::{Hash, Hasher};
 
 /// Abstract `Address` to the `Actor` that can handle a specific message type.
 #[async_trait]
@@ -18,6 +18,9 @@ pub trait ActionRecipient<T: Action>: Debug + Send + 'static {
 
     #[doc(hidden)]
     fn id_ref(&self) -> &Id;
+
+    #[doc(hidden)]
+    fn dyn_hash(&self, state: &mut dyn Hasher);
 }
 
 impl<T: Action> Clone for Box<dyn ActionRecipient<T>> {
@@ -33,6 +36,12 @@ impl<T: Action> PartialEq for Box<dyn ActionRecipient<T>> {
 }
 
 impl<T: Action> Eq for Box<dyn ActionRecipient<T>> {}
+
+impl<T: Action> Hash for Box<dyn ActionRecipient<T>> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.dyn_hash(state);
+    }
+}
 
 #[async_trait]
 impl<T, A> ActionRecipient<T> for Address<A>
@@ -51,6 +60,10 @@ where
     fn id_ref(&self) -> &Id {
         self.raw_id()
     }
+
+    fn dyn_hash(&self, state: &mut dyn Hasher) {
+        ActionRecipient::id_ref(self).hash(&mut Box::new(state));
+    }
 }
 
 /// Abstract `Address` to the `Actor` that can handle an interaction.
@@ -64,6 +77,9 @@ pub trait InteractionRecipient<T: Interaction>: Debug + Send + 'static {
 
     #[doc(hidden)]
     fn id_ref(&self) -> &Id;
+
+    #[doc(hidden)]
+    fn dyn_hash(&self, state: &mut dyn Hasher);
 }
 
 impl<T: Interaction> Clone for Box<dyn InteractionRecipient<T>> {
@@ -79,6 +95,12 @@ impl<T: Interaction> PartialEq for Box<dyn InteractionRecipient<T>> {
 }
 
 impl<T: Interaction> Eq for Box<dyn InteractionRecipient<T>> {}
+
+impl<T: Interaction> Hash for Box<dyn InteractionRecipient<T>> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.dyn_hash(state);
+    }
+}
 
 #[async_trait]
 impl<T, A> InteractionRecipient<T> for Address<A>
@@ -96,5 +118,9 @@ where
 
     fn id_ref(&self) -> &Id {
         self.raw_id()
+    }
+
+    fn dyn_hash(&self, state: &mut dyn Hasher) {
+        InteractionRecipient::id_ref(self).hash(&mut Box::new(state));
     }
 }
