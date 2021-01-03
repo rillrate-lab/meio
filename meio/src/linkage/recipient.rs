@@ -61,6 +61,9 @@ pub trait InteractionRecipient<T: Interaction>: Debug + Send + 'static {
 
     #[doc(hidden)]
     fn dyn_clone(&self) -> Box<dyn InteractionRecipient<T>>;
+
+    #[doc(hidden)]
+    fn id_ref(&self) -> &Id;
 }
 
 impl<T: Interaction> Clone for Box<dyn InteractionRecipient<T>> {
@@ -68,6 +71,14 @@ impl<T: Interaction> Clone for Box<dyn InteractionRecipient<T>> {
         self.dyn_clone()
     }
 }
+
+impl<T: Interaction> PartialEq for Box<dyn InteractionRecipient<T>> {
+    fn eq(&self, other: &Self) -> bool {
+        PartialEq::eq(self.id_ref(), other.id_ref())
+    }
+}
+
+impl<T: Interaction> Eq for Box<dyn InteractionRecipient<T>> {}
 
 #[async_trait]
 impl<T, A> InteractionRecipient<T> for Address<A>
@@ -81,5 +92,9 @@ where
 
     fn dyn_clone(&self) -> Box<dyn InteractionRecipient<T>> {
         Box::new(self.clone())
+    }
+
+    fn id_ref(&self) -> &Id {
+        self.raw_id()
     }
 }
