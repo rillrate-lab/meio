@@ -19,6 +19,7 @@ pub trait ActionRecipient<T: Action>: Debug + Send + 'static {
     async fn act(&mut self, msg: T) -> Result<(), Error>;
 
     /// Returns a reference to `Id` of an `Address` inside.
+    #[doc(hidden)]
     fn id_ref(&self) -> &Id;
 
     #[doc(hidden)]
@@ -78,6 +79,7 @@ pub trait InteractionRecipient<T: Interaction>: Debug + Send + 'static {
     async fn interact(&mut self, msg: T) -> Result<T::Output, Error>;
 
     /// Returns a reference to `Id` of an `Address` inside.
+    #[doc(hidden)]
     fn id_ref(&self) -> &Id;
 
     #[doc(hidden)]
