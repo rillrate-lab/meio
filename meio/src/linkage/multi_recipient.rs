@@ -1,6 +1,6 @@
-use crate::linkage::recipient::ActionRecipient;
-use crate::ids::Id;
 use crate::handlers::Action;
+use crate::ids::Id;
+use crate::linkage::recipient::ActionRecipient;
 use anyhow::Error;
 use std::collections::HashMap;
 
@@ -27,9 +27,18 @@ where
 
     /// Sends action to all in parallel.
     pub async fn act_all(&mut self, action: T) -> Result<(), Error> {
-        let futs = self.recipients.values_mut().map(|recipient| recipient.act(action.clone()));
-        futures::future::join_all(futs).await;
-        // TODO: Return the first `Err` value or `Ok`
-        Ok(())
+        let futs = self
+            .recipients
+            .values_mut()
+            .map(|recipient| recipient.act(action.clone()));
+        let err = futures::future::join_all(futs)
+            .await
+            .into_iter()
+            .find(Result::is_err);
+        if let Some(Err(err)) = err {
+            Err(err)
+        } else {
+            Ok(())
+        }
     }
 }
