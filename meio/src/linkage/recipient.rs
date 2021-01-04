@@ -1,3 +1,8 @@
+/// Recipients implement `Hash` for a boxed instance, but it's not useful in cases
+/// if you want to keep it in a `HashSet` for example, because the contents of
+/// hash sets can't be borrowed as mutable and that means you can't call `act`
+/// method of it.
+/// It's recommended to use `HashSet<Id, Box<dyn Recipient>>` instead.
 use super::Address;
 use crate::actor_runtime::Actor;
 use crate::handlers::{Action, ActionHandler, Interaction, InteractionHandler};
@@ -13,11 +18,11 @@ pub trait ActionRecipient<T: Action>: Debug + Send + 'static {
     /// Send an `Action` to an `Actor`.
     async fn act(&mut self, msg: T) -> Result<(), Error>;
 
-    #[doc(hidden)]
-    fn dyn_clone(&self) -> Box<dyn ActionRecipient<T>>;
+    /// Returns a reference to `Id` of an `Address` inside.
+    fn id_ref(&self) -> &Id;
 
     #[doc(hidden)]
-    fn id_ref(&self) -> &Id;
+    fn dyn_clone(&self) -> Box<dyn ActionRecipient<T>>;
 
     #[doc(hidden)]
     fn dyn_hash(&self, state: &mut dyn Hasher);
@@ -53,12 +58,12 @@ where
         Address::act(self, msg).await
     }
 
-    fn dyn_clone(&self) -> Box<dyn ActionRecipient<T>> {
-        Box::new(self.clone())
-    }
-
     fn id_ref(&self) -> &Id {
         self.raw_id()
+    }
+
+    fn dyn_clone(&self) -> Box<dyn ActionRecipient<T>> {
+        Box::new(self.clone())
     }
 
     fn dyn_hash(&self, state: &mut dyn Hasher) {
@@ -72,11 +77,11 @@ pub trait InteractionRecipient<T: Interaction>: Debug + Send + 'static {
     /// Interact with an `Actor`.
     async fn interact(&mut self, msg: T) -> Result<T::Output, Error>;
 
-    #[doc(hidden)]
-    fn dyn_clone(&self) -> Box<dyn InteractionRecipient<T>>;
+    /// Returns a reference to `Id` of an `Address` inside.
+    fn id_ref(&self) -> &Id;
 
     #[doc(hidden)]
-    fn id_ref(&self) -> &Id;
+    fn dyn_clone(&self) -> Box<dyn InteractionRecipient<T>>;
 
     #[doc(hidden)]
     fn dyn_hash(&self, state: &mut dyn Hasher);
@@ -112,12 +117,12 @@ where
         Address::interact(self, msg).await
     }
 
-    fn dyn_clone(&self) -> Box<dyn InteractionRecipient<T>> {
-        Box::new(self.clone())
-    }
-
     fn id_ref(&self) -> &Id {
         self.raw_id()
+    }
+
+    fn dyn_clone(&self) -> Box<dyn InteractionRecipient<T>> {
+        Box::new(self.clone())
     }
 
     fn dyn_hash(&self, state: &mut dyn Hasher) {
