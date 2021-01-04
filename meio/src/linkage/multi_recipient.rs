@@ -18,6 +18,13 @@ impl<T> Default for MultiRecipient<T> {
     }
 }
 
+impl<T> MultiRecipient<T> {
+    /// Creates a new set of recipients.
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
 impl<T> MultiRecipient<T>
 where
     T: Action + Clone,
