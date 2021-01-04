@@ -5,9 +5,17 @@ use anyhow::Error;
 use std::collections::HashMap;
 
 /// The set of multiple recipients that sends actions in parallel.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct MultiRecipient<T> {
     recipients: HashMap<Id, Box<dyn ActionRecipient<T>>>,
+}
+
+impl<T> Default for MultiRecipient<T> {
+    fn default() -> Self {
+        Self {
+            recipients: HashMap::new(),
+        }
+    }
 }
 
 impl<T> MultiRecipient<T>
