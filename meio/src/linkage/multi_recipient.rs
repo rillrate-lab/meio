@@ -56,4 +56,14 @@ where
             Ok(())
         }
     }
+
+    /// Size of the set of recipients.
+    pub fn len(&self) -> usize {
+        self.recipients.len()
+    }
+
+    /// Is this set empty?
+    pub fn is_empty(&self) -> bool {
+        self.recipients.is_empty()
+    }
 }
