@@ -6,11 +6,11 @@ use std::collections::HashMap;
 
 /// The set of multiple recipients that sends actions in parallel.
 #[derive(Debug)]
-pub struct MultiRecipient<T> {
+pub struct Distributor<T> {
     recipients: HashMap<Id, Box<dyn ActionRecipient<T>>>,
 }
 
-impl<T> Default for MultiRecipient<T> {
+impl<T> Default for Distributor<T> {
     fn default() -> Self {
         Self {
             recipients: HashMap::new(),
@@ -18,14 +18,14 @@ impl<T> Default for MultiRecipient<T> {
     }
 }
 
-impl<T> MultiRecipient<T> {
+impl<T> Distributor<T> {
     /// Creates a new set of recipients.
     pub fn new() -> Self {
         Self::default()
     }
 }
 
-impl<T> MultiRecipient<T>
+impl<T> Distributor<T>
 where
     T: Action + Clone,
 {

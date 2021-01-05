@@ -6,5 +6,5 @@ pub use address::Address;
 mod recipient;
 pub use recipient::{ActionRecipient, InteractionRecipient};
 
-mod multi_recipient;
-pub use multi_recipient::MultiRecipient;
+mod distributor;
+pub use distributor::Distributor;
