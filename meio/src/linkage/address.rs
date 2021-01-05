@@ -137,9 +137,7 @@ impl<A: Actor> Address<A> {
 
     /// Waits when the `Actor` will be terminated.
     pub async fn join(&mut self) {
-        // TODO: tokio 0.3
-        // while self.join_rx.changed().await.is_ok() {
-        while self.join_rx.recv().await.is_some() {
+        while self.join_rx.changed().await.is_ok() {
             if *self.join_rx.borrow() == Status::Stop {
                 break;
             }

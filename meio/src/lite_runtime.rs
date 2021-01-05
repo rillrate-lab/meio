@@ -130,7 +130,7 @@ impl StopSender {
     }
 
     pub fn stop(&self) -> Result<(), Error> {
-        self.tx.broadcast(Status::Stop).map_err(Error::from)
+        self.tx.send(Status::Stop).map_err(Error::from)
     }
 }
 
@@ -167,9 +167,7 @@ impl StopReceiver {
 }
 
 async fn just_done(mut status: watch::Receiver<Status>) {
-    // TODO: tokio 0.3
-    // while status.changed().await.is_ok() {
-    while status.recv().await.is_some() {
+    while status.changed().await.is_ok() {
         if status.borrow().is_done() {
             break;
         }

@@ -14,7 +14,7 @@ use std::marker::PhantomData;
 use std::time::{Duration, Instant};
 use thiserror::Error;
 use tokio::net::TcpStream;
-use tokio::time::delay_for;
+use tokio::time::sleep;
 
 #[derive(Debug)]
 pub struct WsSender<T: ProtocolData> {
@@ -159,7 +159,7 @@ where
                 let elapsed = last_success.elapsed();
                 if elapsed < dur {
                     let remained = dur - elapsed;
-                    stop.or(delay_for(remained)).await?;
+                    stop.or(sleep(remained)).await?;
                 }
                 log::debug!("Next attempt to connect to: {}", self.url);
             } else {

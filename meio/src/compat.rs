@@ -15,7 +15,7 @@ where
 pub async fn delay_until(deadline: std::time::Instant) {
     #[cfg(not(feature = "wasm"))]
     {
-        tokio::time::delay_until(deadline.into()).await;
+        tokio::time::sleep_until(deadline.into()).await;
     }
     #[cfg(feature = "wasm")]
     {
@@ -33,9 +33,9 @@ mod delay_queue {
     use futures::Stream;
     use std::pin::Pin;
     use std::time::Instant;
-    pub use tokio::time::delay_queue::Expired;
-    use tokio::time::DelayQueue as TokioDelayQueue;
-    use tokio::time::Error;
+    use tokio::time::error::Error;
+    pub use tokio_util::time::delay_queue::Expired;
+    use tokio_util::time::DelayQueue as TokioDelayQueue;
 
     pub struct DelayQueue<T> {
         queue: TokioDelayQueue<T>,

@@ -21,7 +21,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{self, Poll};
 use tokio::sync::RwLock;
-use tokio_tungstenite::WebSocketStream;
+use async_tungstenite::WebSocketStream;
 use tungstenite::protocol::Role;
 
 pub trait DirectPath: Default + Sized + Send + Sync + 'static {
@@ -139,7 +139,7 @@ where
                 let res = request.into_body().on_upgrade().await;
                 match res {
                     Ok(upgraded) => {
-                        let websocket = tokio_tungstenite::WebSocketStream::from_raw_socket(
+                        let websocket = WebSocketStream::from_raw_socket(
                             upgraded,
                             Role::Server,
                             None,
