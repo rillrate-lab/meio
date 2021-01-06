@@ -13,7 +13,14 @@ use async_trait::async_trait;
 use futures::channel::mpsc;
 use futures::{select_biased, StreamExt};
 use std::hash::Hash;
+use thiserror::Error;
 use uuid::Uuid;
+
+#[derive(Debug, Error)]
+enum Reason {
+    #[error("Actor is terminating...")]
+    Terminating,
+}
 
 const MESSAGES_CHANNEL_DEPTH: usize = 32;
 
@@ -156,6 +163,16 @@ impl<A: Actor> Context<A> {
     /// Returns true if the shutdown process is in progress.
     pub fn is_terminating(&self) -> bool {
         self.lifetime_tracker.is_terminating()
+    }
+
+    /// Returns `Error` if the `Actor` is terminating.
+    /// Useful for checking in handlers.
+    pub fn not_terminating(&self) -> Result<(), Error> {
+        if self.is_terminating() {
+            Err(Reason::Terminating.into())
+        } else {
+            Ok(())
+        }
     }
 
     /// Increases the priority of the `Actor`'s type.
