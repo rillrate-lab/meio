@@ -66,7 +66,7 @@ pub(crate) struct RouteImpl<E, A>
 where
     A: Actor,
 {
-    pub extracted: PhantomData<E>,
+    pub extracted: E,
     pub address: Address<A>,
 }
 
@@ -109,7 +109,7 @@ where
     A: Actor,
     P: Protocol,
 {
-    pub extracted: PhantomData<E>,
+    pub extracted: E,
     pub protocol: PhantomData<P>,
     pub address: Address<A>,
 }

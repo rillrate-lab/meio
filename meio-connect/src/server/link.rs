@@ -18,29 +18,30 @@ pub(super) struct AddRoute {
 impl Action for AddRoute {}
 
 impl HttpServerLink {
-    pub async fn add_route<E, A>(&mut self, address: Address<A>) -> Result<(), Error>
+    pub async fn add_route<E, A>(&mut self, extracted: E, address: Address<A>) -> Result<(), Error>
     where
         E: FromRequest,
         A: Actor + InteractionHandler<Req<E>>,
     {
-        let route = RouteImpl {
-            extracted: PhantomData,
-            address,
-        };
+        let route = RouteImpl { extracted, address };
         let msg = AddRoute {
             route: Box::new(route),
         };
         self.address.act(msg).await
     }
 
-    pub async fn add_ws_route<E, P, A>(&mut self, address: Address<A>) -> Result<(), Error>
+    pub async fn add_ws_route<E, P, A>(
+        &mut self,
+        extracted: E,
+        address: Address<A>,
+    ) -> Result<(), Error>
     where
         E: FromRequest,
         P: Protocol + Sync,
         A: Actor + ActionHandler<WsReq<E, P>>,
     {
         let route = WsRouteImpl {
-            extracted: PhantomData,
+            extracted,
             protocol: PhantomData,
             address,
         };
