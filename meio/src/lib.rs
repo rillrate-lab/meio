@@ -36,7 +36,7 @@ mod tests {
     use async_trait::async_trait;
     use futures::stream;
     use std::time::Duration;
-    use tokio::time::delay_for;
+    use tokio::time::sleep;
 
     #[derive(Debug)]
     pub struct MyActor;
@@ -51,7 +51,7 @@ mod tests {
     #[async_trait]
     impl InterruptedBy<System> for MyActor {
         async fn handle(&mut self, ctx: &mut Context<Self>) -> Result<(), Error> {
-            delay_for(Duration::from_secs(3)).await;
+            sleep(Duration::from_secs(3)).await;
             ctx.shutdown();
             Ok(())
         }

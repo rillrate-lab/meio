@@ -33,9 +33,9 @@ mod delay_queue {
     use futures::Stream;
     use std::pin::Pin;
     use std::time::Instant;
-    pub use tokio::time::delay_queue::Expired;
-    use tokio::time::DelayQueue as TokioDelayQueue;
-    use tokio::time::Error;
+    use tokio::time::error::Error;
+    use tokio_util::time::delay_queue::DelayQueue as TokioDelayQueue;
+    pub use tokio_util::time::delay_queue::Expired;
 
     pub struct DelayQueue<T> {
         queue: TokioDelayQueue<T>,
