@@ -123,7 +123,7 @@ where
     fn try_route(
         &self,
         addr: &SocketAddr,
-        request: Request<Body>,
+        mut request: Request<Body>,
     ) -> Result<Pin<Box<dyn Future<Output = Result<Response<Body>, Error>> + Send>>, Request<Body>>
     {
         if let Some(value) = E::from_request(&request) {
@@ -136,8 +136,7 @@ where
             let ws_key = request.headers().typed_get::<headers::SecWebsocketKey>();
             let addr = *addr;
             tokio::task::spawn(async move {
-                let res = request.into_body().on_upgrade().await;
-                match res {
+                match hyper::upgrade::on(&mut request).await {
                     Ok(upgraded) => {
                         let websocket = tokio_tungstenite::WebSocketStream::from_raw_socket(
                             upgraded,
