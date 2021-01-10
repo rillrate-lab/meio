@@ -32,7 +32,9 @@ impl<T> FromRequest for T
 where
     T: DirectPath,
 {
-    fn from_request(request: &Request<Body>) -> Option<Self> {
+    type Output = Self;
+
+    fn from_request(request: &Request<Body>) -> Option<Self::Output> {
         let path = request.uri().path();
         if Self::paths().iter().any(|p| p == &path) {
             Some(Self::default())
@@ -43,7 +45,9 @@ where
 }
 
 pub trait FromRequest: Sized + Send + Sync + 'static {
-    fn from_request(request: &Request<Body>) -> Option<Self>;
+    type Output: Send;
+
+    fn from_request(request: &Request<Body>) -> Option<Self::Output>;
 }
 
 pub struct Req<T> {
@@ -73,7 +77,7 @@ where
 impl<E, A> Route for RouteImpl<E, A>
 where
     E: FromRequest,
-    A: Actor + InteractionHandler<Req<E>>,
+    A: Actor + InteractionHandler<Req<E::Output>>,
 {
     fn try_route(
         &self,
@@ -117,7 +121,7 @@ where
 impl<E, A, P> Route for WsRouteImpl<E, A, P>
 where
     E: FromRequest,
-    A: Actor + ActionHandler<WsReq<E, P>>,
+    A: Actor + ActionHandler<WsReq<E::Output, P>>,
     P: Protocol + Sync,
 {
     fn try_route(

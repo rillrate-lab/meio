@@ -21,7 +21,7 @@ impl HttpServerLink {
     pub async fn add_route<E, A>(&mut self, extracted: E, address: Address<A>) -> Result<(), Error>
     where
         E: FromRequest,
-        A: Actor + InteractionHandler<Req<E>>,
+        A: Actor + InteractionHandler<Req<E::Output>>,
     {
         let route = RouteImpl { extracted, address };
         let msg = AddRoute {
@@ -38,7 +38,7 @@ impl HttpServerLink {
     where
         E: FromRequest,
         P: Protocol + Sync,
-        A: Actor + ActionHandler<WsReq<E, P>>,
+        A: Actor + ActionHandler<WsReq<E::Output, P>>,
     {
         let route = WsRouteImpl {
             extracted,
