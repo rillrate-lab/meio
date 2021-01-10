@@ -15,7 +15,7 @@ where
 pub async fn delay_until(deadline: std::time::Instant) {
     #[cfg(not(feature = "wasm"))]
     {
-        tokio::time::delay_until(deadline.into()).await;
+        tokio::time::sleep_until(deadline.into()).await;
     }
     #[cfg(feature = "wasm")]
     {

@@ -246,13 +246,11 @@ impl<A: Actor> ActorRuntime<A> {
                 err
             );
         }
-        // TODO: Activate this check for tokio 0.3
-        //if !self.join_tx.is_closed() {
-        if let Err(_err) = self.join_tx.broadcast(Status::Stop) {
-            // TODO: Activate this log for tokio 0.3
-            //log::error!("Can't release joiners of {:?}", self.id);
+        if !self.join_tx.is_closed() {
+            if let Err(_err) = self.join_tx.send(Status::Stop) {
+                log::error!("Can't release joiners of {:?}", self.id);
+            }
         }
-        //}
     }
 
     async fn routine(&mut self) {
