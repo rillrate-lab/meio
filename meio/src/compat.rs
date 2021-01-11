@@ -51,6 +51,10 @@ mod delay_queue {
         pub fn insert_at(&mut self, value: T, deadline: Instant) {
             self.queue.insert_at(value, deadline.into());
         }
+
+        pub fn len(&self) -> usize {
+            self.queue.len()
+        }
     }
 
     impl<T> Stream for DelayQueue<T> {
@@ -94,6 +98,10 @@ mod delay_queue {
 
         pub fn insert_at<Z>(&mut self, _: Z, deadline: Instant) {
             // TODO: Implement
+        }
+
+        pub fn len(&self) -> usize {
+            todo!()
         }
     }
 

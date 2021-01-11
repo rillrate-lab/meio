@@ -275,6 +275,7 @@ impl<A: Actor> ActorRuntime<A> {
                             }
                             Operation::Schedule { deadline } => {
                                 scheduled_queue.get_mut().insert_at(envelope, deadline);
+                                log::trace!("Scheduled events: {}", scheduled_queue.get_ref().len());
                                 process_envelope = None;
                             }
                         }
@@ -295,6 +296,7 @@ impl<A: Actor> ActorRuntime<A> {
                 delayed_envelope = scheduled_queue.select_next_some() => {
                     match delayed_envelope {
                         Ok(expired) => {
+                            log::trace!("Execute scheduled event. Remained: {}", scheduled_queue.get_ref().len());
                             let mut envelope = expired.into_inner();
                             let handle_res = envelope.handle(&mut self.actor, &mut self.context).await;
                             if let Err(err) = handle_res {

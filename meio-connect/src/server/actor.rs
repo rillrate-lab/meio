@@ -259,7 +259,7 @@ impl TaskEliminated<HyperRoutine> for HttpServer {
                 log::error!("Server failed: {}", err);
                 if self.insistent {
                     let when = Instant::now() + Duration::from_secs(3);
-                    log::debug!("Schedule restarting of: {}", self.addr);
+                    log::debug!("Schedule restarting of: {} at {:?}", self.addr, when);
                     ctx.address().schedule(RestartListener, when)?;
                 }
             }

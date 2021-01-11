@@ -69,7 +69,7 @@ mod tests {
         type Output = u8;
     }
 
-    struct ScheduledStop;
+    struct ScheduledStop(bool);
 
     mod link {
         use super::*;
@@ -161,10 +161,12 @@ mod tests {
         async fn handle(
             &mut self,
             _: Instant,
-            _: ScheduledStop,
+            stop: ScheduledStop,
             ctx: &mut Context<Self>,
         ) -> Result<(), Error> {
-            ctx.shutdown();
+            if stop.0 {
+                ctx.shutdown();
+            }
             Ok(())
         }
     }
@@ -223,7 +225,15 @@ mod tests {
     async fn test_schedule() -> Result<(), Error> {
         env_logger::try_init().ok();
         let mut address = System::spawn(MyActor);
-        address.schedule(ScheduledStop, Instant::now() + Duration::from_secs(3))?;
+        address.schedule(
+            ScheduledStop(false),
+            Instant::now() + Duration::from_secs(3),
+        )?;
+        address.schedule(
+            ScheduledStop(false),
+            Instant::now() + Duration::from_secs(3),
+        )?;
+        address.schedule(ScheduledStop(true), Instant::now() + Duration::from_secs(3))?;
         address.join().await;
         Ok(())
     }
