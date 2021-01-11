@@ -15,7 +15,6 @@ use meio::prelude::{
 use meio_protocol::Protocol;
 use slab::Slab;
 use std::future::Future;
-use std::marker::PhantomData;
 use std::net::SocketAddr;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -96,33 +95,32 @@ where
     }
 }
 
-pub struct WsReq<T, P: Protocol> {
-    pub request: T,
-    pub stream: WsHandler<P>,
+pub trait WsFromRequest: Sized + Send + Sync + 'static {
+    type Output: Send;
+    type Protocol: Protocol;
+
+    fn from_request(request: &Request<Body>) -> Option<Self::Output>;
 }
 
-impl<T, P> Action for WsReq<T, P>
-where
-    T: Send + 'static,
-    P: Protocol,
-{
+pub struct WsReq<T: WsFromRequest> {
+    pub request: T::Output,
+    pub stream: WsHandler<T::Protocol>,
 }
 
-pub(crate) struct WsRouteImpl<E, A, P>
+impl<T: WsFromRequest> Action for WsReq<T> {}
+
+pub(crate) struct WsRouteImpl<E, A>
 where
     A: Actor,
-    P: Protocol,
 {
     pub extracted: E,
-    pub protocol: PhantomData<P>,
     pub address: Address<A>,
 }
 
-impl<E, A, P> Route for WsRouteImpl<E, A, P>
+impl<E, A> Route for WsRouteImpl<E, A>
 where
-    E: FromRequest,
-    A: Actor + ActionHandler<WsReq<E::Output, P>>,
-    P: Protocol + Sync,
+    E: WsFromRequest,
+    A: Actor + ActionHandler<WsReq<E>>,
 {
     fn try_route(
         &self,

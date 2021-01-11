@@ -1,10 +1,8 @@
-use super::actor::{FromRequest, Req, Route, RouteImpl, WsReq, WsRouteImpl};
+use super::actor::{FromRequest, Req, Route, RouteImpl, WsFromRequest, WsReq, WsRouteImpl};
 use super::HttpServer;
 use anyhow::Error;
 use derive_more::From;
 use meio::prelude::{Action, ActionHandler, Actor, Address, InteractionHandler};
-use meio_protocol::Protocol;
-use std::marker::PhantomData;
 
 #[derive(Debug, Clone, From)]
 pub struct HttpServerLink {
@@ -30,21 +28,16 @@ impl HttpServerLink {
         self.address.act(msg).await
     }
 
-    pub async fn add_ws_route<E, P, A>(
+    pub async fn add_ws_route<E, A>(
         &mut self,
         extracted: E,
         address: Address<A>,
     ) -> Result<(), Error>
     where
-        E: FromRequest,
-        P: Protocol + Sync,
-        A: Actor + ActionHandler<WsReq<E::Output, P>>,
+        E: WsFromRequest,
+        A: Actor + ActionHandler<WsReq<E>>,
     {
-        let route = WsRouteImpl {
-            extracted,
-            protocol: PhantomData,
-            address,
-        };
+        let route = WsRouteImpl { extracted, address };
         let msg = AddRoute {
             route: Box::new(route),
         };
