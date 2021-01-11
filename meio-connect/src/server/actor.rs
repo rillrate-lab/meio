@@ -273,7 +273,7 @@ impl LiteTask for HyperRoutine {
     async fn routine(self, stop: StopReceiver) -> Result<Self::Output, Error> {
         let routing_table = self.routing_table.clone();
         let make_svc = MakeSvc { routing_table };
-        let server = Server::bind(&self.addr).serve(make_svc);
+        let server = Server::try_bind(&self.addr)?.serve(make_svc);
         server.with_graceful_shutdown(stop.into_future()).await?;
         Ok(())
     }
