@@ -24,6 +24,7 @@ use tokio_tungstenite::WebSocketStream;
 use tungstenite::protocol::Role;
 
 pub trait DirectPath: Default + Sized + Send + Sync + 'static {
+    type Parameter;
     fn paths() -> &'static [&'static str];
 }
 
@@ -32,6 +33,24 @@ where
     T: DirectPath,
 {
     type Output = Self;
+
+    fn from_request(request: &Request<Body>) -> Option<Self::Output> {
+        let path = request.uri().path();
+        if Self::paths().iter().any(|p| p == &path) {
+            Some(Self::default())
+        } else {
+            None
+        }
+    }
+}
+
+impl<T> WsFromRequest for T
+where
+    T: DirectPath,
+    T::Parameter: Protocol,
+{
+    type Output = Self;
+    type Protocol = T::Parameter;
 
     fn from_request(request: &Request<Body>) -> Option<Self::Output> {
         let path = request.uri().path();
