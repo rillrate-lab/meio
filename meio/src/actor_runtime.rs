@@ -11,6 +11,7 @@ use crate::lite_runtime::{self, LiteTask};
 use anyhow::Error;
 use async_trait::async_trait;
 use futures::channel::mpsc;
+use futures::stream::{pending, FusedStream};
 use futures::{select_biased, StreamExt};
 use std::hash::Hash;
 use thiserror::Error;
@@ -255,7 +256,19 @@ impl<A: Actor> ActorRuntime<A> {
 
     async fn routine(&mut self) {
         let mut scheduled_queue = crate::compat::DelayQueue::<Envelope<A>>::new().fuse();
+        let mut pendel = pending();
         while self.context.alive {
+            // This is a workaround not to call `DelayQueue` if it has no items,
+            // because its resumable, but returns `None` and brokes (closes) `FusedStream`.
+            // And after some delay no any future scheduled event occured.
+            // TODO: Create `tokio_util` PR to make `DelayQueue` unstoppable (always pending)
+            // Awaiting for: https://github.com/tokio-rs/tokio/issues/3407
+            let maybe_queue: &mut (dyn FusedStream<Item = Result<_, _>> + Unpin + Send) =
+                if scheduled_queue.get_ref().len() > 0 {
+                    &mut scheduled_queue
+                } else {
+                    &mut pendel
+                };
             select_biased! {
                 hp_envelope = self.hp_msg_rx.next() => {
                     if let Some(hp_env) = hp_envelope {
@@ -293,7 +306,7 @@ impl<A: Actor> ActorRuntime<A> {
                         log::trace!("Messages stream of {:?} (high-priority) drained.", self.id);
                     }
                 }
-                opt_delayed_envelope = scheduled_queue.next() => {
+                opt_delayed_envelope = maybe_queue.next() => {
                     if let Some(delayed_envelope) = opt_delayed_envelope {
                         match delayed_envelope {
                             Ok(expired) => {
@@ -309,7 +322,7 @@ impl<A: Actor> ActorRuntime<A> {
                             }
                         }
                     } else {
-                        log::error!("Delay queue closed of: {}", self.id);
+                        log::error!("Delay queue of {} closed.", self.id);
                     }
                 }
                 lp_envelope = self.msg_rx.next() => {
