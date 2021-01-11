@@ -251,12 +251,17 @@ impl TaskEliminated<HyperRoutine> for HttpServer {
     async fn handle(
         &mut self,
         _id: IdOf<HyperRoutine>,
-        _result: Result<(), TaskError>,
+        result: Result<(), TaskError>,
         ctx: &mut Context<Self>,
     ) -> Result<(), Error> {
-        if !ctx.is_terminating() && self.insistent {
-            let when = Instant::now() + Duration::from_secs(3);
-            ctx.address().schedule(RestartListener, when)?;
+        if !ctx.is_terminating() {
+            if let Err(err) = result {
+                log::error!("Server failed: {}", err);
+                if self.insistent {
+                    let when = Instant::now() + Duration::from_secs(3);
+                    ctx.address().schedule(RestartListener, when)?;
+                }
+            }
         }
         Ok(())
     }
@@ -272,6 +277,7 @@ impl Scheduled<RestartListener> for HttpServer {
         _action: RestartListener,
         ctx: &mut Context<Self>,
     ) -> Result<(), Error> {
+        log::info!("Attempt to restart server");
         self.start_http_listener(ctx);
         Ok(())
     }
