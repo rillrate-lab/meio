@@ -35,7 +35,7 @@ mod tests {
     use anyhow::Error;
     use async_trait::async_trait;
     use futures::stream;
-    use std::time::Duration;
+    use std::time::{Duration, Instant};
     use tokio::time::sleep;
 
     #[derive(Debug)]
@@ -68,6 +68,8 @@ mod tests {
     impl Interaction for MsgTwo {
         type Output = u8;
     }
+
+    struct ScheduledStop;
 
     mod link {
         use super::*;
@@ -154,6 +156,19 @@ mod tests {
         }
     }
 
+    #[async_trait]
+    impl Scheduled<ScheduledStop> for MyActor {
+        async fn handle(
+            &mut self,
+            _: Instant,
+            _: ScheduledStop,
+            ctx: &mut Context<Self>,
+        ) -> Result<(), Error> {
+            ctx.shutdown();
+            Ok(())
+        }
+    }
+
     #[tokio::test]
     async fn start_and_terminate() -> Result<(), Error> {
         env_logger::try_init().ok();
@@ -201,6 +216,15 @@ mod tests {
         let mut alternative_link: link::MyAlternativeLink = address.link();
         System::interrupt(&mut alternative_link)?;
         alternative_link.join().await;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_schedule() -> Result<(), Error> {
+        env_logger::try_init().ok();
+        let mut address = System::spawn(MyActor);
+        address.schedule(ScheduledStop, Instant::now() + Duration::from_secs(3))?;
+        address.join().await;
         Ok(())
     }
 }
