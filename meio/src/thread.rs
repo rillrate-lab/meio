@@ -7,6 +7,7 @@ use anyhow::Error;
 use std::thread;
 
 /// Keeps the control handle to the spawned runtime.
+#[derive(Debug)]
 pub struct ScopedRuntime {
     name: String,
     sender: Option<term::Sender>,
@@ -75,12 +76,14 @@ mod term {
     use tokio::sync::oneshot;
 
     // TODO: Hide fields and give methods...
+    #[derive(Debug)]
     pub struct Receiver {
         pub notifier_rx: oneshot::Receiver<()>,
         pub blocker: Arc<Mutex<()>>,
     }
 
     // TODO: Hide fields and give methods...
+    #[derive(Debug)]
     pub struct Sender {
         pub notifier_tx: oneshot::Sender<()>,
         pub blocker: Arc<Mutex<()>>,
