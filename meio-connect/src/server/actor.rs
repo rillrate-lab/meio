@@ -10,7 +10,7 @@ use hyper::upgrade::Upgraded;
 use hyper::{Body, Request, Response, Server, StatusCode};
 use meio::prelude::{
     Action, ActionHandler, Actor, Address, Context, IdOf, Interaction, InteractionHandler,
-    InterruptedBy, LiteTask, StartedBy, StopReceiver, TaskEliminated, TaskError,
+    InterruptedBy, LiteTask, Scheduled, StartedBy, StopReceiver, TaskEliminated, TaskError,
 };
 use meio_protocol::Protocol;
 use slab::Slab;
@@ -19,6 +19,7 @@ use std::net::SocketAddr;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{self, Poll};
+use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
 use tokio_tungstenite::WebSocketStream;
 use tungstenite::protocol::Role;
@@ -254,9 +255,24 @@ impl TaskEliminated<HyperRoutine> for HttpServer {
         ctx: &mut Context<Self>,
     ) -> Result<(), Error> {
         if !ctx.is_terminating() && self.insistent {
-            // TODO: Schedule restarting (wait for a while)
-            self.start_http_listener(ctx);
+            let when = Instant::now() + Duration::from_secs(3);
+            ctx.address().schedule(RestartListener, when)?;
         }
+        Ok(())
+    }
+}
+
+struct RestartListener;
+
+#[async_trait]
+impl Scheduled<RestartListener> for HttpServer {
+    async fn handle(
+        &mut self,
+        _timestamp: Instant,
+        _action: RestartListener,
+        ctx: &mut Context<Self>,
+    ) -> Result<(), Error> {
+        self.start_http_listener(ctx);
         Ok(())
     }
 }
