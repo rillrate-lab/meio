@@ -259,6 +259,7 @@ impl TaskEliminated<HyperRoutine> for HttpServer {
                 log::error!("Server failed: {}", err);
                 if self.insistent {
                     let when = Instant::now() + Duration::from_secs(3);
+                    log::debug!("Schedule restarting of: {}", self.addr);
                     ctx.address().schedule(RestartListener, when)?;
                 }
             }
@@ -277,7 +278,7 @@ impl Scheduled<RestartListener> for HttpServer {
         _action: RestartListener,
         ctx: &mut Context<Self>,
     ) -> Result<(), Error> {
-        log::info!("Attempt to restart server");
+        log::info!("Attempt to restart server: {}", self.addr);
         self.start_http_listener(ctx);
         Ok(())
     }
