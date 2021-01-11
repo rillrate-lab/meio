@@ -204,6 +204,7 @@ struct RoutingTable {
 pub struct HttpServer {
     addr: SocketAddr,
     routing_table: RoutingTable,
+    insistent: bool,
 }
 
 impl HttpServer {
@@ -211,7 +212,16 @@ impl HttpServer {
         Self {
             addr,
             routing_table: RoutingTable::default(),
+            insistent: true,
         }
+    }
+
+    fn start_http_listener(&self, ctx: &mut Context<Self>) {
+        let server_task = HyperRoutine {
+            addr: self.addr.clone(),
+            routing_table: self.routing_table.clone(),
+        };
+        ctx.spawn_task(server_task, ());
     }
 }
 
@@ -222,11 +232,7 @@ impl Actor for HttpServer {
 #[async_trait]
 impl<T: Actor> StartedBy<T> for HttpServer {
     async fn handle(&mut self, ctx: &mut Context<Self>) -> Result<(), Error> {
-        let server_task = HyperRoutine {
-            addr: self.addr.clone(),
-            routing_table: self.routing_table.clone(),
-        };
-        ctx.spawn_task(server_task, ());
+        self.start_http_listener(ctx);
         Ok(())
     }
 }
@@ -247,7 +253,10 @@ impl TaskEliminated<HyperRoutine> for HttpServer {
         _result: Result<(), TaskError>,
         ctx: &mut Context<Self>,
     ) -> Result<(), Error> {
-        ctx.shutdown();
+        if !ctx.is_terminating() && self.insistent {
+            // TODO: Schedule restarting (wait for a while)
+            self.start_http_listener(ctx);
+        }
         Ok(())
     }
 }
