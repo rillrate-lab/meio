@@ -50,11 +50,11 @@ pub trait FromRequest: Sized + Send + Sync + 'static {
     fn from_request(request: &Request<Body>) -> Option<Self::Output>;
 }
 
-pub struct Req<T> {
-    pub request: T,
+pub struct Req<T: FromRequest> {
+    pub request: T::Output,
 }
 
-impl<T: Send + 'static> Interaction for Req<T> {
+impl<T: FromRequest> Interaction for Req<T> {
     type Output = Response<Body>;
 }
 
@@ -77,7 +77,7 @@ where
 impl<E, A> Route for RouteImpl<E, A>
 where
     E: FromRequest,
-    A: Actor + InteractionHandler<Req<E::Output>>,
+    A: Actor + InteractionHandler<Req<E>>,
 {
     fn try_route(
         &self,
