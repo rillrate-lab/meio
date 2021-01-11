@@ -36,7 +36,7 @@ mod tests {
     use async_trait::async_trait;
     use futures::stream;
     use std::time::{Duration, Instant};
-    use tokio::time::sleep;
+    use tokio::time::{sleep, timeout};
 
     #[derive(Debug)]
     pub struct MyActor;
@@ -225,6 +225,8 @@ mod tests {
     async fn test_schedule() -> Result<(), Error> {
         env_logger::try_init().ok();
         let mut address = System::spawn(MyActor);
+        // To check the `DelayedQueue` won't closed.
+        sleep(Duration::from_secs(3)).await;
         address.schedule(
             ScheduledStop(false),
             Instant::now() + Duration::from_secs(3),
@@ -234,7 +236,7 @@ mod tests {
             Instant::now() + Duration::from_secs(3),
         )?;
         address.schedule(ScheduledStop(true), Instant::now() + Duration::from_secs(3))?;
-        address.join().await;
+        timeout(Duration::from_secs(5), address.join()).await?;
         Ok(())
     }
 }

@@ -293,19 +293,23 @@ impl<A: Actor> ActorRuntime<A> {
                         log::trace!("Messages stream of {:?} (high-priority) drained.", self.id);
                     }
                 }
-                delayed_envelope = scheduled_queue.select_next_some() => {
-                    match delayed_envelope {
-                        Ok(expired) => {
-                            log::trace!("Execute scheduled event. Remained: {}", scheduled_queue.get_ref().len());
-                            let mut envelope = expired.into_inner();
-                            let handle_res = envelope.handle(&mut self.actor, &mut self.context).await;
-                            if let Err(err) = handle_res {
-                                log::error!("Handler for {:?} (scheduled) failed: {}", self.id, err);
+                opt_delayed_envelope = scheduled_queue.next() => {
+                    if let Some(delayed_envelope) = opt_delayed_envelope {
+                        match delayed_envelope {
+                            Ok(expired) => {
+                                log::trace!("Execute scheduled event. Remained: {}", scheduled_queue.get_ref().len());
+                                let mut envelope = expired.into_inner();
+                                let handle_res = envelope.handle(&mut self.actor, &mut self.context).await;
+                                if let Err(err) = handle_res {
+                                    log::error!("Handler for {:?} (scheduled) failed: {}", self.id, err);
+                                }
+                            }
+                            Err(err) => {
+                                log::error!("Failed scheduled execution for {:?}: {}", self.id, err);
                             }
                         }
-                        Err(err) => {
-                            log::error!("Failed scheduled execution for {:?}: {}", self.id, err);
-                        }
+                    } else {
+                        log::error!("Delay queue closed of: {}", self.id);
                     }
                 }
                 lp_envelope = self.msg_rx.next() => {
