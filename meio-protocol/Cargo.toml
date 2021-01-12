@@ -1,6 +1,6 @@
 [package]
 name = "meio-protocol"
-version = "0.71.0"
+version = "0.72.0"
 authors = [
     "Denis Kolodin <deniskolodin@gmail.com>",
     "overfloat <rillrate@gmail.com>",
@@ -17,4 +17,4 @@ description = "Basic protocol traits of MEIO framework"
 
 [dependencies]
 anyhow = "1.0.38"
-serde = "1.0.118"
+serde = "1.0.119"

@@ -1,6 +1,6 @@
 [package]
 name = "meio"
-version = "0.71.0"
+version = "0.72.0"
 edition = "2018"
 authors = [
     "Denis Kolodin <deniskolodin@gmail.com>",
@@ -24,7 +24,7 @@ futures-timer = { version = "3.0.2", optional = true }
 log = "0.4.13"
 thiserror = "1.0.23"
 tokio = { version = "1.0.1", features = ["full"], optional = true }
-tokio-util = { version = "0.6.0", features = ["full"], optional = true }
+tokio-util = { version = "0.6.1", features = ["full"], optional = true }
 uuid = { version = "0.8.2", features = ["v4"] }
 wasm-bindgen-futures = { version = "0.4.19", optional = true }
 

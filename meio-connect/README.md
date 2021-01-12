@@ -1,4 +1,4 @@
-# meio-ws
+# meio-connect
 
 [![Crates.io][crates-badge]][crates-url]
 [![Released API docs][docs-badge]][docs-url]
