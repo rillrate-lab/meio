@@ -79,7 +79,7 @@ where
         match supervisor {
             None => LifecycleNotifier::ignore(),
             Some(super_addr) => {
-                let op = Operation::Done { id: id.clone() };
+                let op = Operation::Done { id };
                 LifecycleNotifier::once(super_addr, op)
             }
         }

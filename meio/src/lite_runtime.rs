@@ -84,7 +84,7 @@ where
             None => LifecycleNotifier::ignore(),
             Some(super_addr) => {
                 //let event = TaskDone::new(id_of.clone());
-                let op = Operation::Done { id: id.clone() };
+                let op = Operation::Done { id };
                 LifecycleNotifier::once(super_addr, op)
             }
         }

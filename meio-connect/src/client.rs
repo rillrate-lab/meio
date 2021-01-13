@@ -64,7 +64,7 @@ where
 {
     pub fn new(url: String, repeat_interval: Option<Duration>, address: Address<A>) -> Self {
         Self {
-            url: url.clone(),
+            url,
             repeat_interval,
             address,
             _protocol: PhantomData,
@@ -142,7 +142,7 @@ where
                         Err(err) => {
                             log::error!("Ws connecion to {} failed: {}", self.url, err);
                             fail_reason = WsFailReason::ConnectionFailed;
-                            original_err = err.into();
+                            original_err = err;
                         }
                     }
                 }
@@ -155,7 +155,7 @@ where
             self.address.instant(WsClientStatus::<P>::Failed {
                 reason: fail_reason.clone(),
             })?;
-            if let Some(dur) = self.repeat_interval.clone() {
+            if let Some(dur) = self.repeat_interval {
                 let elapsed = last_success.elapsed();
                 if elapsed < dur {
                     let remained = dur - elapsed;

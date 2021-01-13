@@ -219,7 +219,7 @@ impl HttpServer {
 
     fn start_http_listener(&self, ctx: &mut Context<Self>) {
         let server_task = HyperRoutine {
-            addr: self.addr.clone(),
+            addr: self.addr,
             routing_table: self.routing_table.clone(),
         };
         ctx.spawn_task(server_task, ());
@@ -329,7 +329,7 @@ impl Service<Request<Body>> for Svc {
         let uri = req.uri().to_owned();
         log::trace!("Incoming request path: {}", uri.path());
         let routing_table = self.routing_table.clone();
-        let addr = self.addr.clone();
+        let addr = self.addr;
         let fut = async move {
             let mut route = None;
             {

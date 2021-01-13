@@ -113,9 +113,7 @@ impl<A: Actor> Address<A> {
         I: Send + 'static,
         A: Scheduled<I>,
     {
-        let operation = Operation::Schedule {
-            deadline: deadline.clone(),
-        };
+        let operation = Operation::Schedule { deadline };
         let wrapped = ScheduledItem {
             timestamp: deadline,
             item: input,

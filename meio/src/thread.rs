@@ -25,11 +25,11 @@ impl ScopedRuntime {
 impl Drop for ScopedRuntime {
     fn drop(&mut self) {
         if let Some(sender) = self.sender.take() {
-            if let Err(_) = sender.notifier_tx.send(()) {
+            if sender.notifier_tx.send(()).is_err() {
                 log::error!("Can't send termination signal to the {}", self.name);
                 return;
             }
-            if let Err(_) = sender.blocker.lock() {
+            if sender.blocker.lock().is_err() {
                 log::error!("Can't wait for termination of the {}", self.name);
             }
         }
