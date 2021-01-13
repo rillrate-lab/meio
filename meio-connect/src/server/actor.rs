@@ -77,12 +77,11 @@ impl<T: FromRequest> Interaction for Req<T> {
     type Output = Response<Body>;
 }
 
+pub type RouteResult =
+    Result<Pin<Box<dyn Future<Output = Result<Response<Body>, Error>> + Send>>, Request<Body>>;
+
 pub(crate) trait Route: Send + Sync {
-    fn try_route(
-        &self,
-        addr: &SocketAddr,
-        request: Request<Body>,
-    ) -> Result<Pin<Box<dyn Future<Output = Result<Response<Body>, Error>> + Send>>, Request<Body>>;
+    fn try_route(&self, addr: &SocketAddr, request: Request<Body>) -> RouteResult;
 }
 
 pub(crate) struct RouteImpl<E, A>
@@ -98,12 +97,7 @@ where
     E: FromRequest,
     A: Actor + InteractionHandler<Req<E>>,
 {
-    fn try_route(
-        &self,
-        _addr: &SocketAddr,
-        request: Request<Body>,
-    ) -> Result<Pin<Box<dyn Future<Output = Result<Response<Body>, Error>> + Send>>, Request<Body>>
-    {
+    fn try_route(&self, _addr: &SocketAddr, request: Request<Body>) -> RouteResult {
         if let Some(value) = E::from_request(&request) {
             let mut address = self.address.clone();
             let msg = Req { request: value };
@@ -142,12 +136,7 @@ where
     E: WsFromRequest,
     A: Actor + ActionHandler<WsReq<E>>,
 {
-    fn try_route(
-        &self,
-        addr: &SocketAddr,
-        mut request: Request<Body>,
-    ) -> Result<Pin<Box<dyn Future<Output = Result<Response<Body>, Error>> + Send>>, Request<Body>>
-    {
+    fn try_route(&self, addr: &SocketAddr, mut request: Request<Body>) -> RouteResult {
         if let Some(value) = E::from_request(&request) {
             let mut res = Response::new(Body::empty());
             let mut address = self.address.clone();
@@ -316,10 +305,12 @@ struct Svc {
     routing_table: RoutingTable,
 }
 
+pub type SvcFut<T, E> = Pin<Box<dyn Future<Output = Result<T, E>> + Send>>;
+
 impl Service<Request<Body>> for Svc {
     type Response = Response<Body>;
     type Error = hyper::Error;
-    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
+    type Future = SvcFut<Self::Response, Self::Error>;
 
     fn poll_ready(&mut self, _: &mut task::Context) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
@@ -381,7 +372,7 @@ struct MakeSvc {
 impl<'a> Service<&'a AddrStream> for MakeSvc {
     type Response = Svc;
     type Error = hyper::Error;
-    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
+    type Future = SvcFut<Self::Response, Self::Error>;
 
     fn poll_ready(&mut self, _: &mut task::Context) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
