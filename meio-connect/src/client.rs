@@ -1,10 +1,6 @@
 use crate::talker::{Talker, TalkerCompatible, WsIncoming};
 use anyhow::Error;
 use async_trait::async_trait;
-use async_tungstenite::{
-    tokio::{connect_async, TokioAdapter},
-    WebSocketStream,
-};
 use futures::channel::mpsc;
 use meio::prelude::{
     ActionHandler, Actor, Address, InstantAction, InstantActionHandler, LiteTask, StopReceiver,
@@ -15,6 +11,7 @@ use std::time::{Duration, Instant};
 use thiserror::Error;
 use tokio::net::TcpStream;
 use tokio::time::sleep;
+use tokio_tungstenite::{connect_async, WebSocketStream};
 
 #[derive(Debug)]
 pub struct WsSender<T: ProtocolData> {
@@ -77,7 +74,7 @@ where
     P: Protocol,
     A: Actor + InstantActionHandler<WsClientStatus<P>> + ActionHandler<WsIncoming<P::ToClient>>,
 {
-    type WebSocket = WebSocketStream<TokioAdapter<TcpStream>>;
+    type WebSocket = WebSocketStream<TcpStream>;
     type Message = tungstenite::Message;
     type Error = tungstenite::Error;
     type Actor = A;
