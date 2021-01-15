@@ -53,6 +53,8 @@ where
     })
 }
 
+// TODO: Consider to deny and refactor
+#[allow(clippy::await_holding_lock)]
 #[tokio::main]
 async fn entrypoint<T>(actor: T, term_rx: term::Receiver) -> Result<(), Error>
 where
