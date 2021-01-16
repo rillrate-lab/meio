@@ -15,10 +15,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v1
 
-      - name: Install latest nightly
+      - name: Install latest stable
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly
+          toolchain: stable
           override: true
           components: rustfmt, clippy
 
@@ -37,7 +37,7 @@ jobs:
         uses: actions-rs/cargo@v1.0.1
         with:
           command: test
-          toolchain: nightly
+          toolchain: stable
 
   build:
     runs-on: ${{ matrix.os }}
@@ -49,7 +49,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-      - name: Install latest nightly
+      - name: Install latest stable
         uses: actions-rs/toolchain@v1
         with:
             toolchain: stable
@@ -70,10 +70,15 @@ jobs:
 
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly
+          toolchain: stable
           override: true
+
+      - uses: actions-rs/install@v0.1
+        with:
+          crate: cargo-workspaces
+          version: latest
 
       - name: Publish on crates.io
         run: |
           cargo login ${{ secrets.CARGO_TOKEN }}
-          cargo publish
+          cargo workspaces publish
