@@ -5,31 +5,8 @@ on:
     types: [created]
 
 jobs:
-  rust-package:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v1
-
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-
-      - name: Packaging `meio`
-        working-directory: ./meio
-        run: cargo package
-
-      - name: Packaging `meio-protocol`
-        working-directory: ./meio-protocol
-        run: cargo package
-
-      - name: Packaging `meio-connect`
-        working-directory: ./meio-connect
-        run: cargo package
-
   rust-publish:
     runs-on: ubuntu-latest
-    needs: rust-package
     steps:
       - uses: actions/checkout@v1
 
