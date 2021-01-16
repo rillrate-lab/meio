@@ -1,0 +1,31 @@
+name: Release
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  rust-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Login to crates.io
+        run: cargo login ${{ secrets.CARGO_TOKEN }}
+
+      - name: Publish `meio` on crates.io
+        working-directory: ./meio
+        run: cargo publish
+
+      - name: Publish `meio-protocol` on crates.io
+        working-directory: ./meio-protocol
+        run: cargo publish
+
+      - name: Publish `meio-connect` on crates.io
+        working-directory: ./meio-connect
+        run: cargo publish

@@ -1,12 +1,7 @@
 name: CI
 
 on:
-  release:
-    types: [created]
   push:
-  schedule:
-    # Runs every Thursday at 20:23 GMT to avoid bit rot
-    - cron: "20 23 * * 4"
 
 jobs:
   lint:
@@ -60,25 +55,3 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: check
-
-  rust-publish:
-    if: startsWith(github.ref, 'refs/tags/')
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v1
-
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-
-      - uses: actions-rs/install@v0.1
-        with:
-          crate: cargo-workspaces
-          version: latest
-
-      - name: Publish on crates.io
-        run: |
-          cargo login ${{ secrets.CARGO_TOKEN }}
-          cargo workspaces publish
