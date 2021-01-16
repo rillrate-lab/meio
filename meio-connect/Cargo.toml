@@ -1,6 +1,6 @@
 [package]
 name = "meio-connect"
-version = "0.73.0"
+version = "0.74.0"
 authors = [
     "Denis Kolodin <deniskolodin@gmail.com>",
     "overfloat <rillrate@gmail.com>",
@@ -19,16 +19,16 @@ description = "Set of connectors for MEIO framework"
 anyhow = "1.0.38"
 async-trait = "0.1.42"
 derive_more = "0.99.11"
-futures = "0.3.9"
-headers = "0.3.2"
+futures = "0.3.12"
+headers = "0.3.3"
 # TODO: And this when possible (
 hyper = { version = "0.14.2", features = ["full"] }
 log = "0.4.13"
-meio = { version = "0.73.0", path = "../meio" }
-meio-protocol = { version = "0.73.0", path = "../meio-protocol" }
+meio = { version = "0.74.0", path = "../meio" }
+meio-protocol = { version = "0.74.0", path = "../meio-protocol" }
 serde = "1.0.119"
 slab = "0.4.2"
 thiserror = "1.0.23"
-tokio = "1.0.1"
+tokio = "1.0.2"
 tokio-tungstenite = "0.13.0"
 tungstenite = { version = "0.12.0", default-features = false }
