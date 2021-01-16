@@ -15,17 +15,10 @@ jobs:
           toolchain: stable
           override: true
 
-      - name: Packaging `meio`
-        working-directory: ./meio
-        run: cargo package
-
-      - name: Packaging `meio-protocol`
-        working-directory: ./meio-protocol
-        run: cargo package
-
-      - name: Packaging `meio-connect`
-        working-directory: ./meio-connect
-        run: cargo package
+      - name: Checking packages
+        uses: katyo/publish-crates@v1
+        with:
+          dry-run: true
 
   rust-publish:
     runs-on: ubuntu-latest
@@ -38,33 +31,7 @@ jobs:
           toolchain: stable
           override: true
 
-      - uses: katyo/publish-crates@v1
+      - name: Publishing crates
+        uses: katyo/publish-crates@v1
         with:
           registry-token: ${{ secrets.CARGO_TOKEN }}
-
-  rust-publish-old:
-    if: false
-    runs-on: ubuntu-latest
-    needs: rust-package
-    steps:
-      - uses: actions/checkout@v1
-
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-
-      - name: Login to crates.io
-        run: cargo login ${{ secrets.CARGO_TOKEN }}
-
-      - name: Publish `meio` on crates.io
-        working-directory: ./meio
-        run: cargo publish
-
-      - name: Publish `meio-protocol` on crates.io
-        working-directory: ./meio-protocol
-        run: cargo publish
-
-      - name: Publish `meio-connect` on crates.io
-        working-directory: ./meio-connect
-        run: cargo publish
