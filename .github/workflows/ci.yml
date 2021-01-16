@@ -34,6 +34,11 @@ jobs:
           command: test
           toolchain: stable
 
+      - name: Run cargo check
+        uses: actions-rs/cargo@v1
+        with:
+          command: check
+
   build:
     runs-on: ${{ matrix.os }}
     needs: lint
@@ -51,7 +56,13 @@ jobs:
             override: true
             components: rustfmt, clippy
 
-      - name: Run cargo check
+      - name: Run cargo build [debug]
         uses: actions-rs/cargo@v1
         with:
-          command: check
+          command: build
+
+      - name: Run cargo build [release]
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release
