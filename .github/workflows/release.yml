@@ -15,10 +15,17 @@ jobs:
           toolchain: stable
           override: true
 
-      - name: Checking packages
-        uses: katyo/publish-crates@v1
-        with:
-          dry-run: true
+      - name: Packaging `meio`
+        working-directory: ./meio
+        run: cargo package
+
+      - name: Packaging `meio-protocol`
+        working-directory: ./meio-protocol
+        run: cargo package
+
+      - name: Packaging `meio-connect`
+        working-directory: ./meio-connect
+        run: cargo package
 
   rust-publish:
     runs-on: ubuntu-latest
