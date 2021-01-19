@@ -7,3 +7,5 @@
 [crates-url]: https://crates.io/crates/meio-connect
 [docs-badge]: https://docs.rs/meio-connect/badge.svg
 [docs-url]: https://docs.rs/meio-connect
+
+HTTP/WS server and client that implemented as `meio` actors.

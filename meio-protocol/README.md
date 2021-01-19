@@ -7,3 +7,5 @@
 [crates-url]: https://crates.io/crates/meio-protocol
 [docs-badge]: https://docs.rs/meio-protocol/badge.svg
 [docs-url]: https://docs.rs/meio-protocol
+
+Core protocol traits of `meio-connect`.
