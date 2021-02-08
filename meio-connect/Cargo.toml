@@ -22,13 +22,13 @@ derive_more = "0.99.11"
 futures = "0.3.12"
 headers = "0.3.3"
 # TODO: And this when possible (
-hyper = { version = "0.14.2", features = ["full"] }
-log = "0.4.13"
+hyper = { version = "0.14.4", features = ["full"] }
+log = "0.4.14"
 meio = { version = "0.74.3", path = "../meio" }
 meio-protocol = { version = "0.74.3", path = "../meio-protocol" }
-serde = "1.0.119"
+serde = "1.0.123"
 slab = "0.4.2"
 thiserror = "1.0.23"
-tokio = "1.0.2"
+tokio = "1.2.0"
 tokio-tungstenite = "0.13.0"
 tungstenite = { version = "0.12.0", default-features = false }
