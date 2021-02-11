@@ -284,8 +284,8 @@ where
     }
 }
 
-pub(crate) struct StreamItem<T> {
-    pub item: T,
+pub(crate) enum StreamItem<T> {
+    Single(T),
 }
 
 impl<T: Send + 'static> Action for StreamItem<T> {}
@@ -304,7 +304,9 @@ where
     I: Send + 'static,
 {
     async fn handle(&mut self, msg: StreamItem<I>, ctx: &mut Context<Self>) -> Result<(), Error> {
-        Consumer::handle(self, msg.item, ctx).await
+        match msg {
+            StreamItem::Single(item) => Consumer::handle(self, item, ctx).await,
+        }
     }
 }
 

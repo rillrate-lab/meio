@@ -251,7 +251,7 @@ where
 {
     async fn entrypoint(mut self) {
         while let Some(item) = self.stream.next().await {
-            let action = StreamItem { item };
+            let action = StreamItem::Single(item);
             if let Err(err) = self.address.act(action).await {
                 log::error!(
                     "Can't send an event to {:?} form a background stream: {}. Breaking...",
