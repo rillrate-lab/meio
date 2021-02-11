@@ -12,7 +12,7 @@ use crate::ids::{Id, IdOf};
 use crate::lifecycle::Interrupt;
 use anyhow::Error;
 use futures::channel::{mpsc, oneshot};
-use futures::{SinkExt, Stream, StreamExt};
+use futures::{stream::ReadyChunks, SinkExt, Stream, StreamExt};
 use std::convert::identity;
 use std::fmt;
 use std::hash::{Hash, Hasher};
@@ -171,6 +171,11 @@ impl<A: Actor> Address<A> {
     }
 
     /// Attaches a `Stream` of event to an `Actor`.
+    /// Optimized for intensive streams. For moderate flow you still can
+    /// use ordinary `Action`s and `act` method calls.
+    ///
+    /// It spawns a routine that groups multiple items into a single chunk
+    /// to reduce amount as `async` calls of a handler.
     pub fn attach<S>(&self, stream: S)
     where
         A: Consumer<S::Item>,
@@ -178,7 +183,8 @@ impl<A: Actor> Address<A> {
         S::Item: Send + 'static,
     {
         let forwarder = Forwarder {
-            stream,
+            // TODO: Configurable?
+            stream: stream.ready_chunks(16),
             address: self.clone(),
         };
         // WARNING! Don't return `JoinHandle` because user can
@@ -239,7 +245,7 @@ where
 /// This worker receives items from a stream and send them as actions
 /// into an `Actor`.
 struct Forwarder<S: Stream, A: Actor> {
-    stream: S,
+    stream: ReadyChunks<S>,
     address: Address<A>,
 }
 
@@ -251,7 +257,7 @@ where
 {
     async fn entrypoint(mut self) {
         while let Some(item) = self.stream.next().await {
-            let action = StreamItem::Single(item);
+            let action = StreamItem::Chunk(item);
             if let Err(err) = self.address.act(action).await {
                 log::error!(
                     "Can't send an event to {:?} form a background stream: {}. Breaking...",

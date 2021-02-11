@@ -285,7 +285,7 @@ where
 }
 
 pub(crate) enum StreamItem<T> {
-    Single(T),
+    Chunk(Vec<T>),
 }
 
 impl<T: Send + 'static> Action for StreamItem<T> {}
@@ -294,7 +294,7 @@ impl<T: Send + 'static> Action for StreamItem<T> {}
 #[async_trait]
 pub trait Consumer<T>: Actor {
     /// The method called when the next item received from a `Stream`.
-    async fn handle(&mut self, item: T, ctx: &mut Context<Self>) -> Result<(), Error>;
+    async fn handle(&mut self, chunk: Vec<T>, ctx: &mut Context<Self>) -> Result<(), Error>;
 }
 
 #[async_trait]
@@ -305,11 +305,12 @@ where
 {
     async fn handle(&mut self, msg: StreamItem<I>, ctx: &mut Context<Self>) -> Result<(), Error> {
         match msg {
-            StreamItem::Single(item) => Consumer::handle(self, item, ctx).await,
+            StreamItem::Chunk(chunk) => Consumer::handle(self, chunk, ctx).await,
         }
     }
 }
 
+/* TODO: Delete. Not smart thing since `Consumer` stared to group items inito chunks.
 /// Represents a capability to receive message from a `TryStream`.
 #[async_trait]
 pub trait TryConsumer<T>: Actor {
@@ -339,6 +340,7 @@ where
         }
     }
 }
+*/
 
 /// Used to wrap scheduled event.
 pub(crate) struct ScheduledItem<T> {
