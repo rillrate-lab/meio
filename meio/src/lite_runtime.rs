@@ -47,17 +47,28 @@ pub trait LiteTask: Sized + Send + 'static {
     async fn interruptable_routine(mut self) -> Result<Self::Output, Error> {
         loop {
             let last_attempt = Instant::now();
-            if let Err(err) = self.repeatable_routine().await {
-                log::error!("Routine {} failed: {}", self.name(), err);
+            let routine_result = self.repeatable_routine().await;
+            match routine_result {
+                Ok(Some(output)) => {
+                    return Ok(output);
+                }
+                Ok(None) => {
+                    // continue
+                }
+                Err(err) => {
+                    log::error!("Routine {} failed: {}", self.name(), err);
+                }
             }
             let instant = self.retry_at(last_attempt);
             crate::compat::delay_until(instant).await;
         }
     }
 
-    /// Routine that can be retried in case of fail.
-    async fn repeatable_routine(&mut self) -> Result<(), Error> {
-        Ok(())
+    /// Routine that will be repeated till fail or success.
+    ///
+    /// To stop it you should return `Some(value)`.
+    async fn repeatable_routine(&mut self) -> Result<Option<Self::Output>, Error> {
+        Ok(None)
     }
 
     /// When to do the next attempt for `repeatable_routine`.
