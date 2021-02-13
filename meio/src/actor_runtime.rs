@@ -1,4 +1,19 @@
 //! This module contains `Actor` trait and the runtime to execute it.
+//!
+//! ###
+//!
+//! If you want to limit types that can be used as `LiteTasks` you can
+//! add a trait that required `ListTask` and implement `EliminatedTask`
+//! for your trait only. The compiler will not allow you to spawn other
+//! task except with your type.
+//!
+//! Example:
+//!
+//! ```
+//! trait SpecificTask: LiteTask {}
+//!
+//! impl<T: SpecificTask> EliminatedTask<T> for Actor {}
+//! ```
 
 use crate::compat::watch;
 use crate::handlers::{
