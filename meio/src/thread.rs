@@ -38,15 +38,34 @@ impl Drop for ScopedRuntime {
 
 /// Spawns supervisor actor in a separate runtime and returns a handle
 /// to terminate it on `Drop`.
+///
+/// It started with no working threads, because if you used this separate-threaded
+/// `meio` instance that means you wanted to spawn a background runtime.
+///
+/// If you use `meio` in your main `Runtime` than it will use all properties
+/// of the existent runtime. That's why this `spawn` function consider it used
+/// for background tasks only.
 pub fn spawn<T>(actor: T) -> Result<ScopedRuntime, Error>
 where
     T: Actor + StartedBy<System> + InterruptedBy<System>,
 {
     let name = format!("thread-{}", actor.name());
     let (term_tx, term_rx) = term::channel();
-    thread::Builder::new()
-        .name(name.clone())
-        .spawn(move || entrypoint(actor, term_rx))?;
+    thread::Builder::new().name(name.clone()).spawn(move || {
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .thread_name("meio-pool")
+            .worker_threads(1)
+            .on_thread_start(|| {
+                log::info!("New meio worker thread spawned");
+            })
+            .on_thread_stop(|| {
+                log::info!("The meio worker thread retired");
+            })
+            .enable_all()
+            .build()?;
+        let routine = entrypoint(actor, term_rx);
+        runtime.block_on(routine)
+    })?;
     Ok(ScopedRuntime {
         name,
         sender: Some(term_tx),
@@ -55,7 +74,6 @@ where
 
 // TODO: Consider to deny and refactor
 #[allow(clippy::await_holding_lock)]
-#[tokio::main]
 async fn entrypoint<T>(actor: T, term_rx: term::Receiver) -> Result<(), Error>
 where
     T: Actor + StartedBy<System> + InterruptedBy<System>,
