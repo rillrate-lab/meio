@@ -334,6 +334,7 @@ where
 
 pub(crate) enum StreamItem<T> {
     Chunk(Vec<T>),
+    Done,
 }
 
 impl<T: Send + 'static> Action for StreamItem<T> {}
@@ -344,18 +345,26 @@ pub trait Consumer<T: 'static>: Actor {
     /// The method called when the next item received from a `Stream`.
     async fn handle(&mut self, chunk: Vec<T>, ctx: &mut Context<Self>) -> Result<(), Error>;
 
-    // TODO: Add `failed` and `finished` that works with an ordinary queue
-    // to don't let to overtake stream items by service message.
-
-    /// The stream was failed.
-    async fn task_failed(&mut self, err: TaskError, _ctx: &mut Context<Self>) -> Result<(), Error> {
-        log::error!("Consumer failed: {}", err);
+    /// When the stream consumed completely.
+    ///
+    /// Called after the last item in the stream only.
+    async fn finished(&mut self, _ctx: &mut Context<Self>) -> Result<(), Error> {
+        log::info!("Stream finished");
         Ok(())
     }
 
-    /// When the stream was finished sucessfully.
+    /// The stream was failed.
+    async fn task_failed(&mut self, err: TaskError, _ctx: &mut Context<Self>) -> Result<(), Error> {
+        log::error!("Consumer task failed: {}", err);
+        Ok(())
+    }
+
+    /// When the stream task was finished sucessfully.
+    ///
+    /// You should prefer to use `finished` instead of this, because it's service
+    /// event with the high-priority and it can overtake ordinary stream items.
     async fn task_finished(&mut self, _ctx: &mut Context<Self>) -> Result<(), Error> {
-        log::info!("Stream finished");
+        log::info!("Stream task finished");
         Ok(())
     }
 }
@@ -369,6 +378,7 @@ where
     async fn handle(&mut self, msg: StreamItem<I>, ctx: &mut Context<Self>) -> Result<(), Error> {
         match msg {
             StreamItem::Chunk(chunk) => Consumer::handle(self, chunk, ctx).await,
+            StreamItem::Done => Consumer::finished(self, ctx).await,
         }
     }
 }

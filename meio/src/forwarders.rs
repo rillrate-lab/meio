@@ -37,15 +37,10 @@ where
     async fn interruptable_routine(mut self) -> Result<Self::Output, Error> {
         while let Some(item) = self.stream.next().await {
             let action = StreamItem::Chunk(item);
-            if let Err(err) = self.recipient.act(action).await {
-                log::error!(
-                    "Can't send an event to {:?} form a background stream: {}. Breaking...",
-                    self.recipient.id_ref(),
-                    err
-                );
-                break;
-            }
+            self.recipient.act(action).await?;
         }
+        let action = StreamItem::Done;
+        self.recipient.act(action).await?;
         Ok(())
     }
 }

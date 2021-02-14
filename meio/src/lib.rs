@@ -137,6 +137,11 @@ mod tests {
             log::info!("Received MsgOne (from the stream)");
             Ok(())
         }
+
+        async fn finished(&mut self, ctx: &mut Context<Self>) -> Result<(), Error> {
+            ctx.shutdown();
+            Ok(())
+        }
     }
 
     #[async_trait]
@@ -250,8 +255,6 @@ mod tests {
         // If you acivate this line the test will wait for the `Ctrl+C` signal.
         //address.attach(signal::CtrlC::stream()).await?;
         //System::interrupt(&mut address)?;
-
-        // TODO: Add and impement `finished` to fix that
         address.join().await;
         Ok(())
     }
