@@ -176,8 +176,12 @@ where
     }
 }
 
-pub(crate) struct Interact<T: Interaction> {
+/// The wrapper for an interaction request that keeps a request and the
+/// channel for sending a response.
+pub struct Interact<T: Interaction> {
+    /// Interaction request.
     pub request: T,
+    /// The responder to send a result of an interaction.
     pub responder: oneshot::Sender<Result<T::Output, Error>>,
 }
 
