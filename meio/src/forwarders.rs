@@ -37,31 +37,28 @@ where
     }
 }
 
-pub(crate) struct InteractionForwarder<T: Actor, I: Interaction, A: Actor> {
-    from_address: Address<T>,
+pub(crate) struct InteractionForwarder<I: Interaction, A: Actor> {
+    // TODO: Use `ActionPerformer` here
+    address: Address<A>,
     event: Option<I>,
-    to_address: Address<A>,
 }
 
-impl<T, I, A> InteractionForwarder<T, I, A>
+impl<I, A> InteractionForwarder<I, A>
 where
-    T: Actor,
     I: Interaction,
     A: ActionHandler<Interact<I>>,
 {
-    pub fn new(from_address: Address<T>, event: I, to_address: Address<A>) -> Self {
+    pub fn new(address: Address<A>, event: I) -> Self {
         Self {
-            from_address,
+            address,
             event: Some(event),
-            to_address,
         }
     }
 }
 
 #[async_trait]
-impl<T, I, A> LiteTask for InteractionForwarder<T, I, A>
+impl<I, A> LiteTask for InteractionForwarder<I, A>
 where
-    T: Actor,
     I: Interaction,
     A: ActionHandler<Interact<I>>,
 {
@@ -72,6 +69,6 @@ where
             .event
             .take()
             .expect("InteractionForwarder called twice");
-        self.to_address.interact_and_wait(request).await
+        self.address.interact_and_wait(request).await
     }
 }

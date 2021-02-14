@@ -197,8 +197,7 @@ impl<A: Actor> Context<A> {
         // `ActionHandler` to be compatible with custom performers
         P: ActionHandler<Interact<I>>,
     {
-        let forwarder =
-            InteractionForwarder::new(self.address.clone(), request, performer.to_owned());
+        let forwarder = InteractionForwarder::new(performer.to_owned(), request);
         self.spawn_task(forwarder, group);
     }
 

@@ -310,7 +310,7 @@ pub trait InteractionDone<I: Interaction>: Actor {
 }
 
 #[async_trait]
-impl<T, I, A> TaskEliminated<InteractionForwarder<T, I, A>> for T
+impl<T, I, A> TaskEliminated<InteractionForwarder<I, A>> for T
 where
     T: InteractionDone<I>,
     I: Interaction,
@@ -318,7 +318,7 @@ where
 {
     async fn handle(
         &mut self,
-        _id: IdOf<InteractionForwarder<T, I, A>>,
+        _id: IdOf<InteractionForwarder<I, A>>,
         result: Result<I::Output, TaskError>,
         ctx: &mut Context<Self>,
     ) -> Result<(), Error> {
