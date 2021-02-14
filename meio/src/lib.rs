@@ -30,6 +30,7 @@ pub mod thread;
 
 #[cfg(test)]
 mod tests {
+    use super::handlers::Interact;
     use super::prelude::*;
     use super::signal;
     use anyhow::Error;
@@ -66,6 +67,13 @@ mod tests {
     struct MsgTwo;
 
     impl Interaction for MsgTwo {
+        type Output = u8;
+    }
+
+    #[derive(Debug)]
+    struct MsgThree;
+
+    impl Interaction for MsgThree {
         type Output = u8;
     }
 
@@ -133,6 +141,21 @@ mod tests {
     }
 
     #[async_trait]
+    impl ActionHandler<Interact<MsgThree>> for MyActor {
+        async fn handle(
+            &mut self,
+            interact: Interact<MsgThree>,
+            _ctx: &mut Context<Self>,
+        ) -> Result<(), Error> {
+            log::info!("Received MsgThree");
+            interact
+                .responder
+                .send(Ok(123))
+                .map_err(|_| Error::msg("can't send a response"))
+        }
+    }
+
+    #[async_trait]
     impl Consumer<signal::CtrlC> for MyActor {
         async fn handle(
             &mut self,
@@ -192,6 +215,17 @@ mod tests {
         let interaction_recipient = address.interaction_recipient();
         let res = interaction_recipient.clone().interact(MsgTwo).await?;
         assert_eq!(res, 1);
+        System::interrupt(&mut address)?;
+        address.join().await;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_custom_interaction() -> Result<(), Error> {
+        env_logger::try_init().ok();
+        let mut address = System::spawn(MyActor);
+        let res = address.clone().interact(MsgThree).await?;
+        assert_eq!(res, 123);
         System::interrupt(&mut address)?;
         address.join().await;
         Ok(())
