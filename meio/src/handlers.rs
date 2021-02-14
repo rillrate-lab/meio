@@ -344,15 +344,18 @@ pub trait Consumer<T: 'static>: Actor {
     /// The method called when the next item received from a `Stream`.
     async fn handle(&mut self, chunk: Vec<T>, ctx: &mut Context<Self>) -> Result<(), Error>;
 
+    // TODO: Add `failed` and `finished` that works with an ordinary queue
+    // to don't let to overtake stream items by service message.
+
     /// The stream was failed.
-    async fn failed(&mut self, err: TaskError, _ctx: &mut Context<Self>) -> Result<(), Error> {
+    async fn task_failed(&mut self, err: TaskError, _ctx: &mut Context<Self>) -> Result<(), Error> {
         log::error!("Consumer failed: {}", err);
         Ok(())
     }
 
     /// When the stream was finished sucessfully.
-    async fn finished(&mut self, _ctx: &mut Context<Self>) -> Result<(), Error> {
-        log::debug!("Stream finished");
+    async fn task_finished(&mut self, _ctx: &mut Context<Self>) -> Result<(), Error> {
+        log::info!("Stream finished");
         Ok(())
     }
 }
@@ -384,8 +387,8 @@ where
         ctx: &mut Context<Self>,
     ) -> Result<(), Error> {
         match result {
-            Ok(()) => Consumer::finished(self, ctx).await,
-            Err(err) => Consumer::failed(self, err, ctx).await,
+            Ok(()) => Consumer::task_finished(self, ctx).await,
+            Err(err) => Consumer::task_failed(self, err, ctx).await,
         }
     }
 }

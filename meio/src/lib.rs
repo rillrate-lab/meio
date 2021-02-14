@@ -249,7 +249,10 @@ mod tests {
         address.attach(stream)?;
         // If you acivate this line the test will wait for the `Ctrl+C` signal.
         //address.attach(signal::CtrlC::stream()).await?;
-        System::interrupt(&mut address)?;
+        //System::interrupt(&mut address)?;
+
+        // TODO: Add and impement `finished` to fix that
+        address.join().await;
         Ok(())
     }
 
