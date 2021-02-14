@@ -35,10 +35,10 @@
 //! ```
 
 use crate::compat::watch;
-use crate::forwarders::InteractionForwarder;
+use crate::forwarders::{InteractionForwarder, StreamForwarder};
 use crate::handlers::{
-    ActionHandler, Eliminated, Envelope, HpEnvelope, Interact, Interaction, InteractionDone,
-    InterruptedBy, Operation, StartedBy, TaskEliminated,
+    ActionHandler, Consumer, Eliminated, Envelope, HpEnvelope, Interact, Interaction,
+    InteractionDone, InterruptedBy, Operation, StartedBy, TaskEliminated,
 };
 use crate::ids::{Id, IdOf};
 use crate::lifecycle::{Awake, Done, LifecycleNotifier, LifetimeTracker};
@@ -48,7 +48,7 @@ use anyhow::Error;
 use async_trait::async_trait;
 use futures::channel::mpsc;
 use futures::stream::{pending, FusedStream};
-use futures::{select_biased, StreamExt};
+use futures::{select_biased, Stream, StreamExt};
 use std::hash::Hash;
 use thiserror::Error;
 use uuid::Uuid;
@@ -187,6 +187,17 @@ impl<A: Actor> Context<A> {
         // TODO: Remove ::<T>:: spec, it will be detected by stopper (later)
         self.lifetime_tracker.insert_task::<T>(stopper, group);
         // TODO: Return stopper.
+    }
+
+    /// Spawns interaction task that forwards the result of an interaction.
+    pub fn attach<S>(&mut self, stream: S, group: A::GroupBy)
+    where
+        S: Stream + Unpin + Send + 'static,
+        S::Item: Send,
+        A: Consumer<S::Item>,
+    {
+        let forwarder = StreamForwarder::new(stream, self.address.clone());
+        self.spawn_task(forwarder, group);
     }
 
     /// Spawns interaction task that forwards the result of an interaction.

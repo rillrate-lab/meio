@@ -3,13 +3,14 @@
 //! imcoming message.
 
 use crate::actor_runtime::{Actor, Context};
-use crate::forwarders::InteractionForwarder;
+use crate::forwarders::{InteractionForwarder, StreamForwarder};
 use crate::ids::{Id, IdOf};
 use crate::lifecycle;
 use crate::lite_runtime::{LiteTask, TaskError};
 use anyhow::Error;
 use async_trait::async_trait;
 use futures::channel::oneshot;
+use futures::Stream;
 use std::time::Instant;
 
 pub(crate) struct Envelope<A: Actor> {
@@ -339,9 +340,19 @@ impl<T: Send + 'static> Action for StreamItem<T> {}
 
 /// Represents a capability to receive message from a `Stream`.
 #[async_trait]
-pub trait Consumer<T>: Actor {
+pub trait Consumer<T: 'static>: Actor {
     /// The method called when the next item received from a `Stream`.
     async fn handle(&mut self, chunk: Vec<T>, ctx: &mut Context<Self>) -> Result<(), Error>;
+
+    async fn failed(&mut self, err: TaskError, _ctx: &mut Context<Self>) -> Result<(), Error> {
+        log::error!("Consumer failed: {}", err);
+        Ok(())
+    }
+
+    async fn finished(&mut self, _ctx: &mut Context<Self>) -> Result<(), Error> {
+        log::debug!("Stream finished");
+        Ok(())
+    }
 }
 
 #[async_trait]
@@ -353,6 +364,26 @@ where
     async fn handle(&mut self, msg: StreamItem<I>, ctx: &mut Context<Self>) -> Result<(), Error> {
         match msg {
             StreamItem::Chunk(chunk) => Consumer::handle(self, chunk, ctx).await,
+        }
+    }
+}
+
+#[async_trait]
+impl<T, S> TaskEliminated<StreamForwarder<S, T>> for T
+where
+    T: Consumer<S::Item>,
+    S: Stream + Unpin + Send + 'static,
+    S::Item: Send,
+{
+    async fn handle(
+        &mut self,
+        _id: IdOf<StreamForwarder<S, T>>,
+        result: Result<(), TaskError>,
+        ctx: &mut Context<Self>,
+    ) -> Result<(), Error> {
+        match result {
+            Ok(()) => Consumer::finished(self, ctx).await,
+            Err(err) => Consumer::failed(self, err, ctx).await,
         }
     }
 }
