@@ -37,8 +37,8 @@
 use crate::compat::watch;
 use crate::forwarders::InteractionForwarder;
 use crate::handlers::{
-    Eliminated, Envelope, HpEnvelope, Interaction, InteractionDone, InterruptedBy, Operation,
-    StartedBy, TaskEliminated,
+    ActionHandler, Eliminated, Envelope, HpEnvelope, Interact, Interaction, InteractionDone,
+    InterruptedBy, Operation, StartedBy, TaskEliminated,
 };
 use crate::ids::{Id, IdOf};
 use crate::lifecycle::{Awake, Done, LifecycleNotifier, LifetimeTracker};
@@ -190,12 +190,15 @@ impl<A: Actor> Context<A> {
     }
 
     /// Spawns interaction task that forwards the result of an interaction.
-    pub fn interact<I>(&mut self, request: I, group: A::GroupBy)
+    pub fn interact<I, P>(&mut self, performer: &Address<P>, request: I, group: A::GroupBy)
     where
         I: Interaction,
         A: InteractionDone<I>,
+        // `ActionHandler` to be compatible with custom performers
+        P: ActionHandler<Interact<I>>,
     {
-        let forwarder = InteractionForwarder::new(self.address.clone());
+        let forwarder =
+            InteractionForwarder::new(self.address.clone(), request, performer.to_owned());
         self.spawn_task(forwarder, group);
     }
 

@@ -5,7 +5,6 @@ use crate::lite_runtime::LiteTask;
 use anyhow::Error;
 use async_trait::async_trait;
 use futures::{stream::ReadyChunks, Stream, StreamExt};
-use std::marker::PhantomData;
 
 // TODO: Change it to `LiteTask`
 // TODO: Await results of `LiteTask`s inside a main `actor's routine loop`
@@ -38,29 +37,33 @@ where
     }
 }
 
-pub(crate) struct InteractionForwarder<A: Actor, I: Interaction> {
-    address: Address<A>,
-    interaction: PhantomData<I>,
+pub(crate) struct InteractionForwarder<T: Actor, I: Interaction, A: Actor> {
+    from_address: Address<T>,
+    event: Option<I>,
+    to_address: Address<A>,
 }
 
-impl<A, I> InteractionForwarder<A, I>
+impl<T, I, A> InteractionForwarder<T, I, A>
 where
-    A: Actor,
+    T: Actor,
     I: Interaction,
+    A: Actor,
 {
-    pub fn new(address: Address<A>) -> Self {
+    pub fn new(from_address: Address<T>, event: I, to_address: Address<A>) -> Self {
         Self {
-            address,
-            interaction: PhantomData,
+            from_address,
+            event: Some(event),
+            to_address,
         }
     }
 }
 
 #[async_trait]
-impl<A, I> LiteTask for InteractionForwarder<A, I>
+impl<T, I, A> LiteTask for InteractionForwarder<T, I, A>
 where
-    A: Actor,
+    T: Actor,
     I: Interaction,
+    A: Actor,
 {
     type Output = I::Output;
 
