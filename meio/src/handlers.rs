@@ -345,6 +345,9 @@ pub trait Consumer<T: 'static>: Actor {
     /// The method called when the next item received from a `Stream`.
     async fn handle(&mut self, chunk: Vec<T>, ctx: &mut Context<Self>) -> Result<(), Error>;
 
+    /// The termination group used to attach stream tasks to.
+    fn stream_group(&self) -> Self::GroupBy;
+
     /// When the stream consumed completely.
     ///
     /// Called after the last item in the stream only.

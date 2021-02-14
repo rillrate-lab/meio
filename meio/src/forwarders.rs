@@ -1,4 +1,4 @@
-use crate::actor_runtime::{Actor, Context};
+use crate::actor_runtime::Context;
 use crate::handlers::{Consumer, InstantAction, InstantActionHandler, Interaction, StreamItem};
 use crate::linkage::{ActionRecipient, InteractionRecipient};
 use crate::lite_runtime::LiteTask;
@@ -45,12 +45,6 @@ where
     }
 }
 
-/// Allows to attach the specific termination group to an attached stream.
-pub trait StreamGroup<I>: Actor {
-    /// The group of the task that works for gathering a stream.
-    fn stream_group(&self) -> Self::GroupBy;
-}
-
 pub(crate) struct AttachStream<S> {
     stream: S,
 }
@@ -66,7 +60,7 @@ impl<S> InstantAction for AttachStream<S> where S: Stream + Send + 'static {}
 #[async_trait]
 impl<T, S> InstantActionHandler<AttachStream<S>> for T
 where
-    T: StreamGroup<S::Item> + Consumer<S::Item>,
+    T: Consumer<S::Item>,
     S: Stream + Unpin + Send + 'static,
     S::Item: Send,
 {

@@ -3,7 +3,7 @@
 use super::{ActionRecipient, InteractionRecipient};
 use crate::actor_runtime::{Actor, Status};
 use crate::compat::watch;
-use crate::forwarders::{AttachStream, StreamGroup};
+use crate::forwarders::AttachStream;
 use crate::handlers::{
     Action, ActionHandler, Consumer, Envelope, HpEnvelope, InstantAction, InstantActionHandler,
     Interact, Interaction, InteractionHandler, InterruptedBy, Operation, Scheduled, ScheduledItem,
@@ -198,7 +198,7 @@ impl<A: Actor> Address<A> {
     /// to reduce amount as `async` calls of a handler.
     pub fn attach<S>(&mut self, stream: S) -> Result<(), Error>
     where
-        A: StreamGroup<S::Item> + Consumer<S::Item>,
+        A: Consumer<S::Item>,
         S: Stream + Send + Unpin + 'static,
         S::Item: Send + 'static,
     {

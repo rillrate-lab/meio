@@ -117,12 +117,6 @@ mod tests {
         type GroupBy = ();
     }
 
-    impl<T> StreamGroup<T> for MyActor {
-        fn stream_group(&self) -> Self::GroupBy {
-            ()
-        }
-    }
-
     #[async_trait]
     impl ActionHandler<MsgOne> for MyActor {
         async fn handle(&mut self, _: MsgOne, _ctx: &mut Context<Self>) -> Result<(), Error> {
@@ -136,6 +130,10 @@ mod tests {
         async fn handle(&mut self, _: Vec<MsgOne>, _ctx: &mut Context<Self>) -> Result<(), Error> {
             log::info!("Received MsgOne (from the stream)");
             Ok(())
+        }
+
+        fn stream_group(&self) -> Self::GroupBy {
+            ()
         }
 
         async fn finished(&mut self, ctx: &mut Context<Self>) -> Result<(), Error> {
@@ -176,6 +174,10 @@ mod tests {
         ) -> Result<(), Error> {
             log::info!("Received CtrlC");
             Ok(())
+        }
+
+        fn stream_group(&self) -> Self::GroupBy {
+            ()
         }
     }
 
