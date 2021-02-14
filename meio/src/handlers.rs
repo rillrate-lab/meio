@@ -342,11 +342,11 @@ impl<T: Send + 'static> Action for StreamItem<T> {}
 /// Represents a capability to receive message from a `Stream`.
 #[async_trait]
 pub trait Consumer<T: 'static>: Actor {
-    /// The method called when the next item received from a `Stream`.
-    async fn handle(&mut self, chunk: Vec<T>, ctx: &mut Context<Self>) -> Result<(), Error>;
-
     /// The termination group used to attach stream tasks to.
     fn stream_group(&self) -> Self::GroupBy;
+
+    /// The method called when the next item received from a `Stream`.
+    async fn handle(&mut self, chunk: Vec<T>, ctx: &mut Context<Self>) -> Result<(), Error>;
 
     /// When the stream consumed completely.
     ///
