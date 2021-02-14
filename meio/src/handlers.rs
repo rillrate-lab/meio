@@ -299,10 +299,13 @@ where
     }
 }
 
+/// Independent interaction results listener. It necessary to avoid blocking.
 #[async_trait]
 pub trait InteractionDone<I: Interaction>: Actor {
+    /// Handling of the interaction result.
     async fn handle(&mut self, output: I::Output, ctx: &mut Context<Self>) -> Result<(), Error>;
 
+    /// Called when interaction failed.
     async fn failed(&mut self, err: TaskError, _ctx: &mut Context<Self>) -> Result<(), Error> {
         log::error!("Interaction failed: {}", err);
         Ok(())
