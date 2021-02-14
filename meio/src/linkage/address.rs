@@ -132,6 +132,7 @@ impl<A: Actor> Address<A> {
     // a `LiteTask` for an interaction. BUT! Keep `interact` method that
     // is very important for non-meio usage of an `Address`.
 
+    // TODO: Return `InteractAndWait` future instance, instead of the `Result`
     /// Interacts with an `Actor` and waits for the result of the `Interaction`.
     ///
     /// `ActionHandler` required instead of `InteractionHandler` to make it possible

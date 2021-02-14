@@ -1,5 +1,5 @@
 use crate::actor_runtime::Actor;
-use crate::handlers::{ActionHandler, Interaction, StreamItem};
+use crate::handlers::{ActionHandler, Interact, Interaction, StreamItem};
 use crate::linkage::Address;
 use crate::lite_runtime::LiteTask;
 use anyhow::Error;
@@ -47,7 +47,7 @@ impl<T, I, A> InteractionForwarder<T, I, A>
 where
     T: Actor,
     I: Interaction,
-    A: Actor,
+    A: ActionHandler<Interact<I>>,
 {
     pub fn new(from_address: Address<T>, event: I, to_address: Address<A>) -> Self {
         Self {
@@ -63,11 +63,15 @@ impl<T, I, A> LiteTask for InteractionForwarder<T, I, A>
 where
     T: Actor,
     I: Interaction,
-    A: Actor,
+    A: ActionHandler<Interact<I>>,
 {
     type Output = I::Output;
 
     async fn interruptable_routine(mut self) -> Result<Self::Output, Error> {
-        todo!();
+        let request = self
+            .event
+            .take()
+            .expect("InteractionForwarder called twice");
+        self.to_address.interact_and_wait(request).await
     }
 }

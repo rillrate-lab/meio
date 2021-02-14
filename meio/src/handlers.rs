@@ -314,7 +314,7 @@ impl<T, I, A> TaskEliminated<InteractionForwarder<T, I, A>> for T
 where
     T: InteractionDone<I>,
     I: Interaction,
-    A: Actor,
+    A: ActionHandler<Interact<I>>,
 {
     async fn handle(
         &mut self,
