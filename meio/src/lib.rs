@@ -13,6 +13,7 @@
 
 mod actor_runtime;
 mod compat;
+mod forwarders;
 pub mod handlers;
 pub mod ids;
 mod lifecycle;

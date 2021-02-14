@@ -3,16 +3,16 @@
 use super::{ActionRecipient, InteractionRecipient};
 use crate::actor_runtime::{Actor, Status};
 use crate::compat::watch;
+use crate::forwarders::StreamForwarder;
 use crate::handlers::{
     Action, ActionHandler, Consumer, Envelope, HpEnvelope, InstantAction, InstantActionHandler,
     Interact, Interaction, InteractionHandler, InterruptedBy, Operation, Scheduled, ScheduledItem,
-    StreamItem,
 };
 use crate::ids::{Id, IdOf};
 use crate::lifecycle::Interrupt;
 use anyhow::Error;
 use futures::channel::{mpsc, oneshot};
-use futures::{stream::ReadyChunks, SinkExt, Stream, StreamExt};
+use futures::{SinkExt, Stream, StreamExt};
 use std::convert::identity;
 use std::fmt;
 use std::hash::{Hash, Hasher};
@@ -201,7 +201,7 @@ impl<A: Actor> Address<A> {
         S: Stream + Send + Unpin + 'static,
         S::Item: Send + 'static,
     {
-        let forwarder = Forwarder {
+        let forwarder = StreamForwarder {
             // TODO: Configurable?
             stream: stream.ready_chunks(16),
             address: self.clone(),
@@ -258,33 +258,5 @@ where
 {
     fn into(self) -> Box<dyn InteractionRecipient<T>> {
         Box::new(self)
-    }
-}
-
-/// This worker receives items from a stream and send them as actions
-/// into an `Actor`.
-struct Forwarder<S: Stream, A: Actor> {
-    stream: ReadyChunks<S>,
-    address: Address<A>,
-}
-
-impl<S, A> Forwarder<S, A>
-where
-    S: Stream + Unpin,
-    S::Item: Send + 'static,
-    A: Actor + ActionHandler<StreamItem<S::Item>>,
-{
-    async fn entrypoint(mut self) {
-        while let Some(item) = self.stream.next().await {
-            let action = StreamItem::Chunk(item);
-            if let Err(err) = self.address.act(action).await {
-                log::error!(
-                    "Can't send an event to {:?} form a background stream: {}. Breaking...",
-                    self.address.id(),
-                    err
-                );
-                break;
-            }
-        }
     }
 }
