@@ -300,20 +300,31 @@ where
 }
 
 #[async_trait]
-pub trait InteractionDone: Actor {}
+pub trait InteractionDone<I: Interaction>: Actor {
+    async fn handle(&mut self, output: I::Output, ctx: &mut Context<Self>) -> Result<(), Error>;
+
+    async fn failed(&mut self, err: TaskError, _ctx: &mut Context<Self>) -> Result<(), Error> {
+        log::error!("Interaction failed: {}", err);
+        Ok(())
+    }
+}
 
 #[async_trait]
-impl<T> TaskEliminated<InteractionForwarder<T>> for T
+impl<T, I> TaskEliminated<InteractionForwarder<T, I>> for T
 where
-    T: InteractionDone,
+    T: InteractionDone<I>,
+    I: Interaction,
 {
     async fn handle(
         &mut self,
-        id: IdOf<InteractionForwarder<T>>,
-        result: Result<(), TaskError>,
+        _id: IdOf<InteractionForwarder<T, I>>,
+        result: Result<I::Output, TaskError>,
         ctx: &mut Context<Self>,
     ) -> Result<(), Error> {
-        todo!()
+        match result {
+            Ok(output) => InteractionDone::handle(self, output, ctx).await,
+            Err(err) => InteractionDone::failed(self, err, ctx).await,
+        }
     }
 }
 

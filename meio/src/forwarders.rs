@@ -1,10 +1,11 @@
 use crate::actor_runtime::Actor;
-use crate::handlers::{ActionHandler, StreamItem};
+use crate::handlers::{ActionHandler, Interaction, StreamItem};
 use crate::linkage::Address;
 use crate::lite_runtime::LiteTask;
 use anyhow::Error;
 use async_trait::async_trait;
 use futures::{stream::ReadyChunks, Stream, StreamExt};
+use std::marker::PhantomData;
 
 // TODO: Change it to `LiteTask`
 // TODO: Await results of `LiteTask`s inside a main `actor's routine loop`
@@ -37,19 +38,31 @@ where
     }
 }
 
-pub(crate) struct InteractionForwarder<A: Actor> {
+pub(crate) struct InteractionForwarder<A: Actor, I: Interaction> {
     address: Address<A>,
+    interaction: PhantomData<I>,
 }
 
-impl<A: Actor> InteractionForwarder<A> {
+impl<A, I> InteractionForwarder<A, I>
+where
+    A: Actor,
+    I: Interaction,
+{
     pub fn new(address: Address<A>) -> Self {
-        Self { address }
+        Self {
+            address,
+            interaction: PhantomData,
+        }
     }
 }
 
 #[async_trait]
-impl<A: Actor> LiteTask for InteractionForwarder<A> {
-    type Output = ();
+impl<A, I> LiteTask for InteractionForwarder<A, I>
+where
+    A: Actor,
+    I: Interaction,
+{
+    type Output = I::Output;
 
     async fn interruptable_routine(mut self) -> Result<Self::Output, Error> {
         todo!();

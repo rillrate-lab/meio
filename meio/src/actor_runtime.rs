@@ -193,7 +193,7 @@ impl<A: Actor> Context<A> {
     pub fn interact<I>(&mut self, request: I, group: A::GroupBy)
     where
         I: Interaction,
-        A: InteractionDone,
+        A: InteractionDone<I>,
     {
         let forwarder = InteractionForwarder::new(self.address.clone());
         self.spawn_task(forwarder, group);
