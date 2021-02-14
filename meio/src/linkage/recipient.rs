@@ -5,7 +5,7 @@
 /// It's recommended to use `HashSet<Id, Box<dyn Recipient>>` instead.
 use super::Address;
 use crate::actor_runtime::Actor;
-use crate::handlers::{Action, ActionHandler, Interaction, InteractionHandler};
+use crate::handlers::{Action, ActionHandler, Interact, Interaction, InteractionHandler};
 use crate::ids::Id;
 use anyhow::Error;
 use async_trait::async_trait;
@@ -113,7 +113,7 @@ impl<T: Interaction> Hash for Box<dyn InteractionRecipient<T>> {
 impl<T, A> InteractionRecipient<T> for Address<A>
 where
     T: Interaction,
-    A: Actor + InteractionHandler<T>,
+    A: Actor + ActionHandler<Interact<T>>,
 {
     async fn interact_and_wait(&mut self, msg: T) -> Result<T::Output, Error> {
         Address::interact_and_wait(self, msg).await

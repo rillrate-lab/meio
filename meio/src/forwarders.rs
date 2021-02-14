@@ -1,6 +1,6 @@
 use crate::actor_runtime::Actor;
 use crate::handlers::{ActionHandler, Interact, Interaction, StreamItem};
-use crate::linkage::Address;
+use crate::linkage::{Address, InteractionRecipient};
 use crate::lite_runtime::LiteTask;
 use anyhow::Error;
 use async_trait::async_trait;
@@ -37,30 +37,27 @@ where
     }
 }
 
-pub(crate) struct InteractionForwarder<I: Interaction, A: Actor> {
-    // TODO: Use `ActionPerformer` here
-    address: Address<A>,
+pub(crate) struct InteractionForwarder<I: Interaction> {
+    recipient: Box<dyn InteractionRecipient<I>>,
     event: Option<I>,
 }
 
-impl<I, A> InteractionForwarder<I, A>
+impl<I> InteractionForwarder<I>
 where
     I: Interaction,
-    A: ActionHandler<Interact<I>>,
 {
-    pub fn new(address: Address<A>, event: I) -> Self {
+    pub fn new(recipient: impl InteractionRecipient<I>, event: I) -> Self {
         Self {
-            address,
+            recipient: Box::new(recipient),
             event: Some(event),
         }
     }
 }
 
 #[async_trait]
-impl<I, A> LiteTask for InteractionForwarder<I, A>
+impl<I> LiteTask for InteractionForwarder<I>
 where
     I: Interaction,
-    A: ActionHandler<Interact<I>>,
 {
     type Output = I::Output;
 
@@ -69,6 +66,6 @@ where
             .event
             .take()
             .expect("InteractionForwarder called twice");
-        self.address.interact_and_wait(request).await
+        self.recipient.interact_and_wait(request).await
     }
 }
