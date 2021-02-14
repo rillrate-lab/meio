@@ -371,7 +371,7 @@ where
 }
 
 #[async_trait]
-impl<T, S> TaskEliminated<StreamForwarder<S, T>> for T
+impl<T, S> TaskEliminated<StreamForwarder<S>> for T
 where
     T: Consumer<S::Item>,
     S: Stream + Unpin + Send + 'static,
@@ -379,7 +379,7 @@ where
 {
     async fn handle(
         &mut self,
-        _id: IdOf<StreamForwarder<S, T>>,
+        _id: IdOf<StreamForwarder<S>>,
         result: Result<(), TaskError>,
         ctx: &mut Context<Self>,
     ) -> Result<(), Error> {

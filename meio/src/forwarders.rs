@@ -1,51 +1,46 @@
 use crate::actor_runtime::{Actor, Context};
-use crate::handlers::{
-    ActionHandler, Consumer, InstantAction, InstantActionHandler, Interaction, StreamItem,
-};
-use crate::linkage::{Address, InteractionRecipient};
+use crate::handlers::{Consumer, InstantAction, InstantActionHandler, Interaction, StreamItem};
+use crate::linkage::{ActionRecipient, InteractionRecipient};
 use crate::lite_runtime::LiteTask;
 use anyhow::Error;
 use async_trait::async_trait;
 use futures::{stream::ReadyChunks, Stream, StreamExt};
 
-// TODO: Change it to `LiteTask`
-// TODO: Await results of `LiteTask`s inside a main `actor's routine loop`
 /// This worker receives items from a stream and send them as actions
 /// into an `Actor`.
-pub(crate) struct StreamForwarder<S: Stream, A: Actor> {
+pub(crate) struct StreamForwarder<S: Stream> {
     stream: ReadyChunks<S>,
-    address: Address<A>,
+    recipient: Box<dyn ActionRecipient<StreamItem<S::Item>>>,
 }
 
-impl<S, A> StreamForwarder<S, A>
+impl<S> StreamForwarder<S>
 where
     S: Stream,
-    A: Actor,
+    S::Item: Send + 'static,
 {
-    pub fn new(stream: S, address: Address<A>) -> Self {
+    pub fn new(stream: S, recipient: impl ActionRecipient<StreamItem<S::Item>>) -> Self {
         Self {
             stream: stream.ready_chunks(16),
-            address,
+            recipient: Box::new(recipient),
         }
     }
 }
 
 #[async_trait]
-impl<S, A> LiteTask for StreamForwarder<S, A>
+impl<S> LiteTask for StreamForwarder<S>
 where
     S: Stream + Unpin + Send + 'static,
     S::Item: Send + 'static,
-    A: Actor + ActionHandler<StreamItem<S::Item>>,
 {
     type Output = ();
 
     async fn interruptable_routine(mut self) -> Result<Self::Output, Error> {
         while let Some(item) = self.stream.next().await {
             let action = StreamItem::Chunk(item);
-            if let Err(err) = self.address.act(action).await {
+            if let Err(err) = self.recipient.act(action).await {
                 log::error!(
                     "Can't send an event to {:?} form a background stream: {}. Breaking...",
-                    self.address.id(),
+                    self.recipient.id_ref(),
                     err
                 );
                 break;
