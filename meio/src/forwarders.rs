@@ -1,7 +1,6 @@
 use crate::actor_runtime::{Actor, Context};
 use crate::handlers::{
-    Action, ActionHandler, Consumer, InstantAction, InstantActionHandler, Interact, Interaction,
-    StreamItem,
+    ActionHandler, Consumer, InstantAction, InstantActionHandler, Interaction, StreamItem,
 };
 use crate::linkage::{Address, InteractionRecipient};
 use crate::lite_runtime::LiteTask;
@@ -56,7 +55,9 @@ where
     }
 }
 
+/// Allows to attach the specific termination group to an attached stream.
 pub trait StreamGroup<S>: Actor {
+    /// The group of the task that works for gathering a stream.
     fn stream_group(&self, stream: &S) -> Self::GroupBy;
 }
 

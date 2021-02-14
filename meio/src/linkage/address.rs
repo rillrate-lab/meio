@@ -3,7 +3,7 @@
 use super::{ActionRecipient, InteractionRecipient};
 use crate::actor_runtime::{Actor, Status};
 use crate::compat::watch;
-use crate::forwarders::{AttachStream, StreamForwarder, StreamGroup};
+use crate::forwarders::{AttachStream, StreamGroup};
 use crate::handlers::{
     Action, ActionHandler, Consumer, Envelope, HpEnvelope, InstantAction, InstantActionHandler,
     Interact, Interaction, InteractionHandler, InterruptedBy, Operation, Scheduled, ScheduledItem,
@@ -12,7 +12,7 @@ use crate::ids::{Id, IdOf};
 use crate::lifecycle::Interrupt;
 use anyhow::Error;
 use futures::channel::{mpsc, oneshot};
-use futures::{SinkExt, Stream, StreamExt};
+use futures::{SinkExt, Stream};
 use std::convert::identity;
 use std::fmt;
 use std::hash::{Hash, Hasher};
@@ -190,6 +190,12 @@ impl<A: Actor> Address<A> {
         self.send_hp_direct(Operation::Forward, Interrupt::new())
     }
 
+    /// Attaches a `Stream` of event to an `Actor`.
+    /// Optimized for intensive streams. For moderate flow you still can
+    /// use ordinary `Action`s and `act` method calls.
+    ///
+    /// It spawns a routine that groups multiple items into a single chunk
+    /// to reduce amount as `async` calls of a handler.
     pub fn attach<S>(&mut self, stream: S) -> Result<(), Error>
     where
         A: StreamGroup<S> + Consumer<S::Item>,
@@ -199,26 +205,6 @@ impl<A: Actor> Address<A> {
         let msg = AttachStream::new(stream);
         self.instant(msg)
     }
-
-    /*
-    /// Attaches a `Stream` of event to an `Actor`.
-    /// Optimized for intensive streams. For moderate flow you still can
-    /// use ordinary `Action`s and `act` method calls.
-    ///
-    /// It spawns a routine that groups multiple items into a single chunk
-    /// to reduce amount as `async` calls of a handler.
-    pub fn attach<S>(&self, stream: S)
-    where
-        A: Consumer<S::Item>,
-        S: Stream + Send + Unpin + 'static,
-        S::Item: Send + 'static,
-    {
-        let forwarder = StreamForwarder::new(stream, self.clone());
-        // WARNING! Don't return `JoinHandle` because user can
-        // accidentally `.await` it and block a handler.
-        crate::compat::spawn_async(forwarder.entrypoint());
-    }
-    */
 
     /// Returns a `Link` to an `Actor`.
     /// `Link` is a convenient concept for creating wrappers for

@@ -344,11 +344,13 @@ pub trait Consumer<T: 'static>: Actor {
     /// The method called when the next item received from a `Stream`.
     async fn handle(&mut self, chunk: Vec<T>, ctx: &mut Context<Self>) -> Result<(), Error>;
 
+    /// The stream was failed.
     async fn failed(&mut self, err: TaskError, _ctx: &mut Context<Self>) -> Result<(), Error> {
         log::error!("Consumer failed: {}", err);
         Ok(())
     }
 
+    /// When the stream was finished sucessfully.
     async fn finished(&mut self, _ctx: &mut Context<Self>) -> Result<(), Error> {
         log::debug!("Stream finished");
         Ok(())

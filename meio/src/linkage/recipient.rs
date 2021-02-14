@@ -5,7 +5,7 @@
 /// It's recommended to use `HashSet<Id, Box<dyn Recipient>>` instead.
 use super::Address;
 use crate::actor_runtime::Actor;
-use crate::handlers::{Action, ActionHandler, Interact, Interaction, InteractionHandler};
+use crate::handlers::{Action, ActionHandler, Interact, Interaction};
 use crate::ids::Id;
 use anyhow::Error;
 use async_trait::async_trait;
