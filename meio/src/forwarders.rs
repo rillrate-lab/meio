@@ -38,7 +38,13 @@ where
 }
 
 pub(crate) struct InteractionForwarder<A: Actor> {
-    pub address: Address<A>,
+    address: Address<A>,
+}
+
+impl<A: Actor> InteractionForwarder<A> {
+    pub fn new(address: Address<A>) -> Self {
+        Self { address }
+    }
 }
 
 #[async_trait]

@@ -3,6 +3,7 @@
 //! imcoming message.
 
 use crate::actor_runtime::{Actor, Context};
+use crate::forwarders::InteractionForwarder;
 use crate::ids::{Id, IdOf};
 use crate::lifecycle;
 use crate::lite_runtime::{LiteTask, TaskError};
@@ -295,6 +296,24 @@ where
         ctx: &mut Context<Self>,
     ) -> Result<(), Error> {
         TaskEliminated::handle(self, done.id, done.result, ctx).await
+    }
+}
+
+#[async_trait]
+pub trait InteractionDone: Actor {}
+
+#[async_trait]
+impl<T> TaskEliminated<InteractionForwarder<T>> for T
+where
+    T: InteractionDone,
+{
+    async fn handle(
+        &mut self,
+        id: IdOf<InteractionForwarder<T>>,
+        result: Result<(), TaskError>,
+        ctx: &mut Context<Self>,
+    ) -> Result<(), Error> {
+        todo!()
     }
 }
 

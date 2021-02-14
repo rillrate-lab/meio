@@ -35,8 +35,10 @@
 //! ```
 
 use crate::compat::watch;
+use crate::forwarders::InteractionForwarder;
 use crate::handlers::{
-    Eliminated, Envelope, HpEnvelope, InterruptedBy, Operation, StartedBy, TaskEliminated,
+    Eliminated, Envelope, HpEnvelope, Interaction, InteractionDone, InterruptedBy, Operation,
+    StartedBy, TaskEliminated,
 };
 use crate::ids::{Id, IdOf};
 use crate::lifecycle::{Awake, Done, LifecycleNotifier, LifetimeTracker};
@@ -185,6 +187,16 @@ impl<A: Actor> Context<A> {
         // TODO: Remove ::<T>:: spec, it will be detected by stopper (later)
         self.lifetime_tracker.insert_task::<T>(stopper, group);
         // TODO: Return stopper.
+    }
+
+    /// Spawns interaction task that forwards the result of an interaction.
+    pub fn interact<I>(&mut self, request: I, group: A::GroupBy)
+    where
+        I: Interaction,
+        A: InteractionDone,
+    {
+        let forwarder = InteractionForwarder::new(self.address.clone());
+        self.spawn_task(forwarder, group);
     }
 
     /// Interrupts an `Actor`.
