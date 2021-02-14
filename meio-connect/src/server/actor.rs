@@ -16,6 +16,7 @@ use meio_protocol::Protocol;
 use serde::de::DeserializeOwned;
 use slab::Slab;
 use std::future::Future;
+use std::marker::PhantomData;
 use std::net::SocketAddr;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -87,19 +88,31 @@ impl<T: FromRequest> Interaction for Req<T> {
 pub type RouteResult =
     Result<Pin<Box<dyn Future<Output = Result<Response<Body>, Error>> + Send>>, Request<Body>>;
 
-pub(crate) trait Route: Send + Sync {
+pub trait Route: Send + Sync + 'static {
     fn try_route(&self, addr: &SocketAddr, request: Request<Body>) -> RouteResult;
 }
 
-pub(crate) struct RouteImpl<E, A>
+pub struct WebRoute<E, A>
 where
     A: Actor,
 {
-    pub extracted: E,
-    pub address: Address<A>,
+    extracted: PhantomData<E>,
+    address: Address<A>,
 }
 
-impl<E, A> Route for RouteImpl<E, A>
+impl<E, A> WebRoute<E, A>
+where
+    A: Actor,
+{
+    pub fn new(address: Address<A>) -> Self {
+        Self {
+            extracted: PhantomData,
+            address,
+        }
+    }
+}
+
+impl<E, A> Route for WebRoute<E, A>
 where
     E: FromRequest,
     A: Actor + InteractionHandler<Req<E>>,
@@ -130,15 +143,27 @@ pub struct WsReq<T: WsFromRequest> {
 
 impl<T: WsFromRequest> Action for WsReq<T> {}
 
-pub(crate) struct WsRouteImpl<E, A>
+pub struct WsRoute<E, A>
 where
     A: Actor,
 {
-    pub extracted: E,
-    pub address: Address<A>,
+    extracted: PhantomData<E>,
+    address: Address<A>,
 }
 
-impl<E, A> Route for WsRouteImpl<E, A>
+impl<E, A> WsRoute<E, A>
+where
+    A: Actor,
+{
+    pub fn new(address: Address<A>) -> Self {
+        Self {
+            extracted: PhantomData,
+            address,
+        }
+    }
+}
+
+impl<E, A> Route for WsRoute<E, A>
 where
     E: WsFromRequest,
     A: Actor + ActionHandler<WsReq<E>>,
