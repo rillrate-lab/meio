@@ -198,7 +198,7 @@ impl<A: Actor> Address<A> {
     /// to reduce amount as `async` calls of a handler.
     pub fn attach<S>(&mut self, stream: S) -> Result<(), Error>
     where
-        A: StreamGroup<S> + Consumer<S::Item>,
+        A: StreamGroup<S::Item> + Consumer<S::Item>,
         S: Stream + Send + Unpin + 'static,
         S::Item: Send + 'static,
     {

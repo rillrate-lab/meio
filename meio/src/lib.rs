@@ -117,8 +117,8 @@ mod tests {
         type GroupBy = ();
     }
 
-    impl<S> StreamGroup<S> for MyActor {
-        fn stream_group(&self, _stream: &S) -> Self::GroupBy {
+    impl<T> StreamGroup<T> for MyActor {
+        fn stream_group(&self) -> Self::GroupBy {
             ()
         }
     }

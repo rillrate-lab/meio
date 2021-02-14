@@ -46,9 +46,9 @@ where
 }
 
 /// Allows to attach the specific termination group to an attached stream.
-pub trait StreamGroup<S>: Actor {
+pub trait StreamGroup<I>: Actor {
     /// The group of the task that works for gathering a stream.
-    fn stream_group(&self, stream: &S) -> Self::GroupBy;
+    fn stream_group(&self) -> Self::GroupBy;
 }
 
 pub(crate) struct AttachStream<S> {
@@ -66,13 +66,13 @@ impl<S> InstantAction for AttachStream<S> where S: Stream + Send + 'static {}
 #[async_trait]
 impl<T, S> InstantActionHandler<AttachStream<S>> for T
 where
-    T: StreamGroup<S> + Consumer<S::Item>,
+    T: StreamGroup<S::Item> + Consumer<S::Item>,
     S: Stream + Unpin + Send + 'static,
     S::Item: Send,
 {
     async fn handle(&mut self, msg: AttachStream<S>, ctx: &mut Context<Self>) -> Result<(), Error> {
         let stream = msg.stream;
-        let group = self.stream_group(&stream);
+        let group = self.stream_group();
         ctx.attach(stream, group);
         Ok(())
     }
