@@ -26,7 +26,7 @@ use tokio::sync::RwLock;
 use tokio_tungstenite::WebSocketStream;
 use tungstenite::protocol::Role;
 
-pub trait DirectPath: Default + Sized + Send + Sync + 'static {
+pub trait DirectPath: Sized + Send + Sync + 'static {
     type Parameter;
     fn paths() -> &'static [&'static str];
 }
