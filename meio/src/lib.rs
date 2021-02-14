@@ -199,7 +199,7 @@ mod tests {
         env_logger::try_init().ok();
         let mut address = System::spawn(MyActor);
         address.act(MsgOne).await?;
-        let res = address.interact(MsgTwo).await?;
+        let res = address.interact_and_wait(MsgTwo).await?;
         assert_eq!(res, 1);
         System::interrupt(&mut address)?;
         address.join().await;
@@ -213,7 +213,10 @@ mod tests {
         let action_recipient = address.action_recipient();
         action_recipient.clone().act(MsgOne).await?;
         let interaction_recipient = address.interaction_recipient();
-        let res = interaction_recipient.clone().interact(MsgTwo).await?;
+        let res = interaction_recipient
+            .clone()
+            .interact_and_wait(MsgTwo)
+            .await?;
         assert_eq!(res, 1);
         System::interrupt(&mut address)?;
         address.join().await;
@@ -224,7 +227,7 @@ mod tests {
     async fn test_custom_interaction() -> Result<(), Error> {
         env_logger::try_init().ok();
         let mut address = System::spawn(MyActor);
-        let res = address.clone().interact(MsgThree).await?;
+        let res = address.clone().interact_and_wait(MsgThree).await?;
         assert_eq!(res, 123);
         System::interrupt(&mut address)?;
         address.join().await;

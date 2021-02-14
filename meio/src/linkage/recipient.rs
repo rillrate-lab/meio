@@ -76,7 +76,7 @@ where
 #[async_trait]
 pub trait InteractionRecipient<T: Interaction>: Debug + Send + 'static {
     /// Interact with an `Actor`.
-    async fn interact(&mut self, msg: T) -> Result<T::Output, Error>;
+    async fn interact_and_wait(&mut self, msg: T) -> Result<T::Output, Error>;
 
     /// Returns a reference to `Id` of an `Address` inside.
     #[doc(hidden)]
@@ -115,8 +115,8 @@ where
     T: Interaction,
     A: Actor + InteractionHandler<T>,
 {
-    async fn interact(&mut self, msg: T) -> Result<T::Output, Error> {
-        Address::interact(self, msg).await
+    async fn interact_and_wait(&mut self, msg: T) -> Result<T::Output, Error> {
+        Address::interact_and_wait(self, msg).await
     }
 
     fn id_ref(&self) -> &Id {

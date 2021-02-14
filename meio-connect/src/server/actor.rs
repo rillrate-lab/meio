@@ -125,7 +125,7 @@ where
         if let Some(value) = E::from_request(&request) {
             let mut address = self.address.clone();
             let msg = Req { request: value };
-            let fut = async move { address.interact(msg).await };
+            let fut = async move { address.interact_and_wait(msg).await };
             Ok(Box::pin(fut))
         } else {
             Err(request)

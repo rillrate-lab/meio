@@ -140,7 +140,7 @@ impl<A: Actor> Address<A> {
     ///
     /// To avoid blocking you shouldn't `await` the result of this `Interaction`,
     /// but create a `Future` and `await` in a separate coroutine of in a `LiteTask`.
-    pub async fn interact<I>(&mut self, request: I) -> Result<I::Output, Error>
+    pub async fn interact_and_wait<I>(&mut self, request: I) -> Result<I::Output, Error>
     where
         I: Interaction,
         // ! Not `InteractionHandler` has to be used here !
