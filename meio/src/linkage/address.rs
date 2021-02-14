@@ -121,11 +121,25 @@ impl<A: Actor> Address<A> {
         self.send_hp_direct(operation, wrapped)
     }
 
+    // TODO: Add a `LiteTask` and can forward the result of a long running
+    // `Interaction` to the `Actor`.
+    //
+    // TODO: Add `InteractionResponse` trait, to wait for the result of interaction.
+    // It has to be implemented as a `LiteTask` to make every interaction
+    // interruptable.
+    //
+    // TODO: Add `interaction` method to a version that always spawns
+    // a `LiteTask` for an interaction. BUT! Keep `interact` method that
+    // is very important for non-meio usage of an `Address`.
+
     /// Interacts with an `Actor` and waits for the result of the `Interaction`.
     ///
     /// `ActionHandler` required instead of `InteractionHandler` to make it possible
     /// to work with both types of handler, because `ActionHandler` can be used
     /// for long running interaction and prevent blocking of the actor's routine.
+    ///
+    /// To avoid blocking you shouldn't `await` the result of this `Interaction`,
+    /// but create a `Future` and `await` in a separate coroutine of in a `LiteTask`.
     pub async fn interact<I>(&mut self, request: I) -> Result<I::Output, Error>
     where
         I: Interaction,

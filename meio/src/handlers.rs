@@ -188,8 +188,18 @@ pub struct Interact<T: Interaction> {
 impl<T: Interaction> Action for Interact<T> {}
 
 /// Interaction message to an `Actor`.
-/// Interactions can't be high-priority (instant), because it
-/// can block vital runtime handlers.
+/// Interactions can't be high-priority (instant), because it can block vital runtime handlers.
+///
+/// Long running interaction will block the actor's routine for a long time and the app can
+/// be blocked by `Address::interact` method call. To avoid this issue you have:
+///
+/// 1. Use `ActionHandler` with `Interact` wrapper as a message to control manually
+/// when a response will be send to avoid blocking of an `Actor` that performs long running
+/// interaction.
+///
+/// 2. Use `interaction` method and send a response from a `LiteTask` to an `InteractionResponse`
+/// handler of a caller.
+///
 pub trait Interaction: Send + 'static {
     /// The result of the `Interaction` that will be returned by `InteractionHandler`.
     type Output: Send + 'static;
