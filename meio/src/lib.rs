@@ -118,7 +118,7 @@ mod tests {
 
     #[async_trait]
     impl Consumer<MsgOne> for MyActor {
-        async fn handle(&mut self, _: MsgOne, _ctx: &mut Context<Self>) -> Result<(), Error> {
+        async fn handle(&mut self, _: Vec<MsgOne>, _ctx: &mut Context<Self>) -> Result<(), Error> {
             log::info!("Received MsgOne (from the stream)");
             Ok(())
         }
@@ -136,7 +136,7 @@ mod tests {
     impl Consumer<signal::CtrlC> for MyActor {
         async fn handle(
             &mut self,
-            _: signal::CtrlC,
+            _: Vec<signal::CtrlC>,
             _ctx: &mut Context<Self>,
         ) -> Result<(), Error> {
             log::info!("Received CtrlC");

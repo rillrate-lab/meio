@@ -3,16 +3,35 @@
 //! ###
 //!
 //! If you want to limit types that can be used as `LiteTasks` you can
-//! add a trait that required `ListTask` and implement `EliminatedTask`
+//! add a trait that required `ListTask` and implement `TaskEliminated`
 //! for your trait only. The compiler will not allow you to spawn other
 //! task except with your type.
 //!
 //! Example:
 //!
 //! ```
+//! # use anyhow::Error;
+//! # use async_trait::async_trait;
+//! # use meio::prelude::{Actor, Context, IdOf, TaskEliminated, TaskError, LiteTask};
 //! trait SpecificTask: LiteTask {}
 //!
-//! impl<T: SpecificTask> EliminatedTask<T> for Actor {}
+//! struct MyActor {}
+//!
+//! impl Actor for MyActor {
+//!     type GroupBy = ();
+//! }
+//!
+//! #[async_trait]
+//! impl<T: SpecificTask> TaskEliminated<T> for MyActor {
+//!     async fn handle(
+//!         &mut self,
+//!         id: IdOf<T>,
+//!         result: Result<T::Output, TaskError>,
+//!         ctx: &mut Context<Self>,
+//!     ) -> Result<(), Error> {
+//!         Ok(())
+//!     }
+//! }
 //! ```
 
 use crate::compat::watch;

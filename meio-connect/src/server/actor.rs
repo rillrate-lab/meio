@@ -485,3 +485,16 @@ where
         talker.routine().await
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use serde::Deserialize;
+
+    #[derive(Default, Deserialize)]
+    struct Index {}
+
+    #[test]
+    fn qs_parsing() {
+        let _index: Index = serde_qs::from_str("").unwrap();
+    }
+}
