@@ -8,9 +8,10 @@ use hyper::server::conn::AddrStream;
 use hyper::service::Service;
 use hyper::upgrade::Upgraded;
 use hyper::{Body, Request, Response, Server, StatusCode};
+use meio::handlers::Interact;
 use meio::prelude::{
-    Action, ActionHandler, Actor, Address, Context, IdOf, Interaction, InteractionHandler,
-    InterruptedBy, LiteTask, Scheduled, StartedBy, StopReceiver, TaskEliminated, TaskError,
+    Action, ActionHandler, Actor, Address, Context, IdOf, Interaction, InterruptedBy, LiteTask,
+    Scheduled, StartedBy, StopReceiver, TaskEliminated, TaskError,
 };
 use meio_protocol::Protocol;
 use serde::de::DeserializeOwned;
@@ -112,10 +113,13 @@ where
     }
 }
 
+/// Here used `ActionHandler` instead of `InteractionHandler`
+/// to make it possible to use both types of handlers.
+/// And `ActionHandler` is useful to handle long running requests.
 impl<E, A> Route for WebRoute<E, A>
 where
     E: FromRequest,
-    A: Actor + InteractionHandler<Req<E>>,
+    A: Actor + ActionHandler<Interact<Req<E>>>,
 {
     fn try_route(&self, _addr: &SocketAddr, request: Request<Body>) -> RouteResult {
         if let Some(value) = E::from_request(&request) {

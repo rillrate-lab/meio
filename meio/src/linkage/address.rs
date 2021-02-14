@@ -122,10 +122,15 @@ impl<A: Actor> Address<A> {
     }
 
     /// Interacts with an `Actor` and waits for the result of the `Interaction`.
+    ///
+    /// `ActionHandler` required instead of `InteractionHandler` to make it possible
+    /// to work with both types of handler, because `ActionHandler` can be used
+    /// for long running interaction and prevent blocking of the actor's routine.
     pub async fn interact<I>(&mut self, request: I) -> Result<I::Output, Error>
     where
         I: Interaction,
-        A: InteractionHandler<I>,
+        // ! Not `InteractionHandler` has to be used here !
+        A: ActionHandler<Interact<I>>,
     {
         let (responder, rx) = oneshot::channel();
         let input = Interact { request, responder };
