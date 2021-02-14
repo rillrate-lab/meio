@@ -13,6 +13,7 @@ use meio::prelude::{
     InterruptedBy, LiteTask, Scheduled, StartedBy, StopReceiver, TaskEliminated, TaskError,
 };
 use meio_protocol::Protocol;
+use serde::de::DeserializeOwned;
 use slab::Slab;
 use std::future::Future;
 use std::net::SocketAddr;
@@ -32,13 +33,16 @@ pub trait DirectPath: Default + Sized + Send + Sync + 'static {
 impl<T> FromRequest for T
 where
     T: DirectPath,
+    Self: DeserializeOwned,
 {
     type Output = Self;
 
     fn from_request(request: &Request<Body>) -> Option<Self::Output> {
-        let path = request.uri().path();
+        let uri = request.uri();
+        let path = uri.path();
         if Self::paths().iter().any(|p| p == &path) {
-            Some(Self::default())
+            let query = uri.query().unwrap_or("");
+            serde_qs::from_str(query).ok()
         } else {
             None
         }
@@ -49,14 +53,17 @@ impl<T> WsFromRequest for T
 where
     T: DirectPath,
     T::Parameter: Protocol,
+    Self: DeserializeOwned,
 {
     type Output = Self;
     type Protocol = T::Parameter;
 
     fn from_request(request: &Request<Body>) -> Option<Self::Output> {
-        let path = request.uri().path();
+        let uri = request.uri();
+        let path = uri.path();
         if Self::paths().iter().any(|p| p == &path) {
-            Some(Self::default())
+            let query = uri.query().unwrap_or("");
+            serde_qs::from_str(query).ok()
         } else {
             None
         }
