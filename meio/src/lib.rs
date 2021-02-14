@@ -117,6 +117,12 @@ mod tests {
         type GroupBy = ();
     }
 
+    impl<S> StreamGroup<S> for MyActor {
+        fn stream_group(&self, _stream: &S) -> Self::GroupBy {
+            ()
+        }
+    }
+
     #[async_trait]
     impl ActionHandler<MsgOne> for MyActor {
         async fn handle(&mut self, _: MsgOne, _ctx: &mut Context<Self>) -> Result<(), Error> {
@@ -240,7 +246,7 @@ mod tests {
         env_logger::try_init().ok();
         let mut address = System::spawn(MyActor);
         let stream = stream::iter(vec![MsgOne, MsgOne, MsgOne]);
-        address.attach(stream);
+        address.attach(stream)?;
         // If you acivate this line the test will wait for the `Ctrl+C` signal.
         //address.attach(signal::CtrlC::stream()).await?;
         System::interrupt(&mut address)?;

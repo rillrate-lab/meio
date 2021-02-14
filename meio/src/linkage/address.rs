@@ -3,7 +3,7 @@
 use super::{ActionRecipient, InteractionRecipient};
 use crate::actor_runtime::{Actor, Status};
 use crate::compat::watch;
-use crate::forwarders::StreamForwarder;
+use crate::forwarders::{AttachStream, StreamForwarder, StreamGroup};
 use crate::handlers::{
     Action, ActionHandler, Consumer, Envelope, HpEnvelope, InstantAction, InstantActionHandler,
     Interact, Interaction, InteractionHandler, InterruptedBy, Operation, Scheduled, ScheduledItem,
@@ -190,6 +190,17 @@ impl<A: Actor> Address<A> {
         self.send_hp_direct(Operation::Forward, Interrupt::new())
     }
 
+    pub fn attach<S>(&mut self, stream: S) -> Result<(), Error>
+    where
+        A: StreamGroup<S> + Consumer<S::Item>,
+        S: Stream + Send + Unpin + 'static,
+        S::Item: Send + 'static,
+    {
+        let msg = AttachStream::new(stream);
+        self.instant(msg)
+    }
+
+    /*
     /// Attaches a `Stream` of event to an `Actor`.
     /// Optimized for intensive streams. For moderate flow you still can
     /// use ordinary `Action`s and `act` method calls.
@@ -207,6 +218,7 @@ impl<A: Actor> Address<A> {
         // accidentally `.await` it and block a handler.
         crate::compat::spawn_async(forwarder.entrypoint());
     }
+    */
 
     /// Returns a `Link` to an `Actor`.
     /// `Link` is a convenient concept for creating wrappers for

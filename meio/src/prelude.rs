@@ -1,6 +1,7 @@
 //! Meio prelude module.
 
 pub use crate::actor_runtime::{Actor, Context, Status};
+pub use crate::forwarders::StreamGroup;
 pub use crate::handlers::{
     Action, ActionHandler, Consumer, Eliminated, InstantAction, InstantActionHandler, Interaction,
     InteractionHandler, InterruptedBy, Scheduled, StartedBy, TaskEliminated,

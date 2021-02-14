@@ -1,5 +1,8 @@
-use crate::actor_runtime::Actor;
-use crate::handlers::{ActionHandler, Interact, Interaction, StreamItem};
+use crate::actor_runtime::{Actor, Context};
+use crate::handlers::{
+    Action, ActionHandler, Consumer, InstantAction, InstantActionHandler, Interact, Interaction,
+    StreamItem,
+};
 use crate::linkage::{Address, InteractionRecipient};
 use crate::lite_runtime::LiteTask;
 use anyhow::Error;
@@ -28,14 +31,16 @@ where
     }
 }
 
-impl<S, A> StreamForwarder<S, A>
+#[async_trait]
+impl<S, A> LiteTask for StreamForwarder<S, A>
 where
-    S: Stream + Unpin,
+    S: Stream + Unpin + Send + 'static,
     S::Item: Send + 'static,
     A: Actor + ActionHandler<StreamItem<S::Item>>,
 {
-    // TODO: Change to `LiteTask`!
-    pub async fn entrypoint(mut self) {
+    type Output = ();
+
+    async fn interruptable_routine(mut self) -> Result<Self::Output, Error> {
         while let Some(item) = self.stream.next().await {
             let action = StreamItem::Chunk(item);
             if let Err(err) = self.address.act(action).await {
@@ -47,20 +52,37 @@ where
                 break;
             }
         }
+        Ok(())
     }
 }
 
-#[async_trait]
-impl<S, A> LiteTask for StreamForwarder<S, A>
-where
-    S: Stream + Unpin + Send + 'static,
-    S::Item: Send + 'static,
-    A: Actor + ActionHandler<StreamItem<S::Item>>,
-{
-    type Output = ();
+pub trait StreamGroup<S>: Actor {
+    fn stream_group(&self, stream: &S) -> Self::GroupBy;
+}
 
-    async fn interruptable_routine(mut self) -> Result<Self::Output, Error> {
-        self.entrypoint().await;
+pub(crate) struct AttachStream<S> {
+    stream: S,
+}
+
+impl<S> AttachStream<S> {
+    pub fn new(stream: S) -> Self {
+        Self { stream }
+    }
+}
+
+impl<S> InstantAction for AttachStream<S> where S: Stream + Send + 'static {}
+
+#[async_trait]
+impl<T, S> InstantActionHandler<AttachStream<S>> for T
+where
+    T: StreamGroup<S> + Consumer<S::Item>,
+    S: Stream + Unpin + Send + 'static,
+    S::Item: Send,
+{
+    async fn handle(&mut self, msg: AttachStream<S>, ctx: &mut Context<Self>) -> Result<(), Error> {
+        let stream = msg.stream;
+        let group = self.stream_group(&stream);
+        ctx.attach(stream, group);
         Ok(())
     }
 }
