@@ -11,8 +11,21 @@ use futures::{stream::ReadyChunks, Stream, StreamExt};
 /// This worker receives items from a stream and send them as actions
 /// into an `Actor`.
 pub(crate) struct StreamForwarder<S: Stream, A: Actor> {
-    pub stream: ReadyChunks<S>,
-    pub address: Address<A>,
+    stream: ReadyChunks<S>,
+    address: Address<A>,
+}
+
+impl<S, A> StreamForwarder<S, A>
+where
+    S: Stream,
+    A: Actor,
+{
+    pub fn new(stream: S, address: Address<A>) -> Self {
+        Self {
+            stream: stream.ready_chunks(16),
+            address,
+        }
+    }
 }
 
 impl<S, A> StreamForwarder<S, A>
@@ -34,6 +47,21 @@ where
                 break;
             }
         }
+    }
+}
+
+#[async_trait]
+impl<S, A> LiteTask for StreamForwarder<S, A>
+where
+    S: Stream + Unpin + Send + 'static,
+    S::Item: Send + 'static,
+    A: Actor + ActionHandler<StreamItem<S::Item>>,
+{
+    type Output = ();
+
+    async fn interruptable_routine(mut self) -> Result<Self::Output, Error> {
+        self.entrypoint().await;
+        Ok(())
     }
 }
 

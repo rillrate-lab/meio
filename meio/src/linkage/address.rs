@@ -202,11 +202,7 @@ impl<A: Actor> Address<A> {
         S: Stream + Send + Unpin + 'static,
         S::Item: Send + 'static,
     {
-        let forwarder = StreamForwarder {
-            // TODO: Configurable?
-            stream: stream.ready_chunks(16),
-            address: self.clone(),
-        };
+        let forwarder = StreamForwarder::new(stream, self.clone());
         // WARNING! Don't return `JoinHandle` because user can
         // accidentally `.await` it and block a handler.
         crate::compat::spawn_async(forwarder.entrypoint());
