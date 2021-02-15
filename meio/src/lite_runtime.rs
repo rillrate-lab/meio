@@ -11,6 +11,7 @@ use futures::{
     Future, FutureExt,
 };
 use std::pin::Pin;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 use thiserror::Error;
 use uuid::Uuid;
@@ -121,16 +122,18 @@ pub struct TaskStopped;
 
 pub fn stop_channel(id: Id) -> (TaskAddress, StopReceiver) {
     let (tx, rx) = watch::channel(Status::Alive);
-    let sender = TaskAddress { id, tx };
+    let sender = TaskAddress {
+        id,
+        tx: Arc::new(tx),
+    };
     let receiver = StopReceiver { status: rx };
     (sender, receiver)
 }
 
-// TODO: Make it cloneable
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TaskAddress {
     id: Id,
-    tx: watch::Sender<Status>,
+    tx: Arc<watch::Sender<Status>>,
 }
 
 impl TaskAddress {
