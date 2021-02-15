@@ -83,13 +83,13 @@ pub trait LiteTask: Sized + Send + 'static {
     }
 }
 
-pub(crate) fn spawn<T, S>(task: T, supervisor: Option<Address<S>>) -> TaskAddress
+pub(crate) fn spawn<T, S>(task: T, supervisor: Option<Address<S>>) -> TaskAddress<T>
 where
     T: LiteTask,
     S: Actor + TaskEliminated<T>,
 {
     let id = Id::of_task(&task);
-    let (stop_sender, stop_receiver) = stop_channel(id.clone());
+    let (stop_sender, stop_receiver) = make_stop_channel(id.clone());
     let id_of = IdOf::<T>::new(id.clone());
     let done_notifier = {
         match supervisor {
@@ -120,10 +120,10 @@ impl<T> StopSignal for T where T: Future<Output = ()> + FusedFuture + Send {}
 #[error("task interrupted by a signal")]
 pub struct TaskStopped;
 
-pub fn stop_channel(id: Id) -> (TaskAddress, StopReceiver) {
+pub fn make_stop_channel<T>(id: Id) -> (TaskAddress<T>, StopReceiver) {
     let (tx, rx) = watch::channel(Status::Alive);
     let sender = TaskAddress {
-        id,
+        id: IdOf::new(id),
         tx: Arc::new(tx),
     };
     let receiver = StopReceiver { status: rx };
@@ -131,14 +131,13 @@ pub fn stop_channel(id: Id) -> (TaskAddress, StopReceiver) {
 }
 
 #[derive(Debug, Clone)]
-pub struct TaskAddress {
-    id: Id,
+pub struct TaskAddress<T> {
+    id: IdOf<T>,
     tx: Arc<watch::Sender<Status>>,
 }
 
-impl TaskAddress {
-    // TODO: Return `IdOf`
-    pub fn id(&self) -> Id {
+impl<T> TaskAddress<T> {
+    pub fn id(&self) -> IdOf<T> {
         self.id.clone()
     }
 

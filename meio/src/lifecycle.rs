@@ -82,12 +82,12 @@ impl<A: Actor> LifetimeTracker<A> {
         self.records.insert(id, record);
     }
 
-    pub fn insert_task<T>(&mut self, stopper: TaskAddress, group: A::GroupBy)
+    pub fn insert_task<T>(&mut self, stopper: TaskAddress<T>, group: A::GroupBy)
     where
         T: LiteTask,
     {
         let stage = self.stages.entry(group.clone()).or_default();
-        let id = stopper.id();
+        let id: Id = stopper.id().into();
         stage.ids.insert(id.clone());
         let mut notifier = LifecycleNotifier::stop(stopper);
         if stage.terminating {
@@ -198,8 +198,7 @@ impl<P> dyn LifecycleNotifier<P> {
         Box::new(notifier)
     }
 
-    // TODO: Require <T: LiteTask>
-    pub fn stop(stopper: TaskAddress) -> Box<Self> {
+    pub fn stop<T: LiteTask>(stopper: TaskAddress<T>) -> Box<Self> {
         let notifier = move |_| stopper.stop();
         Box::new(notifier)
     }
