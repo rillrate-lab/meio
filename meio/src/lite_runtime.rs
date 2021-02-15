@@ -10,6 +10,7 @@ use futures::{
     future::{select, Either, FusedFuture},
     Future, FutureExt,
 };
+use std::hash::{Hash, Hasher};
 use std::pin::Pin;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -157,6 +158,20 @@ impl<T> TaskAddress<T> {
     /// Send a stop signal to the task.
     pub fn stop(&self) -> Result<(), Error> {
         self.tx.send(Status::Stop).map_err(Error::from)
+    }
+}
+
+impl<T: LiteTask> PartialEq for TaskAddress<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.id.eq(&other.id)
+    }
+}
+
+impl<T: LiteTask> Eq for TaskAddress<T> {}
+
+impl<T: LiteTask> Hash for TaskAddress<T> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
     }
 }
 
