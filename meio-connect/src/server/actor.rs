@@ -396,7 +396,8 @@ impl Service<Request<Body>> for Svc {
                     }
                     Err(err) => {
                         log::error!("Server error for {}: {}", uri, err);
-                        response = Response::new(Body::empty());
+                        let reason: Body = err.to_string().into();
+                        response = Response::new(reason);
                         *response.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
                     }
                 }
