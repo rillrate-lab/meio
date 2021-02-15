@@ -23,9 +23,23 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{self, Poll};
 use std::time::{Duration, Instant};
+use thiserror::Error;
 use tokio::sync::RwLock;
 use tokio_tungstenite::WebSocketStream;
 use tungstenite::protocol::Role;
+
+#[derive(Debug, Error)]
+#[error("route error [path = {path}]: {reason}")]
+pub struct RouteError {
+    pub path: String,
+    pub reason: String,
+}
+
+impl RouteError {
+    fn new(path: String, reason: String) -> Self {
+        Self { path, reason }
+    }
+}
 
 pub trait DirectPath: Sized + Send + Sync + 'static {
     type Parameter;
@@ -44,7 +58,9 @@ where
         let path = uri.path();
         if Self::paths().iter().any(|p| p == &path) {
             let query = uri.query().unwrap_or("");
-            serde_qs::from_str(query).map_err(Error::from)
+            serde_qs::from_str(query)
+                .map_err(|err| RouteError::new(path.to_string(), err.to_string()))
+                .map_err(Error::from)
         } else {
             Ok(None)
         }
@@ -65,7 +81,9 @@ where
         let path = uri.path();
         if Self::paths().iter().any(|p| p == &path) {
             let query = uri.query().unwrap_or("");
-            serde_qs::from_str(query).map_err(Error::from)
+            serde_qs::from_str(query)
+                .map_err(|err| RouteError::new(path.to_string(), err.to_string()))
+                .map_err(Error::from)
         } else {
             Ok(None)
         }
@@ -534,7 +552,18 @@ mod tests {
     struct Index {}
 
     #[test]
-    fn qs_parsing() {
+    fn qs_index() {
         let _index: Index = serde_qs::from_str("").unwrap();
+    }
+
+    #[derive(Default, Deserialize)]
+    struct ApiQuery {
+        query: String,
+    }
+
+    #[test]
+    fn qs_query() {
+        let api_query: ApiQuery = serde_qs::from_str("query=abc").unwrap();
+        assert_eq!(api_query.query, "abc");
     }
 }
