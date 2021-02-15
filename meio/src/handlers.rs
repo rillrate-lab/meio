@@ -178,13 +178,16 @@ where
     }
 }
 
+/// The alias to sender of an interaction result.
+pub type InteractionResponder<T> = oneshot::Sender<Result<T, Error>>;
+
 /// The wrapper for an interaction request that keeps a request and the
 /// channel for sending a response.
 pub struct Interact<T: Interaction> {
     /// Interaction request.
     pub request: T,
     /// The responder to send a result of an interaction.
-    pub responder: oneshot::Sender<Result<T::Output, Error>>,
+    pub responder: InteractionResponder<T::Output>,
 }
 
 impl<T: Interaction> Action for Interact<T> {}
