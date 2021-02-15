@@ -231,6 +231,15 @@ impl TaskError {
     pub fn is_interrupted(&self) -> bool {
         matches!(self, Self::Interrupted)
     }
+
+    /// Converts the error into other error value if
+    /// the task wasn't interrupted.
+    pub fn into_other(self) -> Option<Error> {
+        match self {
+            Self::Interrupted => None,
+            Self::Other(err) => Some(err),
+        }
+    }
 }
 
 impl From<Error> for TaskError {
