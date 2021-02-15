@@ -66,6 +66,8 @@ pub struct IdOf<T> {
     _origin: PhantomData<T>,
 }
 
+unsafe impl<T> Sync for IdOf<T> {}
+
 impl<T> Clone for IdOf<T> {
     fn clone(&self) -> Self {
         Self::new(self.id.clone())
