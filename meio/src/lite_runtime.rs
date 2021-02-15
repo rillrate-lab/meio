@@ -82,7 +82,7 @@ pub trait LiteTask: Sized + Send + 'static {
     }
 }
 
-pub(crate) fn spawn<T, S>(task: T, supervisor: Option<Address<S>>) -> StopSender
+pub(crate) fn spawn<T, S>(task: T, supervisor: Option<Address<S>>) -> TaskAddress
 where
     T: LiteTask,
     S: Actor + TaskEliminated<T>,
@@ -119,22 +119,21 @@ impl<T> StopSignal for T where T: Future<Output = ()> + FusedFuture + Send {}
 #[error("task interrupted by a signal")]
 pub struct TaskStopped;
 
-pub fn stop_channel(id: Id) -> (StopSender, StopReceiver) {
+pub fn stop_channel(id: Id) -> (TaskAddress, StopReceiver) {
     let (tx, rx) = watch::channel(Status::Alive);
-    let sender = StopSender { id, tx };
+    let sender = TaskAddress { id, tx };
     let receiver = StopReceiver { status: rx };
     (sender, receiver)
 }
 
-// TODO: Rename to `TaskAddress`
 // TODO: Make it cloneable
 #[derive(Debug)]
-pub struct StopSender {
+pub struct TaskAddress {
     id: Id,
     tx: watch::Sender<Status>,
 }
 
-impl StopSender {
+impl TaskAddress {
     // TODO: Return `IdOf`
     pub fn id(&self) -> Id {
         self.id.clone()

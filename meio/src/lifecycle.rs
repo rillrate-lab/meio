@@ -4,7 +4,7 @@ use crate::actor_runtime::Actor;
 use crate::handlers::{InstantAction, InstantActionHandler, Operation};
 use crate::ids::{Id, IdOf};
 use crate::linkage::Address;
-use crate::lite_runtime::{LiteTask, StopSender, TaskError};
+use crate::lite_runtime::{LiteTask, TaskAddress, TaskError};
 use anyhow::Error;
 use std::collections::{HashMap, HashSet};
 use std::marker::PhantomData;
@@ -82,7 +82,7 @@ impl<A: Actor> LifetimeTracker<A> {
         self.records.insert(id, record);
     }
 
-    pub fn insert_task<T>(&mut self, stopper: StopSender, group: A::GroupBy)
+    pub fn insert_task<T>(&mut self, stopper: TaskAddress, group: A::GroupBy)
     where
         T: LiteTask,
     {
@@ -199,7 +199,7 @@ impl<P> dyn LifecycleNotifier<P> {
     }
 
     // TODO: Require <T: LiteTask>
-    pub fn stop(stopper: StopSender) -> Box<Self> {
+    pub fn stop(stopper: TaskAddress) -> Box<Self> {
         let notifier = move |_| stopper.stop();
         Box::new(notifier)
     }
