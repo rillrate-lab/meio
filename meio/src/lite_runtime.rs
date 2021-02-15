@@ -120,7 +120,7 @@ impl<T> StopSignal for T where T: Future<Output = ()> + FusedFuture + Send {}
 #[error("task interrupted by a signal")]
 pub struct TaskStopped;
 
-pub fn make_stop_channel<T>(id: Id) -> (TaskAddress<T>, StopReceiver) {
+fn make_stop_channel<T>(id: Id) -> (TaskAddress<T>, StopReceiver) {
     let (tx, rx) = watch::channel(Status::Alive);
     let sender = TaskAddress {
         id: IdOf::new(id),
@@ -130,6 +130,9 @@ pub fn make_stop_channel<T>(id: Id) -> (TaskAddress<T>, StopReceiver) {
     (sender, receiver)
 }
 
+/// Address of a spawned task.
+///
+/// It can be used to interrupt the task.
 #[derive(Debug)]
 pub struct TaskAddress<T> {
     id: IdOf<T>,
@@ -146,10 +149,12 @@ impl<T> Clone for TaskAddress<T> {
 }
 
 impl<T> TaskAddress<T> {
+    /// Id of the task.
     pub fn id(&self) -> IdOf<T> {
         self.id.clone()
     }
 
+    /// Send a stop signal to the task.
     pub fn stop(&self) -> Result<(), Error> {
         self.tx.send(Status::Stop).map_err(Error::from)
     }
