@@ -43,7 +43,7 @@ use crate::handlers::{
 use crate::ids::{Id, IdOf};
 use crate::lifecycle::{Awake, Done, LifecycleNotifier, LifetimeTracker};
 use crate::linkage::Address;
-use crate::lite_runtime::{self, LiteTask};
+use crate::lite_runtime::{self, LiteTask, TaskAddress};
 use anyhow::Error;
 use async_trait::async_trait;
 use futures::channel::mpsc;
@@ -165,28 +165,15 @@ impl<A: Actor> Context<A> {
         address
     }
 
-    /*
-    /// Starts and binds an `Actor`.
-    pub fn spawn_task<T>(&mut self, task: T, group: A::GroupBy) -> Address<Task<T>>
-    where
-        T: LiteTask,
-        A: Eliminated<Task<T>>,
-    {
-        let actor = Task::new(task);
-        self.spawn_actor(actor, group)
-    }
-    */
-
     /// Starts and binds a `Task`.
-    pub fn spawn_task<T>(&mut self, task: T, group: A::GroupBy)
+    pub fn spawn_task<T>(&mut self, task: T, group: A::GroupBy) -> TaskAddress<T>
     where
         T: LiteTask,
         A: TaskEliminated<T>,
     {
         let stopper = lite_runtime::spawn(task, Some(self.address.clone()));
-        // TODO: Remove ::<T>:: spec, it will be detected by stopper (later)
-        self.lifetime_tracker.insert_task::<T>(stopper, group);
-        // TODO: Return stopper.
+        self.lifetime_tracker.insert_task(stopper.clone(), group);
+        stopper
     }
 
     /// Spawns interaction task that forwards the result of an interaction.

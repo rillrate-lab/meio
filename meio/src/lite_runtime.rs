@@ -130,10 +130,19 @@ pub fn make_stop_channel<T>(id: Id) -> (TaskAddress<T>, StopReceiver) {
     (sender, receiver)
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct TaskAddress<T> {
     id: IdOf<T>,
     tx: Arc<watch::Sender<Status>>,
+}
+
+impl<T> Clone for TaskAddress<T> {
+    fn clone(&self) -> Self {
+        Self {
+            id: self.id(),
+            tx: Arc::clone(&self.tx),
+        }
+    }
 }
 
 impl<T> TaskAddress<T> {
