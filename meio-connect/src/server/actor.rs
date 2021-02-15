@@ -39,14 +39,14 @@ where
 {
     type Output = Self;
 
-    fn from_request(request: &Request<Body>) -> Option<Self::Output> {
+    fn from_request(request: &Request<Body>) -> Result<Option<Self::Output>, Error> {
         let uri = request.uri();
         let path = uri.path();
         if Self::paths().iter().any(|p| p == &path) {
             let query = uri.query().unwrap_or("");
-            serde_qs::from_str(query).ok()
+            serde_qs::from_str(query).map_err(Error::from)
         } else {
-            None
+            Ok(None)
         }
     }
 }
@@ -60,14 +60,14 @@ where
     type Output = Self;
     type Protocol = T::Parameter;
 
-    fn from_request(request: &Request<Body>) -> Option<Self::Output> {
+    fn from_request(request: &Request<Body>) -> Result<Option<Self::Output>, Error> {
         let uri = request.uri();
         let path = uri.path();
         if Self::paths().iter().any(|p| p == &path) {
             let query = uri.query().unwrap_or("");
-            serde_qs::from_str(query).ok()
+            serde_qs::from_str(query).map_err(Error::from)
         } else {
-            None
+            Ok(None)
         }
     }
 }
@@ -75,7 +75,7 @@ where
 pub trait FromRequest: Sized + Send + Sync + 'static {
     type Output: Send;
 
-    fn from_request(request: &Request<Body>) -> Option<Self::Output>;
+    fn from_request(request: &Request<Body>) -> Result<Option<Self::Output>, Error>;
 }
 
 pub struct Req<T: FromRequest> {
@@ -122,13 +122,18 @@ where
     A: Actor + ActionHandler<Interact<Req<E>>>,
 {
     fn try_route(&self, _addr: &SocketAddr, request: Request<Body>) -> RouteResult {
-        if let Some(value) = E::from_request(&request) {
-            let mut address = self.address.clone();
-            let msg = Req { request: value };
-            let fut = async move { address.interact_and_wait(msg).await };
-            Ok(Box::pin(fut))
-        } else {
-            Err(request)
+        match E::from_request(&request) {
+            Ok(Some(value)) => {
+                let mut address = self.address.clone();
+                let msg = Req { request: value };
+                let fut = async move { address.interact_and_wait(msg).await };
+                Ok(Box::pin(fut))
+            }
+            Ok(None) => Err(request),
+            Err(err) => {
+                let fut = async move { Err(err) };
+                Ok(Box::pin(fut))
+            }
         }
     }
 }
@@ -137,7 +142,7 @@ pub trait WsFromRequest: Sized + Send + Sync + 'static {
     type Output: Send;
     type Protocol: Protocol;
 
-    fn from_request(request: &Request<Body>) -> Option<Self::Output>;
+    fn from_request(request: &Request<Body>) -> Result<Option<Self::Output>, Error>;
 }
 
 pub struct WsReq<T: WsFromRequest> {
@@ -173,51 +178,56 @@ where
     A: Actor + ActionHandler<WsReq<E>>,
 {
     fn try_route(&self, addr: &SocketAddr, mut request: Request<Body>) -> RouteResult {
-        if let Some(value) = E::from_request(&request) {
-            let mut res = Response::new(Body::empty());
-            let mut address = self.address.clone();
-            if request.headers().typed_get::<headers::Upgrade>().is_none() {
-                *res.status_mut() = StatusCode::BAD_REQUEST;
-                // TODO: Return error
-            }
-            let ws_key = request.headers().typed_get::<headers::SecWebsocketKey>();
-            let addr = *addr;
-            tokio::task::spawn(async move {
-                match hyper::upgrade::on(&mut request).await {
-                    Ok(upgraded) => {
-                        let websocket = tokio_tungstenite::WebSocketStream::from_raw_socket(
-                            upgraded,
-                            Role::Server,
-                            None,
-                        )
-                        .await;
-                        let stream = WsHandler::new(addr, websocket);
-                        let msg = WsReq {
-                            request: value,
-                            stream,
-                        };
-                        address.act(msg).await?;
-                        Ok(())
-                    }
-                    Err(err) => {
-                        log::error!("upgrade error: {}", err);
-                        Err(Error::from(err))
-                    }
+        match E::from_request(&request) {
+            Ok(Some(value)) => {
+                let mut res = Response::new(Body::empty());
+                let mut address = self.address.clone();
+                if request.headers().typed_get::<headers::Upgrade>().is_none() {
+                    *res.status_mut() = StatusCode::BAD_REQUEST;
+                    // TODO: Return error
                 }
-            });
-            *res.status_mut() = StatusCode::SWITCHING_PROTOCOLS;
-            res.headers_mut()
-                .typed_insert(headers::Connection::upgrade());
-            res.headers_mut()
-                .typed_insert(headers::Upgrade::websocket());
-            if let Some(value) = ws_key {
+                let ws_key = request.headers().typed_get::<headers::SecWebsocketKey>();
+                let addr = *addr;
+                tokio::task::spawn(async move {
+                    match hyper::upgrade::on(&mut request).await {
+                        Ok(upgraded) => {
+                            let websocket = tokio_tungstenite::WebSocketStream::from_raw_socket(
+                                upgraded,
+                                Role::Server,
+                                None,
+                            )
+                            .await;
+                            let stream = WsHandler::new(addr, websocket);
+                            let msg = WsReq {
+                                request: value,
+                                stream,
+                            };
+                            address.act(msg).await?;
+                            Ok(())
+                        }
+                        Err(err) => {
+                            log::error!("upgrade error: {}", err);
+                            Err(Error::from(err))
+                        }
+                    }
+                });
+                *res.status_mut() = StatusCode::SWITCHING_PROTOCOLS;
                 res.headers_mut()
-                    .typed_insert(headers::SecWebsocketAccept::from(value));
+                    .typed_insert(headers::Connection::upgrade());
+                res.headers_mut()
+                    .typed_insert(headers::Upgrade::websocket());
+                if let Some(value) = ws_key {
+                    res.headers_mut()
+                        .typed_insert(headers::SecWebsocketAccept::from(value));
+                }
+                let fut = futures::future::ready(Ok(res));
+                Ok(Box::pin(fut))
             }
-            let fut = futures::future::ready(Ok(res));
-            Ok(Box::pin(fut))
-        } else {
-            Err(request)
+            Ok(None) => Err(request),
+            Err(err) => {
+                let fut = async move { Err(err) };
+                Ok(Box::pin(fut))
+            }
         }
     }
 }
