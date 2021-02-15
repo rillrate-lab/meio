@@ -63,9 +63,9 @@ where
         let path = uri.path();
         if Self::paths().iter().any(|p| p == &path) {
             let query = uri.query().unwrap_or("");
-            serde_qs::from_str(query)
-                .map_err(|err| RouteError::new(path, query, err))
-                .map_err(Error::from)
+            let output: Self::Output =
+                serde_qs::from_str(query).map_err(|err| RouteError::new(path, query, err))?;
+            Ok(Some(output))
         } else {
             Ok(None)
         }
@@ -86,9 +86,9 @@ where
         let path = uri.path();
         if Self::paths().iter().any(|p| p == &path) {
             let query = uri.query().unwrap_or("");
-            serde_qs::from_str(query)
-                .map_err(|err| RouteError::new(path, query, err))
-                .map_err(Error::from)
+            let output: Self::Output =
+                serde_qs::from_str(query).map_err(|err| RouteError::new(path, query, err))?;
+            Ok(Some(output))
         } else {
             Ok(None)
         }
