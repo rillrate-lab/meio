@@ -29,15 +29,20 @@ use tokio_tungstenite::WebSocketStream;
 use tungstenite::protocol::Role;
 
 #[derive(Debug, Error)]
-#[error("route error [path = {path}]: {reason}")]
+#[error("route error [path = {path}, query = {query}]: {reason}")]
 pub struct RouteError {
     pub path: String,
+    pub query: String,
     pub reason: String,
 }
 
 impl RouteError {
-    fn new(path: String, reason: String) -> Self {
-        Self { path, reason }
+    fn new(path: impl ToString, query: impl ToString, reason: impl ToString) -> Self {
+        Self {
+            path: path.to_string(),
+            query: query.to_string(),
+            reason: reason.to_string(),
+        }
     }
 }
 
@@ -59,7 +64,7 @@ where
         if Self::paths().iter().any(|p| p == &path) {
             let query = uri.query().unwrap_or("");
             serde_qs::from_str(query)
-                .map_err(|err| RouteError::new(path.to_string(), err.to_string()))
+                .map_err(|err| RouteError::new(path, query, err))
                 .map_err(Error::from)
         } else {
             Ok(None)
@@ -82,7 +87,7 @@ where
         if Self::paths().iter().any(|p| p == &path) {
             let query = uri.query().unwrap_or("");
             serde_qs::from_str(query)
-                .map_err(|err| RouteError::new(path.to_string(), err.to_string()))
+                .map_err(|err| RouteError::new(path, query, err))
                 .map_err(Error::from)
         } else {
             Ok(None)
