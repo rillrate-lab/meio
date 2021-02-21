@@ -19,7 +19,7 @@ pub struct WsSender<T: ProtocolData> {
 }
 
 impl<T: ProtocolData> WsSender<T> {
-    pub fn send(&mut self, msg: T) {
+    pub fn send(&self, msg: T) {
         if let Err(err) = self.tx.unbounded_send(msg) {
             log::error!("Can't send a message to ws outgoing client part: {}", err);
         }
