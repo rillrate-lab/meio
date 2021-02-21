@@ -58,7 +58,7 @@ impl System {
         A: Actor + InterruptedBy<Self>,
     {
         let mut signals = signal::CtrlC::stream().fuse();
-        let mut join_addr = address.clone();
+        let join_addr = address.clone();
         let mut joiner = join_addr.join().boxed().fuse();
         let mut first_attempt = true;
         loop {

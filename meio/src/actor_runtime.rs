@@ -76,6 +76,18 @@ pub trait Actor: Sized + Send + 'static {
         let uuid = Uuid::new_v4();
         format!("Actor:{}({})", std::any::type_name::<Self>(), uuid)
     }
+
+    #[doc(hidden)] // Not ready yet
+    /// Called when `Action` queue drained (no more messages will be sent).
+    async fn queue_drained(&mut self, _ctx: &mut Context<Self>) -> Result<(), Error> {
+        Ok(())
+    }
+
+    #[doc(hidden)] // Not ready yet
+    /// Called when `InstantAction` queue drained (no more messages will be sent).
+    async fn instant_queue_drained(&mut self, _ctx: &mut Context<Self>) -> Result<(), Error> {
+        Ok(())
+    }
 }
 
 /// Status of the task.
@@ -350,6 +362,9 @@ impl<A: Actor> ActorRuntime<A> {
                         // it still has controllers.
                         // Background tasks = something spawned that `Actors` waits for finishing.
                         log::trace!("Messages stream of {:?} (high-priority) drained.", self.id);
+                        if let Err(err) = self.actor.instant_queue_drained(&mut self.context).await {
+                            log::error!("Queue (high-priority) drained handler {:?} failed: {}", self.id, err);
+                        }
                     }
                 }
                 opt_delayed_envelope = maybe_queue.next() => {
@@ -369,6 +384,9 @@ impl<A: Actor> ActorRuntime<A> {
                         }
                     } else {
                         log::error!("Delay queue of {} closed.", self.id);
+                        if let Err(err) = self.actor.instant_queue_drained(&mut self.context).await {
+                            log::error!("Queue (high-priority) drained handler {:?} failed: {}", self.id, err);
+                        }
                     }
                 }
                 lp_envelope = self.msg_rx.next() => {
@@ -383,6 +401,9 @@ impl<A: Actor> ActorRuntime<A> {
                         // it still has controllers.
                         // Background tasks = something spawned that `Actors` waits for finishing.
                         log::trace!("Messages stream of {:?} drained.", self.id);
+                        if let Err(err) = self.actor.queue_drained(&mut self.context).await {
+                            log::error!("Queue drained handler {:?} failed: {}", self.id, err);
+                        }
                     }
                 }
             }

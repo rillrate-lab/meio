@@ -82,7 +82,7 @@ mod tests {
 
     mod link {
         use super::*;
-        use derive_more::{Deref, DerefMut, From};
+        use derive_more::{Deref, DerefMut, From, Into};
 
         #[derive(Debug, From)]
         pub struct MyLink {
@@ -106,7 +106,7 @@ mod tests {
         /// 2. And if `DerefMut` implemented you can use the `Link`
         /// as an ordinary `Address` instance.
         ///
-        #[derive(Debug, From, Deref, DerefMut)]
+        #[derive(Debug, From, Deref, DerefMut, Into)]
         pub struct MyAlternativeLink {
             address: Address<MyActor>,
         }
@@ -269,7 +269,7 @@ mod tests {
         link.send_signal().await?;
         let mut alternative_link: link::MyAlternativeLink = address.link();
         System::interrupt(&mut alternative_link)?;
-        alternative_link.join().await;
+        address.join().await;
         Ok(())
     }
 
@@ -291,4 +291,27 @@ mod tests {
         timeout(Duration::from_secs(5), address.join()).await?;
         Ok(())
     }
+
+    /* TODO: Not ready yet
+     * It required to use a `schedule` queue to add a delayed event
+    struct DrainedActor;
+
+    #[async_trait]
+    impl Actor for DrainedActor {
+        type GroupBy = ();
+
+        async fn queue_drained(&mut self, ctx: &mut Context<Self>) -> Result<(), Error> {
+            ctx.shutdown();
+            Ok(())
+        }
+    }
+
+    #[tokio::test]
+    async fn test_draining() -> Result<(), Error> {
+        env_logger::try_init().ok();
+        let address = System::spawn(MyActor);
+        address.join().await;
+        Ok(())
+    }
+    */
 }

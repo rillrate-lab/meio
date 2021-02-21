@@ -236,7 +236,10 @@ where
 #[async_trait]
 pub trait InterruptedBy<A: Actor>: Actor {
     /// Called when the `Actor` terminated by another actor.
+    ///
+    /// In many cases you should prefer to call `ctx.shutdown()` here.
     async fn handle(&mut self, ctx: &mut Context<Self>) -> Result<(), Error>;
+    // IMPORTANT! It has to be explicit! Don't add automatic implementation with shuttdown call.
 }
 
 #[async_trait]

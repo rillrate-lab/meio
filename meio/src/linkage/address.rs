@@ -154,9 +154,15 @@ impl<A: Actor> Address<A> {
     }
 
     /// Waits when the `Actor` will be terminated.
-    pub async fn join(&mut self) {
-        while self.join_rx.changed().await.is_ok() {
-            if *self.join_rx.borrow() == Status::Stop {
+    ///
+    /// It consumes address, because it useless after termination.
+    /// Also it prevents blocking queue if `Actor` uses it to detect
+    /// the right time for termination.
+    pub async fn join(self) {
+        let mut rx = self.join_rx.clone();
+        drop(self);
+        while rx.changed().await.is_ok() {
+            if *rx.borrow() == Status::Stop {
                 break;
             }
         }
