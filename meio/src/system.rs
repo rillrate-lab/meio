@@ -53,7 +53,7 @@ impl System {
     /// but for the second signal the function just returned to let the app terminate without waiting
     /// for any active task.
     #[cfg(not(feature = "wasm"))]
-    pub async fn wait_or_interrupt<A>(mut address: Address<A>) -> Result<(), Error>
+    pub async fn wait_or_interrupt<A>(address: Address<A>) -> Result<(), Error>
     where
         A: Actor + InterruptedBy<Self>,
     {
@@ -80,7 +80,7 @@ impl System {
     }
 
     /// Interrupts an `Actor`.
-    pub fn interrupt<A>(address: &mut Address<A>) -> Result<(), Error>
+    pub fn interrupt<A>(address: &Address<A>) -> Result<(), Error>
     where
         A: Actor + InterruptedBy<Self>,
     {
