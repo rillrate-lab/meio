@@ -276,7 +276,7 @@ mod tests {
     #[tokio::test]
     async fn test_schedule() -> Result<(), Error> {
         env_logger::try_init().ok();
-        let mut address = System::spawn(MyActor);
+        let address = System::spawn(MyActor);
         // To check the `DelayedQueue` won't closed.
         sleep(Duration::from_secs(3)).await;
         address.schedule(

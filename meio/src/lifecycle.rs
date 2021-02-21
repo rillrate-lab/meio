@@ -188,7 +188,7 @@ impl<P> dyn LifecycleNotifier<P> {
     }
 
     // TODO: Make it `async` and take priorities into account
-    pub fn once<A>(mut address: Address<A>, operation: Operation) -> Box<Self>
+    pub fn once<A>(address: Address<A>, operation: Operation) -> Box<Self>
     where
         A: Actor + InstantActionHandler<P>,
         P: InstantAction,

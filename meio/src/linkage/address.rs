@@ -99,7 +99,7 @@ impl<A: Actor> Address<A> {
     }
 
     /// Just sends an `Action` to the `Actor`.
-    pub fn instant<I>(&mut self, input: I) -> Result<(), Error>
+    pub fn instant<I>(&self, input: I) -> Result<(), Error>
     where
         I: InstantAction,
         A: InstantActionHandler<I>,
@@ -108,7 +108,7 @@ impl<A: Actor> Address<A> {
     }
 
     /// Just sends an `Action` to the `Actor`.
-    pub fn schedule<I>(&mut self, input: I, deadline: Instant) -> Result<(), Error>
+    pub fn schedule<I>(&self, input: I, deadline: Instant) -> Result<(), Error>
     where
         I: Send + 'static,
         A: Scheduled<I>,
@@ -169,7 +169,7 @@ impl<A: Actor> Address<A> {
     }
 
     /// Sends a service message using the high-priority queue.
-    pub(crate) fn send_hp_direct<I>(&mut self, operation: Operation, input: I) -> Result<(), Error>
+    pub(crate) fn send_hp_direct<I>(&self, operation: Operation, input: I) -> Result<(), Error>
     where
         I: InstantAction,
         A: InstantActionHandler<I>,
