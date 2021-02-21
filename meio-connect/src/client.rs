@@ -13,7 +13,7 @@ use tokio::net::TcpStream;
 use tokio::time::sleep;
 use tokio_tungstenite::{connect_async, WebSocketStream};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct WsSender<T: ProtocolData> {
     tx: mpsc::UnboundedSender<T>,
 }
