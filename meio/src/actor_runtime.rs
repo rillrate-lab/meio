@@ -37,8 +37,8 @@
 use crate::compat::watch;
 use crate::forwarders::{InteractionForwarder, StreamForwarder};
 use crate::handlers::{
-    ActionHandler, Consumer, Eliminated, Envelope, HpEnvelope, Interact, Interaction,
-    InteractionDone, InterruptedBy, Operation, StartedBy, TaskEliminated,
+    ActionHandler, Consumer, Eliminated, Envelope, Interact, Interaction, InteractionDone,
+    InterruptedBy, Operation, Parcel, StartedBy, TaskEliminated,
 };
 use crate::ids::{Id, IdOf};
 use crate::lifecycle::{Awake, Done, LifecycleNotifier, LifetimeTracker};
@@ -268,7 +268,7 @@ pub struct ActorRuntime<A: Actor> {
     /// `Receiver` that have to be used to receive incoming messages.
     msg_rx: mpsc::Receiver<Envelope<A>>,
     /// High-priority receiver
-    hp_msg_rx: mpsc::UnboundedReceiver<HpEnvelope<A>>,
+    hp_msg_rx: mpsc::UnboundedReceiver<Parcel<A>>,
     /// Sends a signal when the `Actor` completely stopped.
     join_tx: watch::Sender<Status>,
 }

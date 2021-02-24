@@ -1,7 +1,7 @@
 //! Contains message of the `Actor`'s lifecycle.
 
 use crate::actor_runtime::Actor;
-use crate::handlers::{InstantAction, InstantActionHandler, Operation};
+use crate::handlers::{InstantAction, InstantActionHandler, Operation, Parcel};
 use crate::ids::{Id, IdOf};
 use crate::linkage::Address;
 use crate::lite_runtime::{LiteTask, TaskAddress, TaskError};
@@ -195,7 +195,8 @@ impl<P> dyn LifecycleNotifier<P> {
     {
         let notifier = move |msg| {
             // TODO: Take the priority into account (don't put all in hp)
-            address.send_hp_direct(operation.clone(), msg)
+            let parcel = Parcel::new(operation.clone(), msg);
+            address.unpack_parcel(parcel)
         };
         Box::new(notifier)
     }

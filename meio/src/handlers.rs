@@ -18,25 +18,30 @@ use std::time::Instant;
 ///
 /// Also it useful to send multi-typed actions using ordinary channels.
 pub struct Parcel<A: Actor> {
-    envelope: Envelope<A>,
+    pub(crate) operation: Operation,
+    pub(crate) envelope: Envelope<A>,
 }
 
 impl<A: Actor> Parcel<A> {
     /// Creates a new `Parcel`.
-    pub fn new<I>(input: I) -> Self
+    pub fn pack<I>(input: I) -> Self
+    where
+        A: InstantActionHandler<I>,
+        I: InstantAction,
+    {
+        Self::new(Operation::Forward, input)
+    }
+
+    /// Internal method.
+    pub(crate) fn new<I>(operation: Operation, input: I) -> Self
     where
         A: InstantActionHandler<I>,
         I: InstantAction,
     {
         Self {
+            operation,
             envelope: Envelope::instant(input),
         }
-    }
-}
-
-impl<A: Actor> Into<Envelope<A>> for Parcel<A> {
-    fn into(self) -> Envelope<A> {
-        self.envelope
     }
 }
 
@@ -97,11 +102,6 @@ pub(crate) enum Operation {
     Schedule {
         deadline: Instant,
     },
-}
-
-pub(crate) struct HpEnvelope<A: Actor> {
-    pub operation: Operation,
-    pub envelope: Envelope<A>,
 }
 
 /// Internal `Handler` type that used by `Actor`'s routine to execute

@@ -5,9 +5,8 @@ use crate::actor_runtime::{Actor, Status};
 use crate::compat::watch;
 use crate::forwarders::AttachStream;
 use crate::handlers::{
-    Action, ActionHandler, Consumer, Envelope, HpEnvelope, InstantAction, InstantActionHandler,
-    Interact, Interaction, InteractionHandler, InterruptedBy, Operation, Parcel, Scheduled,
-    ScheduledItem,
+    Action, ActionHandler, Consumer, Envelope, InstantAction, InstantActionHandler, Interact,
+    Interaction, InteractionHandler, InterruptedBy, Operation, Parcel, Scheduled, ScheduledItem,
 };
 use crate::ids::{Id, IdOf};
 use crate::lifecycle::Interrupt;
@@ -27,7 +26,7 @@ pub struct Address<A: Actor> {
     // Plain `Id` used (not `IdOf`), because it's `Sync`.
     id: Id,
     /// High-priority messages sender
-    hp_msg_tx: mpsc::UnboundedSender<HpEnvelope<A>>,
+    hp_msg_tx: mpsc::UnboundedSender<Parcel<A>>,
     /// Ordinary priority messages sender
     msg_tx: mpsc::Sender<Envelope<A>>,
     join_rx: watch::Receiver<Status>,
@@ -68,7 +67,7 @@ impl<A: Actor> Hash for Address<A> {
 impl<A: Actor> Address<A> {
     pub(crate) fn new(
         id: Id,
-        hp_msg_tx: mpsc::UnboundedSender<HpEnvelope<A>>,
+        hp_msg_tx: mpsc::UnboundedSender<Parcel<A>>,
         msg_tx: mpsc::Sender<Envelope<A>>,
         join_rx: watch::Receiver<Status>,
     ) -> Self {
@@ -105,7 +104,8 @@ impl<A: Actor> Address<A> {
         I: InstantAction,
         A: InstantActionHandler<I>,
     {
-        self.send_hp_direct(Operation::Forward, input)
+        let parcel = Parcel::new(Operation::Forward, input);
+        self.unpack_parcel(parcel)
     }
 
     /// Just sends an `Action` to the `Actor`.
@@ -119,19 +119,15 @@ impl<A: Actor> Address<A> {
             timestamp: deadline,
             item: input,
         };
-        self.send_hp_direct(operation, wrapped)
+        let parcel = Parcel::new(operation, wrapped);
+        self.unpack_parcel(parcel)
     }
 
     /// Send a `Parcel` to unpacking.
     pub fn unpack_parcel(&self, parcel: Parcel<A>) -> Result<(), Error> {
-        // TODO: Use `send_hp_direct`
-        let msg = HpEnvelope {
-            operation: Operation::Forward,
-            envelope: parcel.into(),
-        };
         self.hp_msg_tx
-            .unbounded_send(msg)
-            .map_err(|_| Error::msg("can't send a parcel to high-priority messages queue"))
+            .unbounded_send(parcel)
+            .map_err(|_| Error::msg("can't send a high-priority service message"))
     }
 
     // TODO: Add a `LiteTask` and can forward the result of a long running
@@ -181,6 +177,7 @@ impl<A: Actor> Address<A> {
         }
     }
 
+    /*
     /// Sends a service message using the high-priority queue.
     pub(crate) fn send_hp_direct<I>(&self, operation: Operation, input: I) -> Result<(), Error>
     where
@@ -188,7 +185,7 @@ impl<A: Actor> Address<A> {
         A: InstantActionHandler<I>,
     {
         let envelope = Envelope::instant(input);
-        let msg = HpEnvelope {
+        let msg = Parcel {
             operation,
             envelope,
         };
@@ -196,6 +193,7 @@ impl<A: Actor> Address<A> {
             .unbounded_send(msg)
             .map_err(|_| Error::msg("can't send a high-priority service message"))
     }
+    */
 
     /// Sends an `Interrupt` event.
     ///
@@ -206,7 +204,8 @@ impl<A: Actor> Address<A> {
         A: InterruptedBy<T>,
         T: Actor,
     {
-        self.send_hp_direct(Operation::Forward, Interrupt::new())
+        let parcel = Parcel::new(Operation::Forward, Interrupt::new());
+        self.unpack_parcel(parcel)
     }
 
     /// Attaches a `Stream` of event to an `Actor`.
