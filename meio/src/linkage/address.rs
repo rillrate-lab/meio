@@ -123,7 +123,7 @@ impl<A: Actor> Address<A> {
     }
 
     /// Send a `Parcel` to unpacking.
-    pub fn send_parcel(&self, parcel: Parcel<A>) -> Result<(), Error> {
+    pub fn unpack_parcel(&self, parcel: Parcel<A>) -> Result<(), Error> {
         // TODO: Use `send_hp_direct`
         let msg = HpEnvelope {
             operation: Operation::Forward,
