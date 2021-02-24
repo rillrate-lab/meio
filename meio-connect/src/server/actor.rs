@@ -24,7 +24,7 @@ use std::sync::Arc;
 use std::task::{self, Poll};
 use std::time::{Duration, Instant};
 use thiserror::Error;
-use tokio::sync::RwLock;
+use tokio::sync::{watch, RwLock};
 use tokio_tungstenite::WebSocketStream;
 use tungstenite::protocol::Role;
 
@@ -255,6 +255,8 @@ where
     }
 }
 
+pub type BindWatcher = watch::Sender<Option<SocketAddr>>;
+
 #[derive(Clone, Default)]
 struct RoutingTable {
     routes: Arc<RwLock<Slab<Box<dyn Route>>>>,
@@ -264,21 +266,24 @@ pub struct HttpServer {
     addr: SocketAddr,
     routing_table: RoutingTable,
     insistent: bool,
+    bind_watcher: Option<BindWatcher>,
 }
 
 impl HttpServer {
-    pub fn new(addr: SocketAddr) -> Self {
+    pub fn new(addr: SocketAddr, bind_watcher: Option<BindWatcher>) -> Self {
         Self {
             addr,
             routing_table: RoutingTable::default(),
             insistent: true,
+            bind_watcher,
         }
     }
 
-    fn start_http_listener(&self, ctx: &mut Context<Self>) {
+    fn start_http_listener(&mut self, ctx: &mut Context<Self>) {
         let server_task = HyperRoutine {
             addr: self.addr,
             routing_table: self.routing_table.clone(),
+            bind_watcher: self.bind_watcher.take(),
         };
         ctx.spawn_task(server_task, ());
     }
@@ -354,6 +359,7 @@ impl ActionHandler<link::AddRoute> for HttpServer {
 struct HyperRoutine {
     addr: SocketAddr,
     routing_table: RoutingTable,
+    bind_watcher: Option<BindWatcher>,
 }
 
 #[async_trait]
@@ -364,6 +370,12 @@ impl LiteTask for HyperRoutine {
         let routing_table = self.routing_table.clone();
         let make_svc = MakeSvc { routing_table };
         let server = Server::try_bind(&self.addr)?.serve(make_svc);
+        let addr = server.local_addr();
+        if let Some(watcher) = self.bind_watcher.as_ref() {
+            if let Err(_) = watcher.send(Some(addr)) {
+                log::error!("Can't notify bind watcher about the using server address.");
+            }
+        }
         server.with_graceful_shutdown(stop.into_future()).await?;
         Ok(())
     }
