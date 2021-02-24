@@ -6,7 +6,8 @@ use crate::compat::watch;
 use crate::forwarders::AttachStream;
 use crate::handlers::{
     Action, ActionHandler, Consumer, Envelope, HpEnvelope, InstantAction, InstantActionHandler,
-    Interact, Interaction, InteractionHandler, InterruptedBy, Operation, Scheduled, ScheduledItem,
+    Interact, Interaction, InteractionHandler, InterruptedBy, Operation, Parcel, Scheduled,
+    ScheduledItem,
 };
 use crate::ids::{Id, IdOf};
 use crate::lifecycle::Interrupt;
@@ -119,6 +120,19 @@ impl<A: Actor> Address<A> {
             item: input,
         };
         self.send_hp_direct(operation, wrapped)
+    }
+
+    /// Send a `Parcel` to unpacking. It uses a high-priority queue to deliver
+    /// a `Parcel` faster, but ordinary priority envelope to process it as ordinary `Action`.
+    pub fn send_parcel(&self, parcel: Parcel<A>) -> Result<(), Error> {
+        // Use hp channel, but to process ordinary message
+        let msg = HpEnvelope {
+            operation: Operation::Forward,
+            envelope: parcel.into(),
+        };
+        self.hp_msg_tx
+            .unbounded_send(msg)
+            .map_err(|_| Error::msg("can't send a parcel to high-priority messages queue"))
     }
 
     // TODO: Add a `LiteTask` and can forward the result of a long running

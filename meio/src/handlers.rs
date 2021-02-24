@@ -13,6 +13,33 @@ use futures::channel::oneshot;
 use futures::Stream;
 use std::time::Instant;
 
+/// `Parcel` packs any message for an `Actor`
+/// for further processing that can be done later.
+///
+/// Also it useful to send multi-typed actions using ordinary channels.
+pub struct Parcel<A: Actor> {
+    envelope: Envelope<A>,
+}
+
+impl<A: Actor> Parcel<A> {
+    /// Creates a new `Parcel`.
+    pub fn new<I>(input: I) -> Self
+    where
+        A: ActionHandler<I>,
+        I: Action,
+    {
+        Self {
+            envelope: Envelope::new(input),
+        }
+    }
+}
+
+impl<A: Actor> Into<Envelope<A>> for Parcel<A> {
+    fn into(self) -> Envelope<A> {
+        self.envelope
+    }
+}
+
 pub(crate) struct Envelope<A: Actor> {
     handler: Box<dyn Handler<A>>,
 }
