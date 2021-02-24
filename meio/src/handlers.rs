@@ -25,11 +25,11 @@ impl<A: Actor> Parcel<A> {
     /// Creates a new `Parcel`.
     pub fn new<I>(input: I) -> Self
     where
-        A: ActionHandler<I>,
-        I: Action,
+        A: InstantActionHandler<I>,
+        I: InstantAction,
     {
         Self {
-            envelope: Envelope::new(input),
+            envelope: Envelope::instant(input),
         }
     }
 }

@@ -122,10 +122,9 @@ impl<A: Actor> Address<A> {
         self.send_hp_direct(operation, wrapped)
     }
 
-    /// Send a `Parcel` to unpacking. It uses a high-priority queue to deliver
-    /// a `Parcel` faster, but ordinary priority envelope to process it as ordinary `Action`.
+    /// Send a `Parcel` to unpacking.
     pub fn send_parcel(&self, parcel: Parcel<A>) -> Result<(), Error> {
-        // Use hp channel, but to process ordinary message
+        // TODO: Use `send_hp_direct`
         let msg = HpEnvelope {
             operation: Operation::Forward,
             envelope: parcel.into(),
