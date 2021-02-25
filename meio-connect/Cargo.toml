@@ -19,7 +19,7 @@ description = "Set of connectors for MEIO framework"
 anyhow = "1.0.38"
 async-trait = "0.1.42"
 derive_more = "0.99.11"
-futures = "0.3.12"
+futures = "0.3.13"
 headers = "0.3.3"
 # TODO: And this when possible (
 hyper = { version = "0.14.4", features = ["full"] }
@@ -29,7 +29,7 @@ meio-protocol = { version = "0.81.0", path = "../meio-protocol" }
 serde = "1.0.123"
 serde_qs = "0.8.2"
 slab = "0.4.2"
-thiserror = "1.0.23"
+thiserror = "1.0.24"
 tokio = "1.2.0"
 tokio-tungstenite = "0.13.0"
 tungstenite = { version = "0.12.0", default-features = false }

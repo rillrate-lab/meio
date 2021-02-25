@@ -19,17 +19,17 @@ description = "A compact actors framework for the async epoch in Rust & Tokio"
 anyhow = "1.0.38"
 async-trait = "0.1.42"
 derive_more = "0.99.11"
-futures = "0.3.12"
+futures = "0.3.13"
 futures-timer = { version = "3.0.2", optional = true }
 log = "0.4.14"
-thiserror = "1.0.23"
+thiserror = "1.0.24"
 tokio = { version = "1.2.0", features = ["full"], optional = true }
 tokio-util = { version = "0.6.3", features = ["full"], optional = true }
 uuid = { version = "0.8.2", features = ["v4"] }
 wasm-bindgen-futures = { version = "0.4.20", optional = true }
 
 [dev-dependencies]
-env_logger = "0.8.2"
+env_logger = "0.8.3"
 hyper = "0.14.4"
 
 [features]
