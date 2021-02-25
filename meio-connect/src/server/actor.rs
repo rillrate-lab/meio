@@ -2,7 +2,7 @@ use super::link;
 use crate::talker::{Talker, TalkerCompatible, TermReason, WsIncoming};
 use anyhow::Error;
 use async_trait::async_trait;
-use futures::channel::{mpsc, oneshot};
+use futures::channel::mpsc;
 use headers::HeaderMapExt;
 use hyper::server::conn::AddrStream;
 use hyper::service::Service;
@@ -24,7 +24,7 @@ use std::sync::Arc;
 use std::task::{self, Poll};
 use std::time::{Duration, Instant};
 use thiserror::Error;
-use tokio::sync::RwLock;
+use tokio::sync::{oneshot, RwLock};
 use tokio_tungstenite::WebSocketStream;
 use tungstenite::protocol::Role;
 
