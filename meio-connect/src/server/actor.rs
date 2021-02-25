@@ -2,7 +2,7 @@ use super::link;
 use crate::talker::{Talker, TalkerCompatible, TermReason, WsIncoming};
 use anyhow::Error;
 use async_trait::async_trait;
-use futures::channel::mpsc;
+use futures::channel::{mpsc, oneshot};
 use headers::HeaderMapExt;
 use hyper::server::conn::AddrStream;
 use hyper::service::Service;
@@ -24,7 +24,7 @@ use std::sync::Arc;
 use std::task::{self, Poll};
 use std::time::{Duration, Instant};
 use thiserror::Error;
-use tokio::sync::{watch, RwLock};
+use tokio::sync::RwLock;
 use tokio_tungstenite::WebSocketStream;
 use tungstenite::protocol::Role;
 
@@ -255,8 +255,6 @@ where
     }
 }
 
-pub type BindWatcher = watch::Sender<Option<SocketAddr>>;
-
 #[derive(Clone, Default)]
 struct RoutingTable {
     routes: Arc<RwLock<Slab<Box<dyn Route>>>>,
@@ -266,16 +264,16 @@ pub struct HttpServer {
     addr: SocketAddr,
     routing_table: RoutingTable,
     insistent: bool,
-    bind_watcher: Option<BindWatcher>,
+    addr_listener: Option<oneshot::Sender<SocketAddr>>,
 }
 
 impl HttpServer {
-    pub fn new(addr: SocketAddr, bind_watcher: Option<BindWatcher>) -> Self {
+    pub fn new(addr: SocketAddr, addr_listener: Option<oneshot::Sender<SocketAddr>>) -> Self {
         Self {
             addr,
             routing_table: RoutingTable::default(),
             insistent: true,
-            bind_watcher,
+            addr_listener,
         }
     }
 
@@ -283,7 +281,7 @@ impl HttpServer {
         let server_task = HyperRoutine {
             addr: self.addr,
             routing_table: self.routing_table.clone(),
-            bind_watcher: self.bind_watcher.take(),
+            addr_listener: self.addr_listener.take(),
         };
         ctx.spawn_task(server_task, ());
     }
@@ -359,20 +357,20 @@ impl ActionHandler<link::AddRoute> for HttpServer {
 struct HyperRoutine {
     addr: SocketAddr,
     routing_table: RoutingTable,
-    bind_watcher: Option<BindWatcher>,
+    addr_listener: Option<oneshot::Sender<SocketAddr>>,
 }
 
 #[async_trait]
 impl LiteTask for HyperRoutine {
     type Output = ();
 
-    async fn routine(self, stop: StopReceiver) -> Result<Self::Output, Error> {
+    async fn routine(mut self, stop: StopReceiver) -> Result<Self::Output, Error> {
         let routing_table = self.routing_table.clone();
         let make_svc = MakeSvc { routing_table };
         let server = Server::try_bind(&self.addr)?.serve(make_svc);
         let addr = server.local_addr();
-        if let Some(watcher) = self.bind_watcher.as_ref() {
-            if let Err(_) = watcher.send(Some(addr)) {
+        if let Some(listener) = self.addr_listener.take() {
+            if let Err(_) = listener.send(addr) {
                 log::error!("Can't notify bind watcher about the using server address.");
             }
         }
