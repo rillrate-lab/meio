@@ -19,13 +19,16 @@ pub mod ids;
 mod lifecycle;
 pub mod linkage;
 mod lite_runtime;
-pub mod prelude;
 #[cfg(not(feature = "wasm"))]
 pub mod signal;
 pub mod system;
 pub mod task;
 #[cfg(not(feature = "wasm"))]
 pub mod thread;
+
+// TODO: Make `prelude` private (just for reexporting here)
+pub mod prelude;
+pub use prelude::*;
 
 // %%%%%%%%%%%%%%%%%%%%%% TESTS %%%%%%%%%%%%%%%%%%%%%
 
