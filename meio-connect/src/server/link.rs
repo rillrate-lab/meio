@@ -2,7 +2,7 @@ use super::actor::Route;
 use super::HttpServer;
 use anyhow::Error;
 use derive_more::From;
-use meio::prelude::{Action, Address};
+use meio::{Action, Address};
 
 #[derive(Debug, Clone, From)]
 pub struct HttpServerLink {

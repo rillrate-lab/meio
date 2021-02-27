@@ -9,7 +9,7 @@ use hyper::service::Service;
 use hyper::upgrade::Upgraded;
 use hyper::{Body, Request, Response, Server, StatusCode};
 use meio::handlers::Interact;
-use meio::prelude::{
+use meio::{
     Action, ActionHandler, Actor, Address, Context, IdOf, Interaction, InterruptedBy, LiteTask,
     Scheduled, StartedBy, StopReceiver, TaskEliminated, TaskError,
 };

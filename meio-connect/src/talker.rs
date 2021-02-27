@@ -2,7 +2,7 @@ use anyhow::Error;
 use futures::channel::mpsc;
 use futures::stream::Fuse;
 use futures::{select, Sink, SinkExt, Stream, StreamExt};
-use meio::prelude::{Action, ActionHandler, Actor, Address, StopReceiver};
+use meio::{Action, ActionHandler, Actor, Address, StopReceiver};
 use meio_protocol::{ProtocolCodec, ProtocolData};
 use serde::ser::StdError;
 use std::fmt::Debug;

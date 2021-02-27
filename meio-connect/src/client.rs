@@ -2,7 +2,7 @@ use crate::talker::{Talker, TalkerCompatible, WsIncoming};
 use anyhow::Error;
 use async_trait::async_trait;
 use futures::channel::mpsc;
-use meio::prelude::{
+use meio::{
     ActionHandler, Actor, Address, InstantAction, InstantActionHandler, LiteTask, StopReceiver,
 };
 use meio_protocol::{Protocol, ProtocolData};

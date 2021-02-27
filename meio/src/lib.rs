@@ -26,8 +26,7 @@ pub mod task;
 #[cfg(not(feature = "wasm"))]
 pub mod thread;
 
-// TODO: Make `prelude` private (just for reexporting here)
-pub mod prelude;
+mod prelude;
 pub use prelude::*;
 
 // %%%%%%%%%%%%%%%%%%%%%% TESTS %%%%%%%%%%%%%%%%%%%%%
