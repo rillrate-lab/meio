@@ -1,4 +1,5 @@
 use super::link;
+use crate::client::WsSender;
 use crate::talker::{Talker, TalkerCompatible, TermReason, WsIncoming};
 use anyhow::Error;
 use async_trait::async_trait;
@@ -514,10 +515,14 @@ impl<P: Protocol> WsHandler<P> {
         WsProcessor { info, address }
     }
 
-    pub fn send(&mut self, msg: P::ToClient) {
+    pub fn send(&self, msg: P::ToClient) {
         if let Err(err) = self.tx.unbounded_send(msg) {
             log::error!("Can't send outgoing WS message: {}", err);
         }
+    }
+
+    pub fn sender(&self) -> WsSender<P::ToClient> {
+        WsSender::new(self.tx.clone())
     }
 }
 
