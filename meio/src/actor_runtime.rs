@@ -12,7 +12,7 @@
 //! ```
 //! # use anyhow::Error;
 //! # use async_trait::async_trait;
-//! # use meio::prelude::{Actor, Context, IdOf, TaskEliminated, TaskError, LiteTask};
+//! # use meio::{Actor, Context, IdOf, TaskEliminated, TaskError, LiteTask};
 //! trait SpecificTask: LiteTask {}
 //!
 //! struct MyActor {}
