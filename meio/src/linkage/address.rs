@@ -6,8 +6,8 @@ use crate::compat::watch;
 use crate::forwarders::AttachStream;
 use crate::handlers::{
     Action, ActionHandler, Consumer, Envelope, InstantAction, InstantActionHandler, Interact,
-    Interaction, InteractionHandler, InterruptedBy, Operation, Parcel, Scheduled, ScheduledItem,
-    InteractionTask,
+    Interaction, InteractionHandler, InteractionTask, InterruptedBy, Operation, Parcel, Scheduled,
+    ScheduledItem,
 };
 use crate::ids::{Id, IdOf};
 use crate::lifecycle::Interrupt;
@@ -131,18 +131,6 @@ impl<A: Actor> Address<A> {
             .map_err(|_| Error::msg("can't send a high-priority service message"))
     }
 
-    // TODO: Add a `LiteTask` and can forward the result of a long running
-    // `Interaction` to the `Actor`.
-    //
-    // TODO: Add `InteractionResponse` trait, to wait for the result of interaction.
-    // It has to be implemented as a `LiteTask` to make every interaction
-    // interruptable.
-    //
-    // TODO: Add `interaction` method to a version that always spawns
-    // a `LiteTask` for an interaction. BUT! Keep `interact` method that
-    // is very important for non-meio usage of an `Address`.
-
-    // TODO: Return `InteractAndWait` future instance, instead of the `Result`
     /// Interacts with an `Actor` and waits for the result of the `Interaction`.
     ///
     /// `ActionHandler` required instead of `InteractionHandler` to make it possible
@@ -151,22 +139,6 @@ impl<A: Actor> Address<A> {
     ///
     /// To avoid blocking you shouldn't `await` the result of this `Interaction`,
     /// but create a `Future` and `await` in a separate coroutine of in a `LiteTask`.
-    #[deprecated(
-        since = "0.83.0",
-        note = "Use `interact().await` instead"
-    )]
-    pub async fn interact_and_wait<I>(&mut self, request: I) -> Result<I::Output, Error>
-    where
-        I: Interaction,
-        // ! Not `InteractionHandler` has to be used here !
-        A: ActionHandler<Interact<I>>,
-    {
-        let (responder, rx) = oneshot::channel();
-        let input = Interact { request, responder };
-        self.act(input).await?;
-        rx.await.map_err(Error::from).and_then(identity)
-    }
-
     pub fn interact<I>(&self, request: I) -> InteractionTask<I>
     where
         I: Interaction,
@@ -190,24 +162,6 @@ impl<A: Actor> Address<A> {
             }
         }
     }
-
-    /*
-    /// Sends a service message using the high-priority queue.
-    pub(crate) fn send_hp_direct<I>(&self, operation: Operation, input: I) -> Result<(), Error>
-    where
-        I: InstantAction,
-        A: InstantActionHandler<I>,
-    {
-        let envelope = Envelope::instant(input);
-        let msg = Parcel {
-            operation,
-            envelope,
-        };
-        self.hp_msg_tx
-            .unbounded_send(msg)
-            .map_err(|_| Error::msg("can't send a high-priority service message"))
-    }
-    */
 
     /// Sends an `Interrupt` event.
     ///

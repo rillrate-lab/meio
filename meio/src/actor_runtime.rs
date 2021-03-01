@@ -38,7 +38,7 @@ use crate::compat::watch;
 use crate::forwarders::StreamForwarder;
 use crate::handlers::{
     ActionHandler, Consumer, Eliminated, Envelope, Interact, Interaction, InteractionDone,
-    InterruptedBy, Operation, Parcel, StartedBy, TaskEliminated, InteractionTask,
+    InteractionTask, InterruptedBy, Operation, Parcel, StartedBy, TaskEliminated,
 };
 use crate::ids::{Id, IdOf};
 use crate::lifecycle::{Awake, Done, LifecycleNotifier, LifetimeTracker};

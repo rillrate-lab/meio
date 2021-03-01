@@ -6,7 +6,7 @@ use crate::actor_runtime::{Actor, Context};
 use crate::forwarders::StreamForwarder;
 use crate::ids::{Id, IdOf};
 use crate::lifecycle;
-use crate::linkage::{Address, ActionRecipient};
+use crate::linkage::{ActionRecipient, Address};
 use crate::lite_runtime::{LiteTask, TaskError};
 use anyhow::Error;
 use async_trait::async_trait;
@@ -260,7 +260,10 @@ impl<I: Interaction> InteractionTask<I> {
     /// Receive a value
     pub async fn recv(mut self) -> Result<I::Output, Error> {
         let (responder, rx) = oneshot::channel();
-        let input = Interact { request: self.request, responder };
+        let input = Interact {
+            request: self.request,
+            responder,
+        };
         self.recipient.act(input).await?;
         rx.await.map_err(Error::from).and_then(identity)
     }
