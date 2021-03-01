@@ -139,10 +139,15 @@ impl<A: Actor> Address<A> {
     ///
     /// To avoid blocking you shouldn't `await` the result of this `Interaction`,
     /// but create a `Future` and `await` in a separate coroutine of in a `LiteTask`.
+    // Change this method carefully. Since `InteractionRecipient` implemented for
+    // all addresses if `InteractionRecipient::interact` method won't have the same
+    // name like this method it can give unwanted recursion.
     pub fn interact<I>(&self, request: I) -> InteractionTask<I>
     where
         I: Interaction,
-        // IMPORTANT! Not `InteractionHandler` has to be used here!
+        // IMPORTANT! Not `trait InteractionHandler<_>` has to be used here!
+        // It makes this method more flexible and implementor can keep
+        // `InteractionResponder` for a while to send response later/async.
         A: ActionHandler<Interact<I>>,
     {
         InteractionTask::new(self, request)

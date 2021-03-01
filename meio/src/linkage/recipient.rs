@@ -5,7 +5,7 @@
 /// It's recommended to use `HashSet<Id, Box<dyn Recipient>>` instead.
 use super::Address;
 use crate::actor_runtime::Actor;
-use crate::handlers::{Action, ActionHandler, Interact, Interaction};
+use crate::handlers::{Action, ActionHandler, Interact, Interaction, InteractionTask};
 use crate::ids::Id;
 use anyhow::Error;
 use async_trait::async_trait;
@@ -73,10 +73,9 @@ where
 }
 
 /// Abstract `Address` to the `Actor` that can handle an interaction.
-#[async_trait]
 pub trait InteractionRecipient<T: Interaction>: Debug + Send + 'static {
     /// Interact with an `Actor`.
-    async fn interact_and_wait(&mut self, msg: T) -> Result<T::Output, Error>;
+    fn interact(&mut self, msg: T) -> InteractionTask<T>;
 
     /// Returns a reference to `Id` of an `Address` inside.
     #[doc(hidden)]
@@ -109,14 +108,13 @@ impl<T: Interaction> Hash for Box<dyn InteractionRecipient<T>> {
     }
 }
 
-#[async_trait]
 impl<T, A> InteractionRecipient<T> for Address<A>
 where
     T: Interaction,
     A: Actor + ActionHandler<Interact<T>>,
 {
-    async fn interact_and_wait(&mut self, msg: T) -> Result<T::Output, Error> {
-        Address::interact_and_wait(self, msg).await
+    fn interact(&mut self, msg: T) -> InteractionTask<T> {
+        Address::interact(self, msg)
     }
 
     fn id_ref(&self) -> &Id {

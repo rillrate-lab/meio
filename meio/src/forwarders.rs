@@ -1,6 +1,6 @@
 use crate::actor_runtime::Context;
 use crate::handlers::{Consumer, InstantAction, InstantActionHandler, Interaction, StreamItem};
-use crate::linkage::{ActionRecipient, InteractionRecipient};
+use crate::linkage::ActionRecipient;
 use crate::lite_runtime::LiteTask;
 use anyhow::Error;
 use async_trait::async_trait;
@@ -71,38 +71,3 @@ where
         Ok(())
     }
 }
-
-/*
-pub(crate) struct InteractionForwarder<I: Interaction> {
-    recipient: Box<dyn InteractionRecipient<I>>,
-    event: Option<I>,
-}
-
-impl<I> InteractionForwarder<I>
-where
-    I: Interaction,
-{
-    pub fn new(recipient: impl InteractionRecipient<I>, event: I) -> Self {
-        Self {
-            recipient: Box::new(recipient),
-            event: Some(event),
-        }
-    }
-}
-
-#[async_trait]
-impl<I> LiteTask for InteractionForwarder<I>
-where
-    I: Interaction,
-{
-    type Output = I::Output;
-
-    async fn interruptable_routine(mut self) -> Result<Self::Output, Error> {
-        let request = self
-            .event
-            .take()
-            .expect("InteractionForwarder called twice");
-        self.recipient.interact_and_wait(request).await
-    }
-}
-*/
