@@ -12,7 +12,7 @@ use hyper::{Body, Request, Response, Server, StatusCode};
 use meio::handlers::Interact;
 use meio::{
     Action, ActionHandler, Actor, Address, Context, IdOf, Interaction, InterruptedBy, LiteTask,
-    Scheduled, StartedBy, StopReceiver, TaskEliminated, TaskError,
+    Scheduled, StartedBy, StopReceiver, TaskEliminated, TaskError, InteractionResponder,
 };
 use meio_protocol::Protocol;
 use serde::de::DeserializeOwned;
@@ -261,8 +261,26 @@ struct RoutingTable {
     routes: Arc<RwLock<Slab<Box<dyn Route>>>>,
 }
 
+enum AddrState {
+    NotAssignedYet {
+        listeners: Vec<InteractionResponder<SocketAddr>>,
+    },
+    Assigned {
+        addr: SocketAddr,
+    },
+}
+
+impl Default for AddrState {
+    fn default() -> Self {
+        Self::NotAssignedYet {
+            listeners: Vec::new(),
+        }
+    }
+}
+
 pub struct HttpServer {
     addr: SocketAddr,
+    addr_state: AddrState,
     routing_table: RoutingTable,
     insistent: bool,
     addr_listener: Option<oneshot::Sender<SocketAddr>>,
@@ -272,6 +290,7 @@ impl HttpServer {
     pub fn new(addr: SocketAddr, addr_listener: Option<oneshot::Sender<SocketAddr>>) -> Self {
         Self {
             addr,
+            addr_state: AddrState::default(),
             routing_table: RoutingTable::default(),
             insistent: true,
             addr_listener,
@@ -280,6 +299,7 @@ impl HttpServer {
 
     fn start_http_listener(&mut self, ctx: &mut Context<Self>) {
         let server_task = HyperRoutine {
+            owner: ctx.address().clone(),
             addr: self.addr,
             routing_table: self.routing_table.clone(),
             addr_listener: self.addr_listener.take(),
@@ -330,6 +350,54 @@ impl TaskEliminated<HyperRoutine> for HttpServer {
     }
 }
 
+#[async_trait]
+impl ActionHandler<Interact<link::WaitForAddress>> for HttpServer {
+    async fn handle(
+        &mut self,
+        msg: Interact<link::WaitForAddress>,
+        _ctx: &mut Context<Self>,
+    ) -> Result<(), Error> {
+        match &mut self.addr_state {
+            AddrState::NotAssignedYet { listeners } => {
+                listeners.push(msg.responder);
+            }
+            AddrState::Assigned { addr } => {
+                if let Err(err) = msg.responder.send(Ok(*addr)) {
+                    log::error!("Can't send address result {:?} to the listener.", err);
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+struct AddrReady {
+    addr: SocketAddr,
+}
+
+impl Action for AddrReady {}
+
+#[async_trait]
+impl ActionHandler<AddrReady> for HttpServer {
+    async fn handle(
+        &mut self,
+        msg: AddrReady,
+        _ctx: &mut Context<Self>,
+    ) -> Result<(), Error> {
+        let addr = msg.addr;
+        let mut new_state = AddrState::Assigned { addr };
+        std::mem::swap(&mut self.addr_state, &mut new_state);
+        if let AddrState::NotAssignedYet { listeners } = new_state {
+            for listener in listeners {
+                if let Err(err) = listener.send(Ok(addr)) {
+                    log::error!("Can't send address result {:?} to the listener.", err);
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
 struct RestartListener;
 
 #[async_trait]
@@ -356,6 +424,7 @@ impl ActionHandler<link::AddRoute> for HttpServer {
 }
 
 struct HyperRoutine {
+    owner: Address<HttpServer>,
     addr: SocketAddr,
     routing_table: RoutingTable,
     addr_listener: Option<oneshot::Sender<SocketAddr>>,
