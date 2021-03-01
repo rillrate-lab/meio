@@ -11,8 +11,8 @@ use hyper::upgrade::Upgraded;
 use hyper::{Body, Request, Response, Server, StatusCode};
 use meio::handlers::Interact;
 use meio::{
-    Action, ActionHandler, Actor, Address, Context, IdOf, Interaction, InterruptedBy, LiteTask,
-    Scheduled, StartedBy, StopReceiver, TaskEliminated, TaskError, InteractionResponder,
+    Action, ActionHandler, Actor, Address, Context, IdOf, Interaction, InteractionResponder,
+    InterruptedBy, LiteTask, Scheduled, StartedBy, StopReceiver, TaskEliminated, TaskError,
 };
 use meio_protocol::Protocol;
 use serde::de::DeserializeOwned;
@@ -25,7 +25,7 @@ use std::sync::Arc;
 use std::task::{self, Poll};
 use std::time::{Duration, Instant};
 use thiserror::Error;
-use tokio::sync::{oneshot, RwLock};
+use tokio::sync::RwLock;
 use tokio_tungstenite::WebSocketStream;
 use tungstenite::protocol::Role;
 
@@ -283,17 +283,15 @@ pub struct HttpServer {
     addr_state: AddrState,
     routing_table: RoutingTable,
     insistent: bool,
-    addr_listener: Option<oneshot::Sender<SocketAddr>>,
 }
 
 impl HttpServer {
-    pub fn new(addr: SocketAddr, addr_listener: Option<oneshot::Sender<SocketAddr>>) -> Self {
+    pub fn new(addr: SocketAddr) -> Self {
         Self {
             addr,
             addr_state: AddrState::default(),
             routing_table: RoutingTable::default(),
             insistent: true,
-            addr_listener,
         }
     }
 
@@ -302,7 +300,6 @@ impl HttpServer {
             owner: ctx.address().clone(),
             addr: self.addr,
             routing_table: self.routing_table.clone(),
-            addr_listener: self.addr_listener.take(),
         };
         ctx.spawn_task(server_task, ());
     }
@@ -379,11 +376,7 @@ impl Action for AddrReady {}
 
 #[async_trait]
 impl ActionHandler<AddrReady> for HttpServer {
-    async fn handle(
-        &mut self,
-        msg: AddrReady,
-        _ctx: &mut Context<Self>,
-    ) -> Result<(), Error> {
+    async fn handle(&mut self, msg: AddrReady, _ctx: &mut Context<Self>) -> Result<(), Error> {
         let addr = msg.addr;
         let mut new_state = AddrState::Assigned { addr };
         std::mem::swap(&mut self.addr_state, &mut new_state);
@@ -427,7 +420,6 @@ struct HyperRoutine {
     owner: Address<HttpServer>,
     addr: SocketAddr,
     routing_table: RoutingTable,
-    addr_listener: Option<oneshot::Sender<SocketAddr>>,
 }
 
 #[async_trait]
@@ -439,11 +431,8 @@ impl LiteTask for HyperRoutine {
         let make_svc = MakeSvc { routing_table };
         let server = Server::try_bind(&self.addr)?.serve(make_svc);
         let addr = server.local_addr();
-        if let Some(listener) = self.addr_listener.take() {
-            if let Err(_) = listener.send(addr) {
-                log::error!("Can't notify bind watcher about the using server address.");
-            }
-        }
+        let ready = AddrReady { addr };
+        self.owner.act(ready).await?;
         server.with_graceful_shutdown(stop.into_future()).await?;
         Ok(())
     }

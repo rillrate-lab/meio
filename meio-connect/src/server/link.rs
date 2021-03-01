@@ -2,7 +2,7 @@ use super::actor::Route;
 use super::HttpServer;
 use anyhow::Error;
 use derive_more::From;
-use meio::{Action, Address, Interaction, Context, InteractionDone, Actor};
+use meio::{Action, Actor, Address, Context, Interaction, InteractionDone};
 use std::net::SocketAddr;
 
 #[derive(Debug, Clone, From)]
