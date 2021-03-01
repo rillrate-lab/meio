@@ -2,7 +2,7 @@ use super::actor::Route;
 use super::HttpServer;
 use anyhow::Error;
 use derive_more::From;
-use meio::{Action, Actor, Address, Context, Interaction, InteractionDone};
+use meio::{Action, Actor, Address, Interaction, InteractionDone, InteractionTask};
 use std::net::SocketAddr;
 
 #[derive(Debug, Clone, From)]
@@ -35,11 +35,10 @@ impl Interaction for WaitForAddress {
 }
 
 impl HttpServerLink {
-    pub fn wait_for_address<T: Actor>(&self, ctx: &mut Context<T>, group: T::GroupBy)
+    pub fn wait_for_address<T: Actor>(&self) -> InteractionTask<WaitForAddress>
     where
         T: InteractionDone<WaitForAddress>,
     {
-        let msg = WaitForAddress;
-        ctx.interact(&self.address, msg, group);
+        self.address.interact(WaitForAddress)
     }
 }

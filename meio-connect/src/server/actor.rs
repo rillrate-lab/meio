@@ -148,9 +148,8 @@ where
     fn try_route(&self, _addr: &SocketAddr, request: Request<Body>) -> RouteResult {
         match E::from_request(&request) {
             Ok(Some(value)) => {
-                let mut address = self.address.clone();
                 let msg = Req { request: value };
-                let fut = async move { address.interact_and_wait(msg).await };
+                let fut = self.address.interact(msg).recv();
                 Ok(Box::pin(fut))
             }
             Ok(None) => Err(request),
