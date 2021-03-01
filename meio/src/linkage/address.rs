@@ -99,15 +99,6 @@ impl<A: Actor> Address<A> {
         self.msg_tx.send(envelope).await.map_err(Error::from)
     }
 
-    pub(crate) async fn act_owned<I>(mut self, input: I) -> Result<(), Error>
-    where
-        I: Action,
-        A: ActionHandler<I>,
-    {
-        let envelope = Envelope::new(input);
-        self.msg_tx.send(envelope).await.map_err(Error::from)
-    }
-
     /// Just sends an `Action` to the `Actor`.
     pub fn instant<I>(&self, input: I) -> Result<(), Error>
     where
@@ -179,10 +170,10 @@ impl<A: Actor> Address<A> {
     pub fn interact<I>(&self, request: I) -> InteractionTask<I>
     where
         I: Interaction,
-        // ! Not `InteractionHandler` has to be used here !
+        // IMPORTANT! Not `InteractionHandler` has to be used here!
         A: ActionHandler<Interact<I>>,
     {
-        InteractionTask::new(self.clone(), request)
+        InteractionTask::new(self, request)
     }
 
     /// Waits when the `Actor` will be terminated.

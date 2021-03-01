@@ -72,6 +72,7 @@ where
     }
 }
 
+/*
 pub(crate) struct InteractionForwarder<I: Interaction> {
     recipient: Box<dyn InteractionRecipient<I>>,
     event: Option<I>,
@@ -104,3 +105,4 @@ where
         self.recipient.interact_and_wait(request).await
     }
 }
+*/

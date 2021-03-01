@@ -35,10 +35,10 @@
 //! ```
 
 use crate::compat::watch;
-use crate::forwarders::{InteractionForwarder, StreamForwarder};
+use crate::forwarders::StreamForwarder;
 use crate::handlers::{
     ActionHandler, Consumer, Eliminated, Envelope, Interact, Interaction, InteractionDone,
-    InterruptedBy, Operation, Parcel, StartedBy, TaskEliminated,
+    InterruptedBy, Operation, Parcel, StartedBy, TaskEliminated, InteractionTask,
 };
 use crate::ids::{Id, IdOf};
 use crate::lifecycle::{Awake, Done, LifecycleNotifier, LifetimeTracker};
@@ -199,16 +199,12 @@ impl<A: Actor> Context<A> {
         self.spawn_task(forwarder, group);
     }
 
-    /// Spawns interaction task that forwards the result of an interaction.
-    pub fn interact<I, P>(&mut self, performer: &Address<P>, request: I, group: A::GroupBy)
+    pub fn track_interaction<I>(&mut self, task: InteractionTask<I>, group: A::GroupBy)
     where
         I: Interaction,
         A: InteractionDone<I>,
-        // `ActionHandler` to be compatible with custom performers
-        P: ActionHandler<Interact<I>>,
     {
-        let forwarder = InteractionForwarder::new(performer.to_owned(), request);
-        self.spawn_task(forwarder, group);
+        self.spawn_task(task, group);
     }
 
     /// Interrupts an `Actor`.

@@ -3,14 +3,16 @@
 //! imcoming message.
 
 use crate::actor_runtime::{Actor, Context};
-use crate::forwarders::{InteractionForwarder, StreamForwarder};
+use crate::forwarders::StreamForwarder;
 use crate::ids::{Id, IdOf};
 use crate::lifecycle;
+use crate::linkage::{Address, ActionRecipient};
 use crate::lite_runtime::{LiteTask, TaskError};
 use anyhow::Error;
 use async_trait::async_trait;
 use futures::channel::oneshot;
 use futures::Stream;
+use std::convert::identity;
 use std::time::Instant;
 
 /// `Parcel` packs any message for an `Actor`
@@ -237,32 +239,42 @@ pub trait Interaction: Send + 'static {
     type Output: Send + 'static;
 }
 
-use crate::Address;
-use futures::Future;
-use std::pin::Pin;
-
+/// Interaction task that can be awaited or aattached to a `Context`.
 pub struct InteractionTask<I: Interaction> {
-    sender: Box<dyn Future<Output = Result<(), Error>> + Unpin>,
-    rx: oneshot::Receiver<Result<I::Output, Error>>,
+    recipient: Box<dyn ActionRecipient<Interact<I>>>,
+    request: I,
 }
 
 impl<I: Interaction> InteractionTask<I> {
-    pub(crate) fn new<T: Actor>(mut address: Address<T>, request: I) -> Self
+    pub(crate) fn new<T>(address: &Address<T>, request: I) -> Self
     where
         T: ActionHandler<Interact<I>>,
     {
-        let (responder, rx) = oneshot::channel();
-        let input = Interact { request, responder };
-        let sender = address.act_owned(input);
         Self {
-            rx,
-            sender: Box::new(Box::pin(sender)),
+            recipient: address.action_recipient(),
+            request,
         }
     }
 
+    // TODO: impl `Future` instead of this
+    /// Receive a value
     pub async fn recv(mut self) -> Result<I::Output, Error> {
-        self.sender.await?;
-        self.rx.await?
+        let (responder, rx) = oneshot::channel();
+        let input = Interact { request: self.request, responder };
+        self.recipient.act(input).await?;
+        rx.await.map_err(Error::from).and_then(identity)
+    }
+}
+
+#[async_trait]
+impl<I> LiteTask for InteractionTask<I>
+where
+    I: Interaction,
+{
+    type Output = I::Output;
+
+    async fn interruptable_routine(mut self) -> Result<Self::Output, Error> {
+        self.recv().await
     }
 }
 
@@ -376,14 +388,14 @@ pub trait InteractionDone<I: Interaction>: Actor {
 }
 
 #[async_trait]
-impl<T, I> TaskEliminated<InteractionForwarder<I>> for T
+impl<T, I> TaskEliminated<InteractionTask<I>> for T
 where
     T: InteractionDone<I>,
     I: Interaction,
 {
     async fn handle(
         &mut self,
-        _id: IdOf<InteractionForwarder<I>>,
+        _id: IdOf<InteractionTask<I>>,
         result: Result<I::Output, TaskError>,
         ctx: &mut Context<Self>,
     ) -> Result<(), Error> {
