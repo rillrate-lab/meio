@@ -237,6 +237,35 @@ pub trait Interaction: Send + 'static {
     type Output: Send + 'static;
 }
 
+use crate::Address;
+use futures::Future;
+use std::pin::Pin;
+
+pub struct InteractionTask<I: Interaction> {
+    sender: Box<dyn Future<Output = Result<(), Error>> + Unpin>,
+    rx: oneshot::Receiver<Result<I::Output, Error>>,
+}
+
+impl<I: Interaction> InteractionTask<I> {
+    pub(crate) fn new<T: Actor>(mut address: Address<T>, request: I) -> Self
+    where
+        T: ActionHandler<Interact<I>>,
+    {
+        let (responder, rx) = oneshot::channel();
+        let input = Interact { request, responder };
+        let sender = address.act_owned(input);
+        Self {
+            rx,
+            sender: Box::new(Box::pin(sender)),
+        }
+    }
+
+    pub async fn recv(mut self) -> Result<I::Output, Error> {
+        self.sender.await?;
+        self.rx.await?
+    }
+}
+
 /// Represents initialization routine of an `Actor`.
 #[async_trait]
 pub trait StartedBy<A: Actor>: Actor {

@@ -7,6 +7,7 @@ use crate::forwarders::AttachStream;
 use crate::handlers::{
     Action, ActionHandler, Consumer, Envelope, InstantAction, InstantActionHandler, Interact,
     Interaction, InteractionHandler, InterruptedBy, Operation, Parcel, Scheduled, ScheduledItem,
+    InteractionTask,
 };
 use crate::ids::{Id, IdOf};
 use crate::lifecycle::Interrupt;
@@ -98,6 +99,15 @@ impl<A: Actor> Address<A> {
         self.msg_tx.send(envelope).await.map_err(Error::from)
     }
 
+    pub(crate) async fn act_owned<I>(mut self, input: I) -> Result<(), Error>
+    where
+        I: Action,
+        A: ActionHandler<I>,
+    {
+        let envelope = Envelope::new(input);
+        self.msg_tx.send(envelope).await.map_err(Error::from)
+    }
+
     /// Just sends an `Action` to the `Actor`.
     pub fn instant<I>(&self, input: I) -> Result<(), Error>
     where
@@ -150,6 +160,10 @@ impl<A: Actor> Address<A> {
     ///
     /// To avoid blocking you shouldn't `await` the result of this `Interaction`,
     /// but create a `Future` and `await` in a separate coroutine of in a `LiteTask`.
+    #[deprecated(
+        since = "0.83.0",
+        note = "Use `interact().await` instead"
+    )]
     pub async fn interact_and_wait<I>(&mut self, request: I) -> Result<I::Output, Error>
     where
         I: Interaction,
@@ -160,6 +174,15 @@ impl<A: Actor> Address<A> {
         let input = Interact { request, responder };
         self.act(input).await?;
         rx.await.map_err(Error::from).and_then(identity)
+    }
+
+    pub fn interact<I>(&self, request: I) -> InteractionTask<I>
+    where
+        I: Interaction,
+        // ! Not `InteractionHandler` has to be used here !
+        A: ActionHandler<Interact<I>>,
+    {
+        InteractionTask::new(self.clone(), request)
     }
 
     /// Waits when the `Actor` will be terminated.
