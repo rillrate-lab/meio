@@ -37,8 +37,8 @@
 use crate::compat::watch;
 use crate::forwarders::StreamForwarder;
 use crate::handlers::{
-    ActionHandler, Consumer, Eliminated, Envelope, Interact, Interaction, InteractionDone,
-    InteractionTask, InterruptedBy, Operation, Parcel, StartedBy, TaskEliminated,
+    Consumer, Eliminated, Envelope, Interaction, InteractionDone, InteractionTask, InterruptedBy,
+    Operation, Parcel, StartedBy, TaskEliminated,
 };
 use crate::ids::{Id, IdOf};
 use crate::lifecycle::{Awake, Done, LifecycleNotifier, LifetimeTracker};
@@ -199,6 +199,8 @@ impl<A: Actor> Context<A> {
         self.spawn_task(forwarder, group);
     }
 
+    /// Spawns `InteractionTask` as a `LiteTask` and await the result as an `Action`
+    /// that will call `InteractionDone` handler.
     pub fn track_interaction<I>(&mut self, task: InteractionTask<I>, group: A::GroupBy)
     where
         I: Interaction,

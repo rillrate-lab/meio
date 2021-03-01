@@ -1,5 +1,5 @@
 use crate::actor_runtime::Context;
-use crate::handlers::{Consumer, InstantAction, InstantActionHandler, Interaction, StreamItem};
+use crate::handlers::{Consumer, InstantAction, InstantActionHandler, StreamItem};
 use crate::linkage::ActionRecipient;
 use crate::lite_runtime::LiteTask;
 use anyhow::Error;

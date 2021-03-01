@@ -12,9 +12,8 @@ use crate::handlers::{
 use crate::ids::{Id, IdOf};
 use crate::lifecycle::Interrupt;
 use anyhow::Error;
-use futures::channel::{mpsc, oneshot};
+use futures::channel::mpsc;
 use futures::{SinkExt, Stream};
-use std::convert::identity;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::time::Instant;
