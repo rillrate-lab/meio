@@ -1,6 +1,6 @@
 [package]
 name = "meio-connect"
-version = "0.82.0"
+version = "0.83.0"
 authors = [
     "Denis Kolodin <deniskolodin@gmail.com>",
     "overfloat <rillrate@gmail.com>",
@@ -24,8 +24,8 @@ headers = "0.3.3"
 # TODO: And this when possible (
 hyper = { version = "0.14.4", features = ["full"] }
 log = "0.4.14"
-meio = { version = "0.82.0", path = "../meio" }
-meio-protocol = { version = "0.82.0", path = "../meio-protocol" }
+meio = { version = "0.83.0", path = "../meio" }
+meio-protocol = { version = "0.83.0", path = "../meio-protocol" }
 serde = "1.0.123"
 serde_qs = "0.8.2"
 slab = "0.4.2"
