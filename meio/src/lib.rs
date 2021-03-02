@@ -134,14 +134,14 @@ mod tests {
             Ok(())
         }
 
-        fn stream_group(&self) -> Self::GroupBy {
-            ()
-        }
-
         async fn finished(&mut self, ctx: &mut Context<Self>) -> Result<(), Error> {
             ctx.shutdown();
             Ok(())
         }
+    }
+
+    impl StreamAcceptor<MsgOne> for MyActor {
+        fn stream_group(&self) -> Self::GroupBy {}
     }
 
     #[async_trait]
@@ -176,10 +176,6 @@ mod tests {
         ) -> Result<(), Error> {
             log::info!("Received CtrlC");
             Ok(())
-        }
-
-        fn stream_group(&self) -> Self::GroupBy {
-            ()
         }
     }
 
