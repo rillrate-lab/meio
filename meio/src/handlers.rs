@@ -410,7 +410,7 @@ where
 }
 
 pub(crate) enum StreamItem<T> {
-    Chunk(Vec<T>),
+    Item(T),
     Done,
 }
 
@@ -420,7 +420,10 @@ impl<T: Send + 'static> Action for StreamItem<T> {}
 #[async_trait]
 pub trait Consumer<T: 'static>: Actor {
     /// The method called when the next item received from a `Stream`.
-    async fn handle(&mut self, chunk: Vec<T>, ctx: &mut Context<Self>) -> Result<(), Error>;
+    ///
+    /// If you need chunks here (group multiple items into chunks) than
+    /// wrap your stream with `ready_chunks` method.
+    async fn handle(&mut self, item: T, ctx: &mut Context<Self>) -> Result<(), Error>;
 
     /// When the stream consumed completely.
     ///
@@ -454,7 +457,7 @@ where
 {
     async fn handle(&mut self, msg: StreamItem<I>, ctx: &mut Context<Self>) -> Result<(), Error> {
         match msg {
-            StreamItem::Chunk(chunk) => Consumer::handle(self, chunk, ctx).await,
+            StreamItem::Item(item) => Consumer::handle(self, item, ctx).await,
             StreamItem::Done => Consumer::finished(self, ctx).await,
         }
     }

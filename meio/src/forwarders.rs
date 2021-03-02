@@ -4,15 +4,16 @@ use crate::linkage::ActionRecipient;
 use crate::lite_runtime::LiteTask;
 use anyhow::Error;
 use async_trait::async_trait;
-use futures::{stream::ReadyChunks, Stream, StreamExt};
+use futures::{Stream, StreamExt};
 
 /// This worker receives items from a stream and send them as actions
 /// into an `Actor`.
 pub(crate) struct StreamForwarder<S: Stream> {
-    stream: ReadyChunks<S>,
+    stream: S,
     recipient: Box<dyn ActionRecipient<StreamItem<S::Item>>>,
 }
 
+/// If you need chunks use `ready_chunk` on the stream before.
 impl<S> StreamForwarder<S>
 where
     S: Stream,
@@ -20,7 +21,7 @@ where
 {
     pub fn new(stream: S, recipient: impl ActionRecipient<StreamItem<S::Item>>) -> Self {
         Self {
-            stream: stream.ready_chunks(16),
+            stream,
             recipient: Box::new(recipient),
         }
     }
@@ -36,7 +37,7 @@ where
 
     async fn interruptable_routine(mut self) -> Result<Self::Output, Error> {
         while let Some(item) = self.stream.next().await {
-            let action = StreamItem::Chunk(item);
+            let action = StreamItem::Item(item);
             self.recipient.act(action).await?;
         }
         let action = StreamItem::Done;
