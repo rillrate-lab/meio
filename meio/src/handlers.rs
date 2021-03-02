@@ -419,10 +419,6 @@ impl<T: Send + 'static> Action for StreamItem<T> {}
 /// Represents a capability to receive message from a `Stream`.
 #[async_trait]
 pub trait Consumer<T: 'static>: Actor {
-    // TODO: Consider to refactor that?
-    /// The termination group used by `Address::attach` method.
-    fn stream_group(&self) -> Self::GroupBy;
-
     /// The method called when the next item received from a `Stream`.
     async fn handle(&mut self, chunk: Vec<T>, ctx: &mut Context<Self>) -> Result<(), Error>;
 
@@ -482,6 +478,12 @@ where
             Err(err) => Consumer::task_failed(self, err, ctx).await,
         }
     }
+}
+
+/// Controls where stream can be accepted to an `Actor` using `Address`.
+pub trait StreamAcceptor<T>: Actor {
+    /// The termination group used by `Address::attach` method.
+    fn stream_group(&self) -> Self::GroupBy;
 }
 
 /* TODO: Delete. Not smart thing since `Consumer` stared to group items inito chunks.

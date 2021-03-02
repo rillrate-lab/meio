@@ -1,5 +1,5 @@
 use crate::actor_runtime::Context;
-use crate::handlers::{Consumer, InstantAction, InstantActionHandler, StreamItem};
+use crate::handlers::{Consumer, InstantAction, InstantActionHandler, StreamAcceptor, StreamItem};
 use crate::linkage::ActionRecipient;
 use crate::lite_runtime::LiteTask;
 use anyhow::Error;
@@ -60,7 +60,7 @@ impl<S> InstantAction for AttachStream<S> where S: Stream + Send + 'static {}
 #[async_trait]
 impl<T, S> InstantActionHandler<AttachStream<S>> for T
 where
-    T: Consumer<S::Item>,
+    T: Consumer<S::Item> + StreamAcceptor<S::Item>,
     S: Stream + Unpin + Send + 'static,
     S::Item: Send,
 {

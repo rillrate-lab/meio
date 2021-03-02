@@ -7,7 +7,7 @@ use crate::forwarders::AttachStream;
 use crate::handlers::{
     Action, ActionHandler, Consumer, Envelope, InstantAction, InstantActionHandler, Interact,
     Interaction, InteractionHandler, InteractionTask, InterruptedBy, Operation, Parcel, Scheduled,
-    ScheduledItem,
+    ScheduledItem, StreamAcceptor,
 };
 use crate::ids::{Id, IdOf};
 use crate::lifecycle::Interrupt;
@@ -188,7 +188,7 @@ impl<A: Actor> Address<A> {
     /// to reduce amount as `async` calls of a handler.
     pub fn attach<S>(&mut self, stream: S) -> Result<(), Error>
     where
-        A: Consumer<S::Item>,
+        A: Consumer<S::Item> + StreamAcceptor<S::Item>,
         S: Stream + Send + Unpin + 'static,
         S::Item: Send + 'static,
     {
