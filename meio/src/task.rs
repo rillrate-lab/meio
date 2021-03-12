@@ -1,14 +1,15 @@
 //! This module contains useful tasks that you can attach to an `Actor`.
 
-use crate::actor_runtime::Actor;
-use crate::handlers::{Action, ActionHandler};
+use crate::actor_runtime::{Actor, Context};
+use crate::handlers::{Action, ActionHandler, TaskEliminated};
+use crate::ids::IdOf;
 use crate::linkage::{ActionRecipient, Address};
 use crate::lite_runtime::LiteTask;
+use crate::lite_runtime::TaskError;
 use anyhow::Error;
 use async_trait::async_trait;
 use std::fmt::Debug;
 use std::time::{Duration, Instant};
-
 /// The lite task that sends ticks to a `Recipient`.
 #[derive(Debug)]
 pub struct HeartBeat {
@@ -50,5 +51,39 @@ impl LiteTask for HeartBeat {
 
     fn retry_delay(&self, _last_attempt: Instant) -> Duration {
         self.duration
+    }
+}
+
+/// Handler of heartbeat events and a task
+#[async_trait]
+pub trait OnTick: Actor {
+    /// Called when tick received
+    async fn tick(&mut self, tick: Tick, ctx: &mut Context<Self>) -> Result<(), Error>;
+    /// Called when the heartbeat task finished or interrupted.
+    async fn done(&mut self, ctx: &mut Context<Self>) -> Result<(), Error>;
+}
+
+#[async_trait]
+impl<T> ActionHandler<Tick> for T
+where
+    T: OnTick,
+{
+    async fn handle(&mut self, tick: Tick, ctx: &mut Context<Self>) -> Result<(), Error> {
+        OnTick::tick(self, tick, ctx).await
+    }
+}
+
+#[async_trait]
+impl<T> TaskEliminated<HeartBeat> for T
+where
+    T: OnTick,
+{
+    async fn handle(
+        &mut self,
+        _id: IdOf<HeartBeat>,
+        _result: Result<(), TaskError>,
+        ctx: &mut Context<Self>,
+    ) -> Result<(), Error> {
+        OnTick::done(self, ctx).await
     }
 }
