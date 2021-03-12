@@ -11,7 +11,7 @@ use std::time::{Duration, Instant};
 use thiserror::Error;
 use tokio::net::TcpStream;
 use tokio::time::sleep;
-use tokio_tungstenite::{connect_async, WebSocketStream};
+use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
 
 #[derive(Debug, Clone)]
 pub struct WsSender<T: ProtocolData> {
@@ -78,7 +78,7 @@ where
     P: Protocol,
     A: Actor + InstantActionHandler<WsClientStatus<P>> + ActionHandler<WsIncoming<P::ToClient>>,
 {
-    type WebSocket = WebSocketStream<TcpStream>;
+    type WebSocket = WebSocketStream<MaybeTlsStream<TcpStream>>;
     type Message = tungstenite::Message;
     type Error = tungstenite::Error;
     type Actor = A;
