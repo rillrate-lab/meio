@@ -118,12 +118,11 @@ impl<T: TalkerCompatible> Talker<T> {
                     self.rx.close();
                 }
                 request = self.connection.next() => {
-                    log::trace!("Incoming request: {:?}", request);
                     let msg = request.transpose()?;
                     if let Some(msg) = msg {
                         if msg.is_text() || msg.is_binary() {
                             let decoded = T::Codec::decode(&msg.into_bytes())?;
-                            log::trace!("Received: {:?}", decoded);
+                            log::trace!("MEIO-WS-RECV: {:?}", decoded);
                             let msg = WsIncoming(decoded);
                             self.address.act(msg).await?;
                         } else if msg.is_ping() || msg.is_pong() {
@@ -146,8 +145,8 @@ impl<T: TalkerCompatible> Talker<T> {
                     }
                 }
                 response = self.rx.next() => {
-                    log::trace!("Sending WS response: {:?}", response);
                     if let Some(msg) = response {
+                        log::trace!("MEIO-WS-SEND: {:?}", msg);
                         let encoded = T::Codec::encode(&msg)?;
                         let message = T::Message::binary(encoded);
                         self.connection.send(message).await?;
