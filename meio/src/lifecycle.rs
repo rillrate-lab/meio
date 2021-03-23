@@ -4,7 +4,7 @@ use crate::actor_runtime::Actor;
 use crate::handlers::{InstantAction, InstantActionHandler, Operation, Parcel};
 use crate::ids::{Id, IdOf};
 use crate::linkage::Address;
-use crate::lite_runtime::{LiteTask, TaskAddress, TaskError};
+use crate::lite_runtime::{LiteTask, Tag, TaskAddress, TaskError};
 use anyhow::Error;
 use std::collections::{HashMap, HashSet};
 use std::marker::PhantomData;
@@ -261,17 +261,18 @@ impl<T: Actor> Done<T> {
 impl<T: Actor> InstantAction for Done<T> {}
 
 #[derive(Debug)]
-pub(crate) struct TaskDone<T: LiteTask> {
+pub(crate) struct TaskDone<T: LiteTask, M> {
     pub id: IdOf<T>,
+    pub tag: M,
     pub result: Result<T::Output, TaskError>,
 }
 
-impl<T: LiteTask> TaskDone<T> {
-    pub(crate) fn new(id: IdOf<T>, result: Result<T::Output, TaskError>) -> Self {
-        Self { id, result }
+impl<T: LiteTask, M> TaskDone<T, M> {
+    pub(crate) fn new(id: IdOf<T>, tag: M, result: Result<T::Output, TaskError>) -> Self {
+        Self { id, tag, result }
     }
 }
 
 // It's high priority, because it's impossible to use a channel with limited
 // size for this type of messages.
-impl<T: LiteTask> InstantAction for TaskDone<T> {}
+impl<T: LiteTask, M: Tag> InstantAction for TaskDone<T, M> {}

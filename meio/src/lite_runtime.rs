@@ -17,6 +17,10 @@ use std::time::{Duration, Instant};
 use thiserror::Error;
 use uuid::Uuid;
 
+pub trait Tag: Send + 'static {}
+
+impl Tag for () {}
+
 /// Minimalistic actor that hasn't `Address`.
 ///
 /// **Recommended** to implement sequences or intensive loops (routines).
@@ -107,6 +111,7 @@ where
         task,
         done_notifier,
         stop_receiver,
+        marker: (),
     };
     crate::compat::spawn_async(runtime.entrypoint());
     stop_sender
@@ -251,15 +256,16 @@ impl From<Error> for TaskError {
     }
 }
 
-struct LiteRuntime<T: LiteTask> {
+struct LiteRuntime<T: LiteTask, M: Tag> {
     id: IdOf<T>,
     task: T,
     // TODO: Add T::Output to TaskDone
-    done_notifier: Box<dyn LifecycleNotifier<TaskDone<T>>>,
+    done_notifier: Box<dyn LifecycleNotifier<TaskDone<T, M>>>,
     stop_receiver: StopReceiver,
+    marker: M,
 }
 
-impl<T: LiteTask> LiteRuntime<T> {
+impl<T: LiteTask, M: Tag> LiteRuntime<T, M> {
     async fn entrypoint(mut self) {
         log::info!("Task started: {:?}", self.id);
         let res = self
@@ -275,7 +281,7 @@ impl<T: LiteTask> LiteRuntime<T> {
         }
         log::info!("Task finished: {:?}", self.id);
         // TODO: Add result to it
-        let task_done = TaskDone::new(self.id.clone(), res);
+        let task_done = TaskDone::new(self.id.clone(), self.marker, res);
         if let Err(err) = self.done_notifier.notify(task_done) {
             log::error!(
                 "Can't send done notification from the task {:?}: {}",

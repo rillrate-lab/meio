@@ -7,7 +7,7 @@ use crate::forwarders::StreamForwarder;
 use crate::ids::{Id, IdOf};
 use crate::lifecycle;
 use crate::linkage::{ActionRecipient, Address};
-use crate::lite_runtime::{LiteTask, TaskError};
+use crate::lite_runtime::{LiteTask, Tag, TaskError};
 use anyhow::Error;
 use async_trait::async_trait;
 use futures::channel::oneshot;
@@ -363,14 +363,15 @@ pub trait TaskEliminated<T: LiteTask>: Actor {
 }
 
 #[async_trait]
-impl<T, C> InstantActionHandler<lifecycle::TaskDone<C>> for T
+impl<T, C, M> InstantActionHandler<lifecycle::TaskDone<C, M>> for T
 where
     T: TaskEliminated<C>,
     C: LiteTask,
+    M: Tag,
 {
     async fn handle(
         &mut self,
-        done: lifecycle::TaskDone<C>,
+        done: lifecycle::TaskDone<C, M>,
         ctx: &mut Context<Self>,
     ) -> Result<(), Error> {
         TaskEliminated::handle(self, done.id, done.result, ctx).await
