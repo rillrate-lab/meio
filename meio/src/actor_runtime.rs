@@ -22,10 +22,11 @@
 //! }
 //!
 //! #[async_trait]
-//! impl<T: SpecificTask> TaskEliminated<T> for MyActor {
+//! impl<T: SpecificTask> TaskEliminated<T, ()> for MyActor {
 //!     async fn handle(
 //!         &mut self,
 //!         id: IdOf<T>,
+//!         tag: (),
 //!         result: Result<T::Output, TaskError>,
 //!         ctx: &mut Context<Self>,
 //!     ) -> Result<(), Error> {
