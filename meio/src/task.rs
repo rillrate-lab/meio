@@ -73,14 +73,16 @@ where
     }
 }
 
+// TODO: Support custom tags.
 #[async_trait]
-impl<T> TaskEliminated<HeartBeat> for T
+impl<T> TaskEliminated<HeartBeat, ()> for T
 where
     T: OnTick,
 {
     async fn handle(
         &mut self,
         _id: IdOf<HeartBeat>,
+        _tag: (),
         _result: Result<(), TaskError>,
         ctx: &mut Context<Self>,
     ) -> Result<(), Error> {

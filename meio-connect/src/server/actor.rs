@@ -325,10 +325,11 @@ impl<T: Actor> InterruptedBy<T> for HttpServer {
 }
 
 #[async_trait]
-impl TaskEliminated<HyperRoutine> for HttpServer {
+impl TaskEliminated<HyperRoutine, ()> for HttpServer {
     async fn handle(
         &mut self,
         _id: IdOf<HyperRoutine>,
+        _tag: (),
         result: Result<(), TaskError>,
         ctx: &mut Context<Self>,
     ) -> Result<(), Error> {

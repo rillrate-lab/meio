@@ -91,7 +91,7 @@ pub trait LiteTask: Sized + Send + 'static {
 pub(crate) fn spawn<T, S, M>(task: T, tag: M, supervisor: Option<Address<S>>) -> TaskAddress<T>
 where
     T: LiteTask,
-    S: Actor + TaskEliminated<T>,
+    S: Actor + TaskEliminated<T, M>,
     M: Tag,
 {
     let id = Id::of_task(&task);

@@ -352,11 +352,12 @@ where
 
 /// Listens for spawned tasks finished.
 #[async_trait]
-pub trait TaskEliminated<T: LiteTask>: Actor {
+pub trait TaskEliminated<T: LiteTask, M: Tag>: Actor {
     /// Called when the `Task` finished.
     async fn handle(
         &mut self,
         id: IdOf<T>,
+        tag: M,
         result: Result<T::Output, TaskError>,
         ctx: &mut Context<Self>,
     ) -> Result<(), Error>;
@@ -365,7 +366,7 @@ pub trait TaskEliminated<T: LiteTask>: Actor {
 #[async_trait]
 impl<T, C, M> InstantActionHandler<lifecycle::TaskDone<C, M>> for T
 where
-    T: TaskEliminated<C>,
+    T: TaskEliminated<C, M>,
     C: LiteTask,
     M: Tag,
 {
@@ -374,38 +375,50 @@ where
         done: lifecycle::TaskDone<C, M>,
         ctx: &mut Context<Self>,
     ) -> Result<(), Error> {
-        TaskEliminated::handle(self, done.id, done.result, ctx).await
+        TaskEliminated::handle(self, done.id, done.tag, done.result, ctx).await
     }
 }
 
 /// Independent interaction results listener. It necessary to avoid blocking.
 #[async_trait]
-pub trait InteractionDone<I: Interaction>: Actor {
+pub trait InteractionDone<I: Interaction, M: Tag>: Actor {
     /// Handling of the interaction result.
-    async fn handle(&mut self, output: I::Output, ctx: &mut Context<Self>) -> Result<(), Error>;
+    async fn handle(
+        &mut self,
+        tag: M,
+        output: I::Output,
+        ctx: &mut Context<Self>,
+    ) -> Result<(), Error>;
 
     /// Called when interaction failed.
-    async fn failed(&mut self, err: TaskError, _ctx: &mut Context<Self>) -> Result<(), Error> {
+    async fn failed(
+        &mut self,
+        _tag: M,
+        err: TaskError,
+        _ctx: &mut Context<Self>,
+    ) -> Result<(), Error> {
         log::error!("Interaction failed: {}", err);
         Ok(())
     }
 }
 
 #[async_trait]
-impl<T, I> TaskEliminated<InteractionTask<I>> for T
+impl<T, I, M> TaskEliminated<InteractionTask<I>, M> for T
 where
-    T: InteractionDone<I>,
+    T: InteractionDone<I, M>,
     I: Interaction,
+    M: Tag,
 {
     async fn handle(
         &mut self,
         _id: IdOf<InteractionTask<I>>,
+        tag: M,
         result: Result<I::Output, TaskError>,
         ctx: &mut Context<Self>,
     ) -> Result<(), Error> {
         match result {
-            Ok(output) => InteractionDone::handle(self, output, ctx).await,
-            Err(err) => InteractionDone::failed(self, err, ctx).await,
+            Ok(output) => InteractionDone::handle(self, tag, output, ctx).await,
+            Err(err) => InteractionDone::failed(self, tag, err, ctx).await,
         }
     }
 }
@@ -465,15 +478,17 @@ where
 }
 
 #[async_trait]
-impl<T, S> TaskEliminated<StreamForwarder<S>> for T
+impl<T, S, M> TaskEliminated<StreamForwarder<S>, M> for T
 where
     T: Consumer<S::Item>,
     S: Stream + Unpin + Send + 'static,
     S::Item: Send,
+    M: Tag,
 {
     async fn handle(
         &mut self,
         _id: IdOf<StreamForwarder<S>>,
+        tag: M,
         result: Result<(), TaskError>,
         ctx: &mut Context<Self>,
     ) -> Result<(), Error> {

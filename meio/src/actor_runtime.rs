@@ -181,7 +181,7 @@ impl<A: Actor> Context<A> {
     pub fn spawn_task<T, M>(&mut self, task: T, tag: M, group: A::GroupBy) -> TaskAddress<T>
     where
         T: LiteTask,
-        A: TaskEliminated<T>,
+        A: TaskEliminated<T, M>,
         M: Tag,
     {
         let stopper = lite_runtime::spawn(task, tag, Some(self.address.clone()));
@@ -206,7 +206,7 @@ impl<A: Actor> Context<A> {
     pub fn track_interaction<I, M>(&mut self, task: InteractionTask<I>, tag: M, group: A::GroupBy)
     where
         I: Interaction,
-        A: InteractionDone<I>,
+        A: InteractionDone<I, M>,
         M: Tag,
     {
         self.spawn_task(task, tag, group);
