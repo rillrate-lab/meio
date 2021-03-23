@@ -488,7 +488,8 @@ where
     async fn handle(
         &mut self,
         _id: IdOf<StreamForwarder<S>>,
-        tag: M,
+        // TODO: Support tag
+        _tag: M,
         result: Result<(), TaskError>,
         ctx: &mut Context<Self>,
     ) -> Result<(), Error> {
