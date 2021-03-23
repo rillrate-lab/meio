@@ -17,6 +17,8 @@ use std::time::{Duration, Instant};
 use thiserror::Error;
 use uuid::Uuid;
 
+/// Custom tag for `LiteTask`.
+/// Attached to a runtime.
 pub trait Tag: Send + 'static {}
 
 impl Tag for () {}
