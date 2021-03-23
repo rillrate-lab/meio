@@ -88,10 +88,11 @@ pub trait LiteTask: Sized + Send + 'static {
     }
 }
 
-pub(crate) fn spawn<T, S>(task: T, supervisor: Option<Address<S>>) -> TaskAddress<T>
+pub(crate) fn spawn<T, S, M>(task: T, tag: M, supervisor: Option<Address<S>>) -> TaskAddress<T>
 where
     T: LiteTask,
     S: Actor + TaskEliminated<T>,
+    M: Tag,
 {
     let id = Id::of_task(&task);
     let (stop_sender, stop_receiver) = make_stop_channel(id.clone());
@@ -111,7 +112,7 @@ where
         task,
         done_notifier,
         stop_receiver,
-        marker: (),
+        tag,
     };
     crate::compat::spawn_async(runtime.entrypoint());
     stop_sender
@@ -262,7 +263,7 @@ struct LiteRuntime<T: LiteTask, M: Tag> {
     // TODO: Add T::Output to TaskDone
     done_notifier: Box<dyn LifecycleNotifier<TaskDone<T, M>>>,
     stop_receiver: StopReceiver,
-    marker: M,
+    tag: M,
 }
 
 impl<T: LiteTask, M: Tag> LiteRuntime<T, M> {
@@ -281,7 +282,7 @@ impl<T: LiteTask, M: Tag> LiteRuntime<T, M> {
         }
         log::info!("Task finished: {:?}", self.id);
         // TODO: Add result to it
-        let task_done = TaskDone::new(self.id.clone(), self.marker, res);
+        let task_done = TaskDone::new(self.id.clone(), self.tag, res);
         if let Err(err) = self.done_notifier.notify(task_done) {
             log::error!(
                 "Can't send done notification from the task {:?}: {}",

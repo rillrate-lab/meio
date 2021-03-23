@@ -300,7 +300,7 @@ impl HttpServer {
             addr: self.addr,
             routing_table: self.routing_table.clone(),
         };
-        ctx.spawn_task(server_task, ());
+        ctx.spawn_task(server_task, (), ());
     }
 }
 

@@ -1,7 +1,7 @@
 use crate::actor_runtime::Context;
 use crate::handlers::{Consumer, InstantAction, InstantActionHandler, StreamAcceptor, StreamItem};
 use crate::linkage::ActionRecipient;
-use crate::lite_runtime::LiteTask;
+use crate::lite_runtime::{LiteTask, Tag};
 use anyhow::Error;
 use async_trait::async_trait;
 use futures::{Stream, StreamExt};
@@ -46,29 +46,40 @@ where
     }
 }
 
-pub(crate) struct AttachStream<S> {
+pub(crate) struct AttachStream<S, M> {
     stream: S,
+    tag: M,
 }
 
-impl<S> AttachStream<S> {
-    pub fn new(stream: S) -> Self {
-        Self { stream }
+impl<S, M> AttachStream<S, M> {
+    pub fn new(stream: S, tag: M) -> Self {
+        Self { stream, tag }
     }
 }
 
-impl<S> InstantAction for AttachStream<S> where S: Stream + Send + 'static {}
+impl<S, M> InstantAction for AttachStream<S, M>
+where
+    S: Stream + Send + 'static,
+    M: Tag,
+{
+}
 
 #[async_trait]
-impl<T, S> InstantActionHandler<AttachStream<S>> for T
+impl<T, S, M> InstantActionHandler<AttachStream<S, M>> for T
 where
     T: Consumer<S::Item> + StreamAcceptor<S::Item>,
     S: Stream + Unpin + Send + 'static,
     S::Item: Send,
+    M: Tag,
 {
-    async fn handle(&mut self, msg: AttachStream<S>, ctx: &mut Context<Self>) -> Result<(), Error> {
+    async fn handle(
+        &mut self,
+        msg: AttachStream<S, M>,
+        ctx: &mut Context<Self>,
+    ) -> Result<(), Error> {
         let stream = msg.stream;
         let group = self.stream_group();
-        ctx.attach(stream, group);
+        ctx.attach(stream, msg.tag, group);
         Ok(())
     }
 }

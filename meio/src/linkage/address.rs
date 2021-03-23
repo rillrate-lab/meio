@@ -11,6 +11,7 @@ use crate::handlers::{
 };
 use crate::ids::{Id, IdOf};
 use crate::lifecycle::Interrupt;
+use crate::lite_runtime::Tag;
 use anyhow::Error;
 use futures::channel::mpsc;
 use futures::{SinkExt, Stream};
@@ -186,13 +187,14 @@ impl<A: Actor> Address<A> {
     ///
     /// It spawns a routine that groups multiple items into a single chunk
     /// to reduce amount as `async` calls of a handler.
-    pub fn attach<S>(&mut self, stream: S) -> Result<(), Error>
+    pub fn attach<S, M>(&mut self, stream: S, tag: M) -> Result<(), Error>
     where
         A: Consumer<S::Item> + StreamAcceptor<S::Item>,
         S: Stream + Send + Unpin + 'static,
         S::Item: Send + 'static,
+        M: Tag,
     {
-        let msg = AttachStream::new(stream);
+        let msg = AttachStream::new(stream, tag);
         self.instant(msg)
     }
 

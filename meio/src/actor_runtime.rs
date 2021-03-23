@@ -43,7 +43,7 @@ use crate::handlers::{
 use crate::ids::{Id, IdOf};
 use crate::lifecycle::{Awake, Done, LifecycleNotifier, LifetimeTracker};
 use crate::linkage::Address;
-use crate::lite_runtime::{self, LiteTask, TaskAddress};
+use crate::lite_runtime::{self, LiteTask, Tag, TaskAddress};
 use anyhow::Error;
 use async_trait::async_trait;
 use futures::channel::mpsc;
@@ -178,35 +178,38 @@ impl<A: Actor> Context<A> {
     }
 
     /// Starts and binds a `Task`.
-    pub fn spawn_task<T>(&mut self, task: T, group: A::GroupBy) -> TaskAddress<T>
+    pub fn spawn_task<T, M>(&mut self, task: T, tag: M, group: A::GroupBy) -> TaskAddress<T>
     where
         T: LiteTask,
         A: TaskEliminated<T>,
+        M: Tag,
     {
-        let stopper = lite_runtime::spawn(task, Some(self.address.clone()));
+        let stopper = lite_runtime::spawn(task, tag, Some(self.address.clone()));
         self.lifetime_tracker.insert_task(stopper.clone(), group);
         stopper
     }
 
     /// Spawns interaction task that forwards the result of an interaction.
-    pub fn attach<S>(&mut self, stream: S, group: A::GroupBy)
+    pub fn attach<S, M>(&mut self, stream: S, tag: M, group: A::GroupBy)
     where
         S: Stream + Unpin + Send + 'static,
         S::Item: Send,
         A: Consumer<S::Item>,
+        M: Tag,
     {
         let forwarder = StreamForwarder::new(stream, self.address.clone());
-        self.spawn_task(forwarder, group);
+        self.spawn_task(forwarder, tag, group);
     }
 
     /// Spawns `InteractionTask` as a `LiteTask` and await the result as an `Action`
     /// that will call `InteractionDone` handler.
-    pub fn track_interaction<I>(&mut self, task: InteractionTask<I>, group: A::GroupBy)
+    pub fn track_interaction<I, M>(&mut self, task: InteractionTask<I>, tag: M, group: A::GroupBy)
     where
         I: Interaction,
         A: InteractionDone<I>,
+        M: Tag,
     {
-        self.spawn_task(task, group);
+        self.spawn_task(task, tag, group);
     }
 
     /// Interrupts an `Actor`.
