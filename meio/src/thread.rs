@@ -82,9 +82,9 @@ where
         .blocker
         .lock()
         .map_err(|_| Error::msg("can't take termination blocker"))?;
-    let mut handle = System::spawn(actor);
+    let handle = System::spawn(actor);
     term_rx.notifier_rx.await?;
-    System::interrupt(&mut handle)?;
+    System::interrupt(&handle)?;
     handle.join().await;
     drop(blocker);
     Ok(())
