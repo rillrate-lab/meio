@@ -10,6 +10,7 @@ use anyhow::Error;
 use async_trait::async_trait;
 use std::fmt::Debug;
 use std::time::{Duration, Instant};
+
 /// The lite task that sends ticks to a `Recipient`.
 #[derive(Debug)]
 pub struct HeartBeat {
@@ -57,7 +58,9 @@ impl LiteTask for HeartBeat {
 /// Handler of heartbeat events and a task
 #[async_trait]
 pub trait OnTick: Actor {
-    /// Called when tick received
+    /// Called when tick received.
+    ///
+    /// Also `tick` will be called after lite task initialization.
     async fn tick(&mut self, tick: Tick, ctx: &mut Context<Self>) -> Result<(), Error>;
     /// Called when the heartbeat task finished or interrupted.
     async fn done(&mut self, ctx: &mut Context<Self>) -> Result<(), Error>;
