@@ -110,12 +110,17 @@ impl Status {
 /// Spawns `Actor` in `ActorRuntime`.
 // TODO: No `Option`! Use `static Address<System>` instead.
 // It can be possible when `Controller` and `Operator` will be removed.
-pub(crate) fn spawn<A, S>(actor: A, supervisor: Option<Address<S>>) -> Address<A>
+pub(crate) fn spawn<A, S>(
+    actor: A,
+    supervisor: Option<Address<S>>,
+    custom_name: Option<String>,
+) -> Address<A>
 where
     A: Actor + StartedBy<S>,
     S: Actor + Eliminated<A>,
 {
-    let id = Id::new(actor.name());
+    let actor_name = custom_name.unwrap_or_else(|| actor.name());
+    let id = Id::new(actor_name);
     let (hp_msg_tx, hp_msg_rx) = mpsc::unbounded();
     let (msg_tx, msg_rx) = mpsc::channel(MESSAGES_CHANNEL_DEPTH);
     let (join_tx, join_rx) = watch::channel(Status::Alive);
@@ -173,7 +178,8 @@ impl<A: Actor> Context<A> {
         T: Actor + StartedBy<A> + InterruptedBy<A>,
         A: Eliminated<T>,
     {
-        let address = spawn(actor, Some(self.address.clone()));
+        let custom_name = None;
+        let address = spawn(actor, Some(self.address.clone()), custom_name);
         self.lifetime_tracker.insert(address.clone(), group);
         address
     }
@@ -185,7 +191,8 @@ impl<A: Actor> Context<A> {
         A: TaskEliminated<T, M>,
         M: Tag,
     {
-        let stopper = lite_runtime::spawn(task, tag, Some(self.address.clone()));
+        let custom_name = None;
+        let stopper = lite_runtime::spawn(task, tag, Some(self.address.clone()), custom_name);
         self.lifetime_tracker.insert_task(stopper.clone(), group);
         stopper
     }

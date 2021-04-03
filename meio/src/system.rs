@@ -32,7 +32,8 @@ impl System {
     where
         A: Actor + StartedBy<Self>,
     {
-        crate::actor_runtime::spawn(actor, Option::<Address<Self>>::None)
+        let custom_name = None;
+        crate::actor_runtime::spawn(actor, Option::<Address<Self>>::None, custom_name)
     }
 
     /// Spawns an `Actor` and wait for its termination (normally or by `SIGINT` interruption).

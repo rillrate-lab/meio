@@ -90,13 +90,19 @@ pub trait LiteTask: Sized + Send + 'static {
     }
 }
 
-pub(crate) fn spawn<T, S, M>(task: T, tag: M, supervisor: Option<Address<S>>) -> TaskAddress<T>
+pub(crate) fn spawn<T, S, M>(
+    task: T,
+    tag: M,
+    supervisor: Option<Address<S>>,
+    custom_name: Option<String>,
+) -> TaskAddress<T>
 where
     T: LiteTask,
     S: Actor + TaskEliminated<T, M>,
     M: Tag,
 {
-    let id = Id::new(task.name());
+    let task_name = custom_name.unwrap_or_else(|| task.name());
+    let id = Id::new(task_name);
     let (stop_sender, stop_receiver) = make_stop_channel(id.clone());
     let id_of = IdOf::<T>::new(id.clone());
     let done_notifier = {
