@@ -96,7 +96,7 @@ where
     S: Actor + TaskEliminated<T, M>,
     M: Tag,
 {
-    let id = Id::of_task(&task);
+    let id = Id::new(task.name());
     let (stop_sender, stop_receiver) = make_stop_channel(id.clone());
     let id_of = IdOf::<T>::new(id.clone());
     let done_notifier = {

@@ -115,7 +115,7 @@ where
     A: Actor + StartedBy<S>,
     S: Actor + Eliminated<A>,
 {
-    let id = Id::of_actor(&actor);
+    let id = Id::new(actor.name());
     let (hp_msg_tx, hp_msg_rx) = mpsc::unbounded();
     let (msg_tx, msg_rx) = mpsc::channel(MESSAGES_CHANNEL_DEPTH);
     let (join_tx, join_rx) = watch::channel(Status::Alive);

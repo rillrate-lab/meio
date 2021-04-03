@@ -1,7 +1,5 @@
 //! Contains typed and generic id types.
 
-use crate::actor_runtime::Actor;
-use crate::lite_runtime::LiteTask;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
@@ -13,17 +11,7 @@ use std::sync::Arc;
 pub struct Id(Arc<String>);
 
 impl Id {
-    // TODO: Return IdOf here
-    /// Generated new `Id` for `Actor`.
-    pub(crate) fn of_actor<T: Actor>(entity: &T) -> Self {
-        let name = entity.name();
-        Self(Arc::new(name))
-    }
-
-    // TODO: Return IdOf here
-    /// Generated new `Id` for `LiteTask`.
-    pub(crate) fn of_task<T: LiteTask>(entity: &T) -> Self {
-        let name = entity.name();
+    pub(crate) fn new(name: String) -> Self {
         Self(Arc::new(name))
     }
 }
