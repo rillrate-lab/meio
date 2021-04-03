@@ -5,6 +5,7 @@ use crate::lite_runtime::{LiteTask, Tag};
 use anyhow::Error;
 use async_trait::async_trait;
 use futures::{Stream, StreamExt};
+use uuid::Uuid;
 
 /// This worker receives items from a stream and send them as actions
 /// into an `Actor`.
@@ -34,6 +35,15 @@ where
     S::Item: Send + 'static,
 {
     type Output = ();
+
+    fn name(&self) -> String {
+        let uuid = Uuid::new_v4();
+        format!(
+            "Task:StreamForwarder<{}>({})",
+            std::any::type_name::<S::Item>(),
+            uuid
+        )
+    }
 
     async fn interruptable_routine(mut self) -> Result<Self::Output, Error> {
         while let Some(item) = self.stream.next().await {
