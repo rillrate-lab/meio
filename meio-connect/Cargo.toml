@@ -16,23 +16,23 @@ categories = ["concurrency"]
 description = "Set of connectors for MEIO framework"
 
 [dependencies]
-anyhow = "1.0.39"
-async-trait = "0.1.48"
+anyhow = "1.0.40"
+async-trait = "0.1.49"
 derive_more = "0.99.13"
-futures = "0.3.13"
+futures = "0.3.14"
 headers = "0.3.4"
 # TODO: And this when possible (
-hyper = { version = "0.14.4", features = ["full"] }
+hyper = { version = "0.14.5", features = ["full"] }
 log = "0.4.14"
 meio = { version = "0.86.0", path = "../meio" }
 meio-protocol = { version = "0.86.0", path = "../meio-protocol" }
-serde = "1.0.124"
+serde = "1.0.125"
 serde_qs = "0.8.3"
 slab = "0.4.2"
 thiserror = "1.0.24"
-tokio = "1.4.0"
+tokio = "1.5.0"
 tokio-tungstenite = "0.14.0"
 tungstenite = { version = "0.13.0", default-features = false }
 
 [dev-dependencies]
-serde = { version = "1.0.124", features = ["derive"] }
+serde = { version = "1.0.125", features = ["derive"] }

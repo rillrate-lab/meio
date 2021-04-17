@@ -16,5 +16,5 @@ categories = ["concurrency"]
 description = "Basic protocol traits of MEIO framework"
 
 [dependencies]
-anyhow = "1.0.39"
-serde = "1.0.124"
+anyhow = "1.0.40"
+serde = "1.0.125"
