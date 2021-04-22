@@ -291,6 +291,77 @@ mod tests {
         Ok(())
     }
 
+    struct ActorSingle(usize);
+
+    impl Actor for ActorSingle {
+        type GroupBy = ();
+
+        fn name(&self) -> String {
+            format!("Actor-{}", self.0)
+        }
+    }
+
+    #[async_trait]
+    impl StartedBy<ActorMany> for ActorSingle {
+        async fn handle(&mut self, ctx: &mut Context<Self>) -> Result<(), Error> {
+            sleep(Duration::from_secs(10)).await;
+            ctx.shutdown();
+            Ok(())
+        }
+    }
+
+    #[async_trait]
+    impl InterruptedBy<ActorMany> for ActorSingle {
+        async fn handle(&mut self, _ctx: &mut Context<Self>) -> Result<(), Error> {
+            Ok(())
+        }
+    }
+
+    use std::collections::HashSet;
+
+    #[derive(Default)]
+    struct ActorMany {
+        actors: HashSet<IdOf<ActorSingle>>,
+    }
+
+    #[async_trait]
+    impl StartedBy<System> for ActorMany {
+        async fn handle(&mut self, ctx: &mut Context<Self>) -> Result<(), Error> {
+            for id in 1..=1_000_000 {
+                let addr = ctx.spawn_actor(ActorSingle(id), ());
+                self.actors.insert(addr.id());
+            }
+            Ok(())
+        }
+    }
+
+    #[async_trait]
+    impl Eliminated<ActorSingle> for ActorMany {
+        async fn handle(
+            &mut self,
+            id: IdOf<ActorSingle>,
+            ctx: &mut Context<Self>,
+        ) -> Result<(), Error> {
+            self.actors.remove(&id);
+            if self.actors.is_empty() {
+                ctx.shutdown();
+            }
+            Ok(())
+        }
+    }
+
+    impl Actor for ActorMany {
+        type GroupBy = ();
+    }
+
+    #[ignore] // Expensive!
+    #[tokio::test]
+    async fn test_million_actors() -> Result<(), Error> {
+        let address = System::spawn(ActorMany::default());
+        address.join().await;
+        Ok(())
+    }
+
     /* TODO: Not ready yet
      * It required to use a `schedule` queue to add a delayed event
     struct DrainedActor;
