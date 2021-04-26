@@ -17,18 +17,18 @@ description = "Set of connectors for MEIO framework"
 
 [dependencies]
 anyhow = "1.0.40"
-async-trait = "0.1.49"
+async-trait = "0.1.50"
 derive_more = "0.99.13"
 futures = "0.3.14"
 headers = "0.3.4"
 # TODO: And this when possible (
-hyper = { version = "0.14.5", features = ["full"] }
+hyper = { version = "0.14.7", features = ["full"] }
 log = "0.4.14"
 meio = { version = "0.86.1", path = "../meio" }
 meio-protocol = { version = "0.86.1", path = "../meio-protocol" }
 serde = "1.0.125"
 serde_qs = "0.8.3"
-slab = "0.4.2"
+slab = "0.4.3"
 thiserror = "1.0.24"
 tokio = "1.5.0"
 tokio-tungstenite = "0.14.0"
