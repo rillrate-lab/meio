@@ -34,6 +34,12 @@ struct Record<A: Actor> {
     notifier: Box<dyn LifecycleNotifier<Interrupt<A>>>,
 }
 
+impl<A: Actor> Record<A> {
+    fn interrupt(&mut self) -> Result<(), Error> {
+        self.notifier.notify(Interrupt::new())
+    }
+}
+
 // TODO: Rename to Terminator again
 pub(crate) struct LifetimeTracker<A: Actor> {
     terminating: bool,
@@ -69,18 +75,17 @@ impl<A: Actor> LifetimeTracker<A> {
         stage.ids.insert(id.clone());
         // TODO: Use the same `stopper` like `LiteTasks` does. The problem it's not cloneable.
         // TODO: Use `schedule` queue with oneshot to avoid blocking of queue drain handlers
-        let mut notifier = LifecycleNotifier::once(address, Operation::Forward);
+        let notifier = LifecycleNotifier::once(address, Operation::Forward);
+        let mut record = Record { group, notifier };
         if stage.terminating {
             log::warn!(
                 "Actor added into the terminating state (interrupt it immediately): {}",
                 id
             );
-            let interrupt_event = Interrupt::new();
-            if let Err(err) = notifier.notify(interrupt_event) {
+            if let Err(err) = record.interrupt() {
                 log::error!("Can't interrupt actor {:?} immediately: {}", id, err);
             }
         }
-        let record = Record { group, notifier };
         self.records.insert(id, record);
     }
 
@@ -91,7 +96,8 @@ impl<A: Actor> LifetimeTracker<A> {
         let stage = self.stages.entry(group.clone()).or_default();
         let id: Id = stopper.id().into();
         stage.ids.insert(id.clone());
-        let mut notifier = LifecycleNotifier::stop(stopper);
+        let notifier = LifecycleNotifier::stop(stopper);
+        let mut record = Record { group, notifier };
         if stage.terminating {
             log::warn!(
                 "Task added into the terminating state (interrupt it immediately): {}",
@@ -99,12 +105,10 @@ impl<A: Actor> LifetimeTracker<A> {
             );
             // But this event will never received, because LiteTasks can't do that.
             // Instead it will set stop signal to watcher.
-            let interrupt_event = Interrupt::new();
-            if let Err(err) = notifier.notify(interrupt_event) {
+            if let Err(err) = record.interrupt() {
                 log::error!("Can't interrupt task {:?} immediately: {}", id, err);
             }
         }
-        let record = Record { group, notifier };
         self.records.insert(id, record);
     }
 
@@ -120,7 +124,7 @@ impl<A: Actor> LifetimeTracker<A> {
     }
 
     // TODO: Change `Vec` to `OrderedSet`
-    pub fn prioritize_termination_by(&mut self, groups: Vec<A::GroupBy>) {
+    pub fn termination_sequence(&mut self, groups: Vec<A::GroupBy>) {
         self.prioritized = groups;
     }
 
@@ -137,6 +141,23 @@ impl<A: Actor> LifetimeTracker<A> {
         sequence
     }
 
+    pub fn terminate_group(&mut self, group: A::GroupBy) {
+        if let Some(stage) = self.stages.get(&group) {
+            for id in stage.ids.iter() {
+                if let Some(record) = self.records.get_mut(id) {
+                    if let Err(err) = record.interrupt() {
+                        // TODO: Add `Group` name to logs?
+                        log::error!(
+                            "Can't send interruption signal to {:?} for a group termination: {}",
+                            id,
+                            err,
+                        );
+                    }
+                }
+            }
+        }
+    }
+
     fn try_terminate_next(&mut self) {
         self.terminating = true;
         for stage_name in self.stage_sequence() {
@@ -145,8 +166,7 @@ impl<A: Actor> LifetimeTracker<A> {
                     stage.terminating = true;
                     for id in stage.ids.iter() {
                         if let Some(record) = self.records.get_mut(id) {
-                            let interrupt_event = Interrupt::new();
-                            if let Err(err) = record.notifier.notify(interrupt_event) {
+                            if let Err(err) = record.interrupt() {
                                 log::error!(
                                     "Can't notify the supervisor about actor with {:?} termination: {}",
                                     id,

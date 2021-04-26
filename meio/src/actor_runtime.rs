@@ -228,11 +228,6 @@ impl<A: Actor> Context<A> {
         address.interrupt_by()
     }
 
-    /// Returns true if the shutdown process is in progress.
-    pub fn is_terminating(&self) -> bool {
-        self.lifetime_tracker.is_terminating()
-    }
-
     /// Returns `Error` if the `Actor` is terminating.
     /// Useful for checking in handlers.
     pub fn not_terminating(&self) -> Result<(), Error> {
@@ -241,11 +236,6 @@ impl<A: Actor> Context<A> {
         } else {
             Ok(())
         }
-    }
-
-    /// Increases the priority of the `Actor`'s type.
-    pub fn termination_sequence(&mut self, sequence: Vec<A::GroupBy>) {
-        self.lifetime_tracker.prioritize_termination_by(sequence);
     }
 
     /// Stops the runtime of the `Actor` on one message will be processed after this call.
@@ -264,6 +254,24 @@ impl<A: Actor> Context<A> {
         if self.lifetime_tracker.is_finished() {
             self.stop();
         }
+    }
+
+    // TODO: Maybe provide a reference to the `LifetimeTracker`
+    // instead of recalling methods below:
+
+    /// Sends interruption signal to the sepcific group of actors and tasks.
+    pub fn terminate_group(&mut self, group: A::GroupBy) {
+        self.lifetime_tracker.terminate_group(group)
+    }
+
+    /// Returns true if the shutdown process is in progress.
+    pub fn is_terminating(&self) -> bool {
+        self.lifetime_tracker.is_terminating()
+    }
+
+    /// Increases the priority of the `Actor`'s type.
+    pub fn termination_sequence(&mut self, sequence: Vec<A::GroupBy>) {
+        self.lifetime_tracker.termination_sequence(sequence);
     }
 }
 
