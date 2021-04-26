@@ -63,6 +63,8 @@ where
         let uri = request.uri();
         let path = uri.path();
         if Self::paths().iter().any(|p| p == &path) {
+            // `Body` should be parsed in the handler, becuase it doesn't participate in routing.
+            // And `Body` extracting requires an ownership.
             let query = uri.query().unwrap_or("");
             let output: Self::Output =
                 serde_qs::from_str(query).map_err(|err| RouteError::new(path, query, err))?;
@@ -104,6 +106,7 @@ pub trait FromRequest: Sized + Send + Sync + 'static {
 
 pub struct Req<T: FromRequest> {
     pub request: T::Output,
+    pub body: Body,
 }
 
 impl<T: FromRequest> Interaction for Req<T> {
@@ -148,7 +151,10 @@ where
     fn try_route(&self, _addr: &SocketAddr, request: Request<Body>) -> RouteResult {
         match E::from_request(&request) {
             Ok(Some(value)) => {
-                let msg = Req { request: value };
+                let msg = Req {
+                    request: value,
+                    body: request.into_body(),
+                };
                 let fut = self.address.interact(msg).recv();
                 Ok(Box::pin(fut))
             }
