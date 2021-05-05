@@ -254,6 +254,15 @@ impl TaskError {
             Self::Other(err) => Some(err),
         }
     }
+
+    /// Moves interrupted flag from `err` to the optional result.
+    pub fn swap<T>(result: Result<T, Self>) -> Result<Option<T>, Error> {
+        match result {
+            Ok(value) => Ok(Some(value)),
+            Err(Self::Interrupted) => Ok(None),
+            Err(Self::Other(err)) => Err(err),
+        }
+    }
 }
 
 impl From<Error> for TaskError {
