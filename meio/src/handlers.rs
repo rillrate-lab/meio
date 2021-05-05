@@ -397,7 +397,9 @@ pub trait InteractionDone<I: Interaction, M: Tag>: Actor {
         err: TaskError,
         _ctx: &mut Context<Self>,
     ) -> Result<(), Error> {
-        log::error!("Interaction failed: {}", err);
+        if let Some(err) = err.into_other() {
+            log::error!("Interaction failed: {}", err);
+        }
         Ok(())
     }
 }
@@ -449,7 +451,9 @@ pub trait Consumer<T: 'static>: Actor {
 
     /// The stream was failed.
     async fn task_failed(&mut self, err: TaskError, _ctx: &mut Context<Self>) -> Result<(), Error> {
-        log::error!("Consumer task failed: {}", err);
+        if let Some(err) = err.into_other() {
+            log::error!("Consumer task failed: {}", err);
+        }
         Ok(())
     }
 
