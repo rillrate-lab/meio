@@ -255,6 +255,7 @@ impl TaskError {
         }
     }
 
+    #[deprecated(since = "0.86.2", note = "Use ordinary `match` for checking.")]
     /// Moves interrupted flag from `err` to the optional result.
     pub fn swap<T>(result: Result<T, Self>) -> Result<Option<T>, Error> {
         match result {
