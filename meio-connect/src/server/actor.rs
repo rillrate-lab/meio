@@ -48,6 +48,7 @@ impl RouteError {
 }
 
 pub trait DirectPath: Sized + Send + Sync + 'static {
+    type Output: DeserializeOwned + Send;
     type Parameter;
     fn paths() -> &'static [&'static str];
 }
@@ -55,9 +56,8 @@ pub trait DirectPath: Sized + Send + Sync + 'static {
 impl<T> FromRequest for T
 where
     T: DirectPath,
-    Self: DeserializeOwned,
 {
-    type Output = Self;
+    type Output = <T as DirectPath>::Output;
 
     fn from_request(request: &Request<Body>) -> Result<Option<Self::Output>, Error> {
         let uri = request.uri();
@@ -79,9 +79,8 @@ impl<T> WsFromRequest for T
 where
     T: DirectPath,
     T::Parameter: Protocol,
-    Self: DeserializeOwned,
 {
-    type Output = Self;
+    type Output = <T as DirectPath>::Output;
     type Protocol = T::Parameter;
 
     fn from_request(request: &Request<Body>) -> Result<Option<Self::Output>, Error> {
