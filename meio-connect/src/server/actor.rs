@@ -58,7 +58,7 @@ where
 {
     type Output = <T as DirectPath>::Output;
 
-    fn from_request(request: &Request<Body>) -> Result<Option<Self::Output>, Error> {
+    fn from_request(&self, request: &Request<Body>) -> Result<Option<Self::Output>, Error> {
         let uri = request.uri();
         let path = uri.path();
         if Self::paths().iter().any(|p| p == &path) {
@@ -82,7 +82,7 @@ where
     type Output = <T as DirectPath>::Output;
     type Protocol = T::Parameter;
 
-    fn from_request(request: &Request<Body>) -> Result<Option<Self::Output>, Error> {
+    fn from_request(&self, request: &Request<Body>) -> Result<Option<Self::Output>, Error> {
         let uri = request.uri();
         let path = uri.path();
         if Self::paths().iter().any(|p| p == &path) {
@@ -99,7 +99,7 @@ where
 pub trait FromRequest: Sized + Send + Sync + 'static {
     type Output: Send;
 
-    fn from_request(request: &Request<Body>) -> Result<Option<Self::Output>, Error>;
+    fn from_request(&self, request: &Request<Body>) -> Result<Option<Self::Output>, Error>;
 }
 
 pub struct Req<T: FromRequest> {
@@ -144,7 +144,7 @@ where
     A: Actor + ActionHandler<Interact<Req<E>>>,
 {
     fn try_route(&self, _addr: &SocketAddr, request: Request<Body>) -> RouteResult {
-        match E::from_request(&request) {
+        match self.extractor.from_request(&request) {
             Ok(Some(value)) => {
                 let msg = Req {
                     request: value,
@@ -166,7 +166,7 @@ pub trait WsFromRequest: Sized + Send + Sync + 'static {
     type Output: Send;
     type Protocol: Protocol;
 
-    fn from_request(request: &Request<Body>) -> Result<Option<Self::Output>, Error>;
+    fn from_request(&self, request: &Request<Body>) -> Result<Option<Self::Output>, Error>;
 }
 
 pub struct WsReq<T: WsFromRequest> {
@@ -199,7 +199,7 @@ where
     A: Actor + ActionHandler<WsReq<E>>,
 {
     fn try_route(&self, addr: &SocketAddr, mut request: Request<Body>) -> RouteResult {
-        match E::from_request(&request) {
+        match self.extractor.from_request(&request) {
             Ok(Some(value)) => {
                 let mut res = Response::new(Body::empty());
                 let mut address = self.address.clone();
