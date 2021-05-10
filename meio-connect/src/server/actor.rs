@@ -15,7 +15,7 @@ use meio::{
     InterruptedBy, LiteTask, Scheduled, StartedBy, StopReceiver, TaskEliminated, TaskError,
 };
 use meio_protocol::Protocol;
-use serde::de::DeserializeOwned;
+use serde::{de::DeserializeOwned, Deserialize};
 use slab::Slab;
 use std::future::Future;
 use std::net::SocketAddr;
@@ -27,6 +27,10 @@ use thiserror::Error;
 use tokio::sync::RwLock;
 use tokio_tungstenite::WebSocketStream;
 use tungstenite::protocol::Role;
+
+/// Empty parameters.
+#[derive(Default, Deserialize)]
+pub struct NoParameters {}
 
 #[derive(Debug, Error)]
 #[error("route error [path = {path}, query = {query}]: {reason}")]
