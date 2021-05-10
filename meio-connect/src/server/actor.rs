@@ -18,7 +18,6 @@ use meio_protocol::Protocol;
 use serde::de::DeserializeOwned;
 use slab::Slab;
 use std::future::Future;
-use std::marker::PhantomData;
 use std::net::SocketAddr;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -123,7 +122,7 @@ pub struct WebRoute<E, A>
 where
     A: Actor,
 {
-    extracted: PhantomData<E>,
+    extractor: E,
     address: Address<A>,
 }
 
@@ -131,11 +130,8 @@ impl<E, A> WebRoute<E, A>
 where
     A: Actor,
 {
-    pub fn new(address: Address<A>) -> Self {
-        Self {
-            extracted: PhantomData,
-            address,
-        }
+    pub fn new(extractor: E, address: Address<A>) -> Self {
+        Self { extractor, address }
     }
 }
 
@@ -184,7 +180,7 @@ pub struct WsRoute<E, A>
 where
     A: Actor,
 {
-    extracted: PhantomData<E>,
+    extractor: E,
     address: Address<A>,
 }
 
@@ -192,11 +188,8 @@ impl<E, A> WsRoute<E, A>
 where
     A: Actor,
 {
-    pub fn new(address: Address<A>) -> Self {
-        Self {
-            extracted: PhantomData,
-            address,
-        }
+    pub fn new(extractor: E, address: Address<A>) -> Self {
+        Self { extractor, address }
     }
 }
 
