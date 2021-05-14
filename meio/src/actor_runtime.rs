@@ -131,10 +131,10 @@ where
     let awake_envelope = Envelope::instant(Awake::new());
     let done_notifier = {
         match supervisor {
-            None => LifecycleNotifier::ignore(),
+            None => <dyn LifecycleNotifier<_>>::ignore(),
             Some(super_addr) => {
                 let op = Operation::Done { id };
-                LifecycleNotifier::once(super_addr, op)
+                <dyn LifecycleNotifier<_>>::once(super_addr, op)
             }
         }
     };

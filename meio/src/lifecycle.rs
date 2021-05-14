@@ -75,7 +75,7 @@ impl<A: Actor> LifetimeTracker<A> {
         stage.ids.insert(id.clone());
         // TODO: Use the same `stopper` like `LiteTasks` does. The problem it's not cloneable.
         // TODO: Use `schedule` queue with oneshot to avoid blocking of queue drain handlers
-        let notifier = LifecycleNotifier::once(address, Operation::Forward);
+        let notifier = <dyn LifecycleNotifier<_>>::once(address, Operation::Forward);
         let mut record = Record { group, notifier };
         if stage.terminating {
             log::warn!(
@@ -96,7 +96,7 @@ impl<A: Actor> LifetimeTracker<A> {
         let stage = self.stages.entry(group.clone()).or_default();
         let id: Id = stopper.id().into();
         stage.ids.insert(id.clone());
-        let notifier = LifecycleNotifier::stop(stopper);
+        let notifier = <dyn LifecycleNotifier<_>>::stop(stopper);
         let mut record = Record { group, notifier };
         if stage.terminating {
             log::warn!(

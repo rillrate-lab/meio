@@ -107,11 +107,11 @@ where
     let id_of = IdOf::<T>::new(id.clone());
     let done_notifier = {
         match supervisor {
-            None => LifecycleNotifier::ignore(),
+            None => <dyn LifecycleNotifier<_>>::ignore(),
             Some(super_addr) => {
                 //let event = TaskDone::new(id_of.clone());
                 let op = Operation::Done { id };
-                LifecycleNotifier::once(super_addr, op)
+                <dyn LifecycleNotifier<_>>::once(super_addr, op)
             }
         }
     };
