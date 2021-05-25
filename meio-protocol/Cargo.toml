@@ -17,4 +17,4 @@ description = "Basic protocol traits of MEIO framework"
 
 [dependencies]
 anyhow = "1.0.40"
-serde = "1.0.125"
+serde = "1.0.126"
