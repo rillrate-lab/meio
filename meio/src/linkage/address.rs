@@ -228,22 +228,22 @@ impl<A: Actor> Address<A> {
     }
 }
 
-impl<T, A> Into<Box<dyn ActionRecipient<T>>> for Address<A>
+impl<T, A> From<Address<A>> for Box<dyn ActionRecipient<T>>
 where
     T: Action,
     A: Actor + ActionHandler<T>,
 {
-    fn into(self) -> Box<dyn ActionRecipient<T>> {
-        Box::new(self)
+    fn from(address: Address<A>) -> Self {
+        Box::new(address)
     }
 }
 
-impl<T, A> Into<Box<dyn InteractionRecipient<T>>> for Address<A>
+impl<T, A> From<Address<A>> for Box<dyn InteractionRecipient<T>>
 where
     T: Interaction,
     A: Actor + InteractionHandler<T>,
 {
-    fn into(self) -> Box<dyn InteractionRecipient<T>> {
-        Box::new(self)
+    fn from(address: Address<A>) -> Self {
+        Box::new(address)
     }
 }

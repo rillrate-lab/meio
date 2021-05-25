@@ -97,9 +97,9 @@ impl<T> Hash for IdOf<T> {
     }
 }
 
-impl<T> Into<Id> for IdOf<T> {
-    fn into(self) -> Id {
-        self.id
+impl<T> From<IdOf<T>> for Id {
+    fn from(id_of: IdOf<T>) -> Self {
+        id_of.id
     }
 }
 
