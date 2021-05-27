@@ -210,6 +210,8 @@ where
 /// The alias to sender of an interaction result.
 pub type InteractionResponder<T> = oneshot::Sender<Result<T, Error>>;
 
+impl<T> Tag for InteractionResponder<T> where T: Send + 'static {}
+
 /// The wrapper for an interaction request that keeps a request and the
 /// channel for sending a response.
 pub struct Interact<T: Interaction> {
