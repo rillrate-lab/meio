@@ -50,7 +50,7 @@ impl LiteTask for HeartBeat {
         Ok(None)
     }
 
-    fn retry_delay(&self, _last_attempt: Instant) -> Duration {
+    fn retry_delay(&self, _last_attempt: Instant, _succeed: bool) -> Duration {
         self.duration
     }
 }
