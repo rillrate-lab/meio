@@ -30,6 +30,6 @@ serde = { version = "1.0.126", features = ["derive"] }
 serde_qs = "0.8.3"
 slab = "0.4.3"
 thiserror = "1.0.25"
-tokio = "1.6.1"
+tokio = "1.7.0"
 tokio-tungstenite = "0.14.0"
 tungstenite = { version = "0.13.0", default-features = false }
