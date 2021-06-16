@@ -1,6 +1,6 @@
 [package]
 name = "meio-protocol"
-version = "0.89.1"
+version = "0.89.2"
 authors = [
     "Denis Kolodin <deniskolodin@gmail.com>",
     "overfloat <rillrate@gmail.com>",
