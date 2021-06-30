@@ -85,14 +85,14 @@ pub trait LiteTask: Sized + Send + 'static {
     /// When to do the next attempt for `repeatable_routine`.
     ///
     /// `succeed` means the last attempt was successful.
-    fn retry_at(&self, _last_attempt: Instant, succeed: bool) -> Instant {
+    fn retry_at(&mut self, _last_attempt: Instant, succeed: bool) -> Instant {
         Instant::now() + self.retry_delay(_last_attempt, succeed)
     }
 
     /// How long to wait to retry. Called by `retry_at` method.
     ///
     /// `succeed` means the last attempt was successful.
-    fn retry_delay(&self, _last_attempt: Instant, _succeed: bool) -> Duration {
+    fn retry_delay(&mut self, _last_attempt: Instant, _succeed: bool) -> Duration {
         Duration::from_secs(5)
     }
 }
