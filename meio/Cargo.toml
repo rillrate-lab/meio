@@ -1,6 +1,6 @@
 [package]
 name = "meio"
-version = "0.89.4"
+version = "0.90.0"
 authors = [
     "Denis Kolodin <deniskolodin@gmail.com>",
     "overfloat <rillrate@gmail.com>",
