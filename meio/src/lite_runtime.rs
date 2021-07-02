@@ -53,6 +53,7 @@ pub trait LiteTask: Sized + Send + 'static {
 
     /// Routine that can be unconditionally interrupted.
     async fn interruptable_routine(mut self) -> Result<Self::Output, Error> {
+        self.pre_repeatable_routine().await?;
         loop {
             let last_attempt = Instant::now();
             let routine_result = self.repeatable_routine().await;
@@ -73,6 +74,12 @@ pub trait LiteTask: Sized + Send + 'static {
             };
             crate::compat::delay_until(instant).await;
         }
+    }
+
+    /// Called before `repeatable_routine` for initialization.
+    /// The routine will be interrupted if this method failed.
+    async fn pre_repeatable_routine(&mut self) -> Result<(), Error> {
+        Ok(())
     }
 
     /// Routine that will be repeated till fail or success.
