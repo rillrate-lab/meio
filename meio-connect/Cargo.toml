@@ -27,9 +27,9 @@ log = "0.4.14"
 meio = { version = "0.91.0", path = "../meio" }
 meio-protocol = { version = "0.91.0", path = "../meio-protocol" }
 serde = { version = "1.0.126", features = ["derive"] }
-serde_qs = "0.8.3"
+serde_qs = "0.8.4"
 slab = "0.4.3"
-thiserror = "1.0.25"
-tokio = "1.7.1"
+thiserror = "1.0.26"
+tokio = "1.8.0"
 tokio-tungstenite = "0.14.0"
 tungstenite = { version = "0.13.0", default-features = false }
