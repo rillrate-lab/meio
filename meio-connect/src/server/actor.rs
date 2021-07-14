@@ -4,6 +4,7 @@ use crate::talker::{Talker, TalkerCompatible, TermReason, WsIncoming};
 use anyhow::Error;
 use async_trait::async_trait;
 use futures::channel::mpsc;
+use futures::future::{self, Either, FutureExt};
 use headers::HeaderMapExt;
 use hyper::server::conn::AddrStream;
 use hyper::service::Service;
@@ -25,6 +26,7 @@ use std::task::{self, Poll};
 use std::time::{Duration, Instant};
 use thiserror::Error;
 use tokio::sync::RwLock;
+use tokio::time::sleep;
 use tokio_tungstenite::WebSocketStream;
 use tungstenite::protocol::Role;
 
@@ -418,6 +420,8 @@ impl ActionHandler<link::AddRoute> for HttpServer {
     }
 }
 
+const SHUTDOWN_TIMEOUT_SEC: u64 = 5;
+
 struct HyperRoutine {
     owner: Address<HttpServer>,
     addr: SocketAddr,
@@ -435,8 +439,19 @@ impl LiteTask for HyperRoutine {
         let addr = server.local_addr();
         let ready = AddrReady { addr };
         self.owner.act(ready).await?;
-        server.with_graceful_shutdown(stop.into_future()).await?;
-        Ok(())
+        let delayed_stop = stop
+            .clone()
+            .into_future()
+            .map(drop)
+            .then(|_| sleep(Duration::from_secs(SHUTDOWN_TIMEOUT_SEC)));
+        let server_fut = server.with_graceful_shutdown(stop.into_future());
+        tokio::pin!(delayed_stop);
+        let res = future::select(delayed_stop, server_fut).await;
+        if let Either::Right((result, _)) = res {
+            result.map_err(Error::from)
+        } else {
+            Ok(())
+        }
     }
 }
 
