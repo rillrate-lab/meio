@@ -151,12 +151,26 @@ pub struct TaskStopped;
 
 fn make_stop_channel<T>(id: Id) -> (TaskAddress<T>, StopReceiver) {
     let (tx, rx) = watch::channel(Status::Alive);
-    let sender = TaskAddress {
+    let stop_sender = StopSender { tx: Arc::new(tx) };
+    let address = TaskAddress {
         id: IdOf::new(id),
-        tx: Arc::new(tx),
+        stop_sender,
     };
     let receiver = StopReceiver { status: rx };
-    (sender, receiver)
+    (address, receiver)
+}
+
+/// Contains a sender to update a status of a task.
+#[derive(Debug, Clone)]
+pub struct StopSender {
+    tx: Arc<watch::Sender<Status>>,
+}
+
+impl StopSender {
+    /// Send a stop signal to the task.
+    pub fn stop(&self) -> Result<(), Error> {
+        self.tx.send(Status::Stop).map_err(Error::from)
+    }
 }
 
 /// Address of a spawned task.
@@ -165,14 +179,14 @@ fn make_stop_channel<T>(id: Id) -> (TaskAddress<T>, StopReceiver) {
 #[derive(Debug)]
 pub struct TaskAddress<T> {
     id: IdOf<T>,
-    tx: Arc<watch::Sender<Status>>,
+    stop_sender: StopSender,
 }
 
 impl<T> Clone for TaskAddress<T> {
     fn clone(&self) -> Self {
         Self {
             id: self.id(),
-            tx: Arc::clone(&self.tx),
+            stop_sender: self.stop_sender.clone(),
         }
     }
 }
@@ -185,7 +199,7 @@ impl<T> TaskAddress<T> {
 
     /// Send a stop signal to the task.
     pub fn stop(&self) -> Result<(), Error> {
-        self.tx.send(Status::Stop).map_err(Error::from)
+        self.stop_sender.stop()
     }
 }
 
