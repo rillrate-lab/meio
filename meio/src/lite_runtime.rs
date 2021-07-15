@@ -173,6 +173,12 @@ impl StopSender {
     }
 }
 
+impl<T> From<TaskAddress<T>> for StopSender {
+    fn from(addr: TaskAddress<T>) -> Self {
+        addr.stop_sender
+    }
+}
+
 /// Address of a spawned task.
 ///
 /// It can be used to interrupt the task.
