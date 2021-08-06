@@ -14,7 +14,7 @@ description = "Set of connectors for MEIO framework"
 
 [dependencies]
 anyhow = "1.0.42"
-async-trait = "0.1.50"
+async-trait = "0.1.51"
 derive_more = "0.99.16"
 futures = "0.3.16"
 headers = "0.3.4"
@@ -23,7 +23,7 @@ hyper = { version = "0.14.11", features = ["full"] }
 log = "0.4.14"
 meio = { version = "0.93.0", path = "../meio" }
 meio-protocol = { version = "0.93.0", path = "../meio-protocol" }
-serde = { version = "1.0.126", features = ["derive"] }
+serde = { version = "1.0.127", features = ["derive"] }
 serde_qs = "0.8.4"
 slab = "0.4.3"
 thiserror = "1.0.26"
