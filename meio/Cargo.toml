@@ -1,6 +1,6 @@
 [package]
 name = "meio"
-version = "0.93.1"
+version = "0.93.2"
 authors = ["Denis Kolodin <deniskolodin@gmail.com>"]
 edition = "2018"
 repository = "https://github.com/rillrate/meio"
