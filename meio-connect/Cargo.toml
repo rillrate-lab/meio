@@ -1,6 +1,6 @@
 [package]
 name = "meio-connect"
-version = "0.93.3"
+version = "0.93.4"
 authors = ["Denis Kolodin <deniskolodin@gmail.com>"]
 edition = "2018"
 repository = "https://github.com/rillrate/meio"
@@ -21,8 +21,8 @@ headers = "0.3.4"
 # TODO: And this when possible (
 hyper = { version = "0.14.11", features = ["full"] }
 log = "0.4.14"
-meio = { version = "0.93.3", path = "../meio" }
-meio-protocol = { version = "0.93.3", path = "../meio-protocol" }
+meio = { version = "0.93.4", path = "../meio" }
+meio-protocol = { version = "0.93.4", path = "../meio-protocol" }
 serde = { version = "1.0.129", features = ["derive"] }
 serde_qs = "0.8.4"
 slab = "0.4.4"
