@@ -13,7 +13,7 @@ categories = ["concurrency"]
 description = "A compact actors framework for the async epoch in Rust & Tokio"
 
 [dependencies]
-anyhow = "1.0.42"
+anyhow = "1.0.43"
 async-trait = "0.1.51"
 derive_more = "0.99.16"
 futures = "0.3.16"
