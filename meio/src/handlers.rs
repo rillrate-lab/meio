@@ -13,6 +13,7 @@ use async_trait::async_trait;
 use futures::channel::oneshot;
 use futures::Stream;
 use std::convert::identity;
+use std::fmt;
 use std::time::Instant;
 
 /// `Parcel` packs any message for an `Actor`
@@ -49,6 +50,12 @@ impl<A: Actor> Parcel<A> {
 
 pub(crate) struct Envelope<A: Actor> {
     handler: Box<dyn Handler<A>>,
+}
+
+impl<A: Actor> fmt::Debug for Envelope<A> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Envelope").finish()
+    }
 }
 
 impl<A: Actor> Envelope<A> {

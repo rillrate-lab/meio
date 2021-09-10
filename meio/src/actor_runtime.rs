@@ -47,11 +47,11 @@ use crate::linkage::Address;
 use crate::lite_runtime::{self, LiteTask, Tag, TaskAddress};
 use anyhow::Error;
 use async_trait::async_trait;
-use futures::channel::mpsc;
 use futures::stream::{pending, FusedStream};
-use futures::{select_biased, Stream, StreamExt};
+use futures::{select_biased, FutureExt, Stream, StreamExt};
 use std::hash::Hash;
 use thiserror::Error;
+use tokio::sync::mpsc;
 use uuid::Uuid;
 
 #[derive(Debug, Error)]
@@ -121,7 +121,7 @@ where
 {
     let actor_name = custom_name.unwrap_or_else(|| actor.name());
     let id = Id::new(actor_name);
-    let (hp_msg_tx, hp_msg_rx) = mpsc::unbounded();
+    let (hp_msg_tx, hp_msg_rx) = mpsc::unbounded_channel();
     let (msg_tx, msg_rx) = mpsc::channel(MESSAGES_CHANNEL_DEPTH);
     let (join_tx, join_rx) = watch::channel(Status::Alive);
     let address = Address::new(id, hp_msg_tx, msg_tx, join_rx);
@@ -345,7 +345,7 @@ impl<A: Actor> ActorRuntime<A> {
                     &mut pendel
                 };
             select_biased! {
-                hp_envelope = self.hp_msg_rx.next() => {
+                hp_envelope = self.hp_msg_rx.recv().fuse() => {
                     if let Some(hp_env) = hp_envelope {
                         let envelope = hp_env.envelope;
                         let process_envelope;
@@ -406,7 +406,7 @@ impl<A: Actor> ActorRuntime<A> {
                         }
                     }
                 }
-                lp_envelope = self.msg_rx.next() => {
+                lp_envelope = self.msg_rx.recv().fuse() => {
                     if let Some(mut envelope) = lp_envelope {
                         let handle_res = envelope.handle(&mut self.actor, &mut self.context).await;
                         if let Err(err) = handle_res {

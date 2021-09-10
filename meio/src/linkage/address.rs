@@ -13,11 +13,11 @@ use crate::ids::{Id, IdOf};
 use crate::lifecycle::Interrupt;
 use crate::lite_runtime::Tag;
 use anyhow::Error;
-use futures::channel::mpsc;
-use futures::{SinkExt, Stream};
+use futures::Stream;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::time::Instant;
+use tokio::sync::mpsc;
 
 /// `Address` to send messages to `Actor`.
 ///
@@ -96,7 +96,10 @@ impl<A: Actor> Address<A> {
         A: ActionHandler<I>,
     {
         let envelope = Envelope::new(input);
-        self.msg_tx.send(envelope).await.map_err(Error::from)
+        self.msg_tx
+            .send(envelope)
+            .await
+            .map_err(|err| Error::msg(err.to_string()))
     }
 
     /*
@@ -139,7 +142,7 @@ impl<A: Actor> Address<A> {
     /// Send a `Parcel` to unpacking.
     pub fn unpack_parcel(&self, parcel: Parcel<A>) -> Result<(), Error> {
         self.hp_msg_tx
-            .unbounded_send(parcel)
+            .send(parcel)
             .map_err(|_| Error::msg("can't send a high-priority service message"))
     }
 
