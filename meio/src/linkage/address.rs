@@ -99,6 +99,18 @@ impl<A: Actor> Address<A> {
         self.msg_tx.send(envelope).await.map_err(Error::from)
     }
 
+    /*
+    /// Sends an `Action` by blockign the current thread.
+    pub fn blocking_act<I>(&mut self, input: I) -> Result<(), Error>
+    where
+        I: Action,
+        A: ActionHandler<I>,
+    {
+        let envelope = Envelope::new(input);
+        self.msg_tx.blocking_send(envelope).map_err(Error::from)
+    }
+    */
+
     /// Just sends an `Action` to the `Actor`.
     pub fn instant<I>(&self, input: I) -> Result<(), Error>
     where
