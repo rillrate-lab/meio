@@ -26,7 +26,7 @@ meio-protocol = { version = "0.93.6", path = "../meio-protocol" }
 serde = { version = "1.0.130", features = ["derive"] }
 serde_qs = "0.8.4"
 slab = "0.4.4"
-thiserror = "1.0.28"
+thiserror = "1.0.29"
 tokio = "1.11.0"
 tokio-tungstenite = "0.15.0"
 tungstenite = { version = "0.14.0", default-features = false }
