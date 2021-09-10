@@ -99,10 +99,10 @@ impl<A: Actor> Address<A> {
         self.msg_tx
             .send(envelope)
             .await
+            // TODO: Improve that
             .map_err(|err| Error::msg(err.to_string()))
     }
 
-    /*
     /// Sends an `Action` by blockign the current thread.
     pub fn blocking_act<I>(&mut self, input: I) -> Result<(), Error>
     where
@@ -110,9 +110,11 @@ impl<A: Actor> Address<A> {
         A: ActionHandler<I>,
     {
         let envelope = Envelope::new(input);
-        self.msg_tx.blocking_send(envelope).map_err(Error::from)
+        self.msg_tx
+            .blocking_send(envelope)
+            // TODO: Improve that
+            .map_err(|err| Error::msg(err.to_string()))
     }
-    */
 
     /// Just sends an `Action` to the `Actor`.
     pub fn instant<I>(&self, input: I) -> Result<(), Error>
