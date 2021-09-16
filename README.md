@@ -1,5 +1,13 @@
 # meio
 
+[![Crates.io][crates-badge]][crates-url]
+[![Released API docs][docs-badge]][docs-url]
+
+[crates-badge]: https://img.shields.io/crates/v/meio.svg
+[crates-url]: https://crates.io/crates/meio
+[docs-badge]: https://docs.rs/meio/badge.svg
+[docs-url]: https://docs.rs/meio
+
 Async actor framework for Rust. The benefits:
 
 - Safe and reliable
