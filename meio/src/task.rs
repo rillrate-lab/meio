@@ -50,8 +50,8 @@ impl LiteTask for HeartBeat {
         Ok(None)
     }
 
-    fn retry_delay(&mut self, _last_attempt: Instant, _succeed: bool) -> Duration {
-        self.duration
+    async fn routine_wait(&mut self, _last_attempt: Instant, _succeed: bool) {
+        tokio::time::sleep(self.duration).await;
     }
 }
 

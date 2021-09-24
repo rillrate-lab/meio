@@ -12,6 +12,7 @@ where
     }
 }
 
+/*
 pub async fn delay_until(deadline: std::time::Instant) {
     #[cfg(not(feature = "wasm"))]
     {
@@ -21,6 +22,18 @@ pub async fn delay_until(deadline: std::time::Instant) {
     {
         use std::time::Instant;
         let duration = deadline.duration_since(Instant::now());
+        futures_timer::Delay::new(duration).await;
+    }
+}
+*/
+
+pub async fn delay(duration: std::time::Duration) {
+    #[cfg(not(feature = "wasm"))]
+    {
+        tokio::time::sleep(duration.into()).await;
+    }
+    #[cfg(feature = "wasm")]
+    {
         futures_timer::Delay::new(duration).await;
     }
 }

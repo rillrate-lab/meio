@@ -57,22 +57,19 @@ pub trait LiteTask: Sized + Send + 'static {
         loop {
             let last_attempt = Instant::now();
             let routine_result = self.repeatable_routine().await;
-            let instant = {
-                match routine_result {
-                    Ok(Some(output)) => {
-                        break Ok(output);
-                    }
-                    Ok(None) => {
-                        // Continue
-                        self.retry_at(last_attempt, true)
-                    }
-                    Err(err) => {
-                        log::error!("Routine {} failed: {}", self.name(), err);
-                        self.retry_at(last_attempt, false)
-                    }
+            match routine_result {
+                Ok(Some(output)) => {
+                    break Ok(output);
                 }
-            };
-            crate::compat::delay_until(instant).await;
+                Ok(None) => {
+                    // Continue
+                    self.routine_wait(last_attempt, true).await;
+                }
+                Err(err) => {
+                    log::error!("Routine {} failed: {}", self.name(), err);
+                    self.routine_wait(last_attempt, false).await;
+                }
+            }
         }
     }
 
@@ -89,18 +86,10 @@ pub trait LiteTask: Sized + Send + 'static {
         Ok(None)
     }
 
-    /// When to do the next attempt for `repeatable_routine`.
-    ///
-    /// `succeed` means the last attempt was successful.
-    fn retry_at(&mut self, _last_attempt: Instant, succeed: bool) -> Instant {
-        Instant::now() + self.retry_delay(_last_attempt, succeed)
-    }
-
-    /// How long to wait to retry. Called by `retry_at` method.
-    ///
-    /// `succeed` means the last attempt was successful.
-    fn retry_delay(&mut self, _last_attempt: Instant, _succeed: bool) -> Duration {
-        Duration::from_secs(5)
+    /// Check of the every intaration of a routine.
+    async fn routine_wait(&mut self, _last_attempt: Instant, _succeed: bool) {
+        let duration = Duration::from_secs(5);
+        crate::compat::delay(duration).await
     }
 }
 
