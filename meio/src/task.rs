@@ -18,6 +18,11 @@ pub struct HeartBeatHandle {
 }
 
 impl HeartBeatHandle {
+    /// Creates a new `HeartBeat` handle.
+    pub fn new(duration: Duration) -> Self {
+        let (tx, _rx) = watch::channel(duration);
+        Self { duration: tx }
+    }
     /// Change the `Duration` of the `HeartBeat`.
     pub fn update(&mut self, duration: Duration) -> Result<(), Error> {
         self.duration.send(duration)?;
@@ -38,22 +43,21 @@ impl HeartBeat {
     where
         T: Actor + ActionHandler<Tick>,
     {
-        Self::new_with_handle(duration, address).0
+        let handle = HeartBeatHandle::new(duration);
+        Self::new_with_handle(&handle, address)
     }
 
     /// Creates a new `HeartBeat` lite task.
     /// With `HeartBeatHandle` to change `duration` on the fly.
-    pub fn new_with_handle<T>(duration: Duration, address: Address<T>) -> (Self, HeartBeatHandle)
+    pub fn new_with_handle<T>(handle: &HeartBeatHandle, address: Address<T>) -> Self
     where
         T: Actor + ActionHandler<Tick>,
     {
-        let (tx, rx) = watch::channel(duration);
-        let handle = HeartBeatHandle { duration: tx };
-        let this = Self {
+        let rx = handle.duration.subscribe();
+        Self {
             duration: rx,
             recipient: Box::new(address),
-        };
-        (this, handle)
+        }
     }
 }
 
