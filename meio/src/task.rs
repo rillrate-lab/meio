@@ -12,6 +12,19 @@ use std::fmt::Debug;
 use std::time::{Duration, Instant};
 use tokio::sync::watch;
 
+/// Contorls the `HeartBeat` parameters.
+pub struct HeartBeatHandle {
+    duration: watch::Sender<Duration>,
+}
+
+impl HeartBeatHandle {
+    /// Change the `Duration` of the `HeartBeat`.
+    pub fn update(&mut self, duration: Duration) -> Result<(), Error> {
+        self.duration.send(duration)?;
+        Ok(())
+    }
+}
+
 /// The lite task that sends ticks to a `Recipient`.
 #[derive(Debug)]
 pub struct HeartBeat {
@@ -25,11 +38,22 @@ impl HeartBeat {
     where
         T: Actor + ActionHandler<Tick>,
     {
-        let (_tx, rx) = watch::channel(duration);
-        Self {
+        Self::new_with_handle(duration, address).0
+    }
+
+    /// Creates a new `HeartBeat` lite task.
+    /// With `HeartBeatHandle` to change `duration` on the fly.
+    pub fn new_with_handle<T>(duration: Duration, address: Address<T>) -> (Self, HeartBeatHandle)
+    where
+        T: Actor + ActionHandler<Tick>,
+    {
+        let (tx, rx) = watch::channel(duration);
+        let handle = HeartBeatHandle { duration: tx };
+        let this = Self {
             duration: rx,
             recipient: Box::new(address),
-        }
+        };
+        (this, handle)
     }
 }
 
