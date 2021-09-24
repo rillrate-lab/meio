@@ -10,11 +10,12 @@ use anyhow::Error;
 use async_trait::async_trait;
 use std::fmt::Debug;
 use std::time::{Duration, Instant};
+use tokio::sync::watch;
 
 /// The lite task that sends ticks to a `Recipient`.
 #[derive(Debug)]
 pub struct HeartBeat {
-    duration: Duration,
+    duration: watch::Receiver<Duration>,
     recipient: Box<dyn ActionRecipient<Tick>>,
 }
 
@@ -24,8 +25,9 @@ impl HeartBeat {
     where
         T: Actor + ActionHandler<Tick>,
     {
+        let (_tx, rx) = watch::channel(duration);
         Self {
-            duration,
+            duration: rx,
             recipient: Box::new(address),
         }
     }
@@ -51,7 +53,27 @@ impl LiteTask for HeartBeat {
     }
 
     async fn routine_wait(&mut self, _last_attempt: Instant, _succeed: bool) {
-        tokio::time::sleep(self.duration).await;
+        use tokio::time::{sleep_until, timeout_at};
+        let now = Instant::now();
+        loop {
+            let duration = *self.duration.borrow();
+            let instant = (now + duration).into();
+            let res = timeout_at(instant, self.duration.changed()).await;
+            match res {
+                Ok(Ok(())) => {
+                    // Changed. Double check the duration.
+                    continue;
+                }
+                Ok(Err(_)) => {
+                    // No sender that can change the duration. Just waiting.
+                    sleep_until(instant).await;
+                }
+                Err(_elapsed) => {
+                    // Time elapsed. Repeat `routine` again
+                    break;
+                }
+            }
+        }
     }
 }
 
