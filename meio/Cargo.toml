@@ -13,21 +13,21 @@ categories = ["concurrency"]
 description = "A compact actors framework for the async epoch in Rust & Tokio"
 
 [dependencies]
-anyhow = "1.0.43"
+anyhow = "1.0.44"
 async-trait = "0.1.51"
 derive_more = "0.99.16"
 futures = "0.3.17"
 futures-timer = { version = "3.0.2", optional = true }
 log = "0.4.14"
 thiserror = "1.0.29"
-tokio = { version = "1.11.0", features = ["full"], optional = true }
+tokio = { version = "1.12.0", features = ["full"], optional = true }
 tokio-util = { version = "0.6.8", features = ["full"], optional = true }
 uuid = { version = "0.8.2", features = ["v4"] }
-wasm-bindgen-futures = { version = "0.4.27", optional = true }
+wasm-bindgen-futures = { version = "0.4.28", optional = true }
 
 [dev-dependencies]
 env_logger = "0.9.0"
-hyper = "0.14.12"
+hyper = "0.14.13"
 
 [features]
 default = ["tokio", "tokio-util"]
