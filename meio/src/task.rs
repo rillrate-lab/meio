@@ -95,6 +95,7 @@ impl LiteTask for HeartBeat {
                 Ok(Err(_)) => {
                     // No sender that can change the duration. Just waiting.
                     sleep_until(instant).await;
+                    break;
                 }
                 Err(_elapsed) => {
                     // Time elapsed. Repeat `routine` again
