@@ -30,7 +30,7 @@ pub async fn delay_until(deadline: std::time::Instant) {
 pub async fn delay(duration: std::time::Duration) {
     #[cfg(not(feature = "wasm"))]
     {
-        tokio::time::sleep(duration.into()).await;
+        tokio::time::sleep(duration).await;
     }
     #[cfg(feature = "wasm")]
     {
