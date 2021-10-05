@@ -24,7 +24,7 @@ log = "0.4.14"
 meio = { version = "0.95.1", path = "../meio" }
 meio-protocol = { version = "0.95.1", path = "../meio-protocol" }
 serde = { version = "1.0.130", features = ["derive"] }
-serde_qs = "0.8.4"
+serde_qs = "0.8.5"
 slab = "0.4.4"
 thiserror = "1.0.29"
 tokio = "1.12.0"
