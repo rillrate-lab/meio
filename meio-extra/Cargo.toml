@@ -14,3 +14,4 @@ categories = ["concurrency"]
 description = "Example of extending meio"
 
 [dependencies]
+meio = { version = "0.95.2", path = "../meio" }
