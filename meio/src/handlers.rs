@@ -113,10 +113,29 @@ pub(crate) enum Operation {
     },
 }
 
+/// The priority of the sendig event.
+pub enum Priority {
+    /// Normal priority queue
+    Normal,
+    /// High priority queue
+    Instant,
+}
+
+impl Default for Priority {
+    fn default() -> Self {
+        Self::Normal
+    }
+}
+
 /// Internal `Handler` type that used by `Actor`'s routine to execute
 /// `ActionHandler` or `InteractionHandler`.
 #[async_trait]
 trait Handler<A: Actor>: Send {
+    /// Returns priority of a handler.
+    fn priority(&self) -> Priority {
+        Priority::Normal
+    }
+
     /// Main method that expects a mutable reference to `Actor` that
     /// will be used by implementations to handle messages.
     async fn handle(&mut self, actor: &mut A, _ctx: &mut Context<A>) -> Result<(), Error>;
@@ -143,6 +162,10 @@ where
     A: ActionHandler<I>,
     I: Action,
 {
+    fn priority(&self) -> Priority {
+        Priority::Normal
+    }
+
     async fn handle(&mut self, actor: &mut A, ctx: &mut Context<A>) -> Result<(), Error> {
         let input = self.input.take().expect("action handler called twice");
         actor.handle(input, ctx).await
@@ -169,6 +192,10 @@ where
     A: InstantActionHandler<I>,
     I: InstantAction,
 {
+    fn priority(&self) -> Priority {
+        Priority::Instant
+    }
+
     async fn handle(&mut self, actor: &mut A, ctx: &mut Context<A>) -> Result<(), Error> {
         let input = self
             .input
