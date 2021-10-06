@@ -14,4 +14,6 @@ categories = ["concurrency"]
 description = "Example of extending meio"
 
 [dependencies]
+anyhow = "1.0.44"
+async-trait = "0.1.51"
 meio = { version = "0.95.2", path = "../meio" }

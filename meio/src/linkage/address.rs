@@ -156,6 +156,7 @@ impl<A: Actor> Address<A> {
             .map_err(|err| Error::msg(err.to_string()))
     }
 
+    /// Send `Handler` as an event
     pub async fn send_event(&self, handler: impl Handler<A>) -> Result<(), Error> {
         let priority = handler.priority();
         let envelope = Envelope::from_handler(handler);
