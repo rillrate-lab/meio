@@ -1,0 +1,16 @@
+[package]
+publish = false
+name = "meio-extra"
+version = "0.95.2"
+authors = ["Denis Kolodin <deniskolodin@gmail.com>"]
+edition = "2018"
+repository = "https://github.com/rillrate/meio-extra"
+homepage = "https://github.com/rillrate/meio-extra"
+documentation = "https://docs.rs/meio-extra/"
+license = "Apache-2.0"
+readme = "README.md"
+keywords = ["async", "actors"]
+categories = ["concurrency"]
+description = "Example of extending meio"
+
+[dependencies]

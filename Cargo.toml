@@ -3,4 +3,5 @@ members = [
     "meio",
     "meio-connect",
     "meio-protocol",
+    "meio-extra",
 ]
