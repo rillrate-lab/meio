@@ -5,9 +5,9 @@ use crate::actor_runtime::{Actor, Status};
 use crate::compat::watch;
 use crate::forwarders::AttachStream;
 use crate::handlers::{
-    Action, ActionHandler, Consumer, Envelope, InstantAction, InstantActionHandler, Interact,
-    Interaction, InteractionHandler, InteractionTask, InterruptedBy, Operation, Parcel, Scheduled,
-    ScheduledItem, StreamAcceptor,
+    Action, ActionHandler, Consumer, Envelope, Handler, InstantAction, InstantActionHandler,
+    Interact, Interaction, InteractionHandler, InteractionTask, InterruptedBy, Operation, Parcel,
+    Priority, Scheduled, ScheduledItem, StreamAcceptor,
 };
 use crate::ids::{Id, IdOf};
 use crate::lifecycle::Interrupt;
@@ -96,11 +96,7 @@ impl<A: Actor> Address<A> {
         A: ActionHandler<I>,
     {
         let envelope = Envelope::new(input);
-        self.msg_tx
-            .send(envelope)
-            .await
-            // TODO: Improve that
-            .map_err(|err| Error::msg(err.to_string()))
+        self.normal_priority_send(envelope).await
     }
 
     /// Sends an `Action` by blockign the current thread.
@@ -123,7 +119,7 @@ impl<A: Actor> Address<A> {
         A: InstantActionHandler<I>,
     {
         let parcel = Parcel::new(Operation::Forward, input);
-        self.unpack_parcel(parcel)
+        self.high_priority_send(parcel)
     }
 
     /// Just sends an `Action` to the `Actor`.
@@ -138,14 +134,38 @@ impl<A: Actor> Address<A> {
             item: input,
         };
         let parcel = Parcel::new(operation, wrapped);
-        self.unpack_parcel(parcel)
+        self.high_priority_send(parcel)
     }
 
     /// Send a `Parcel` to unpacking.
     pub fn unpack_parcel(&self, parcel: Parcel<A>) -> Result<(), Error> {
+        self.high_priority_send(parcel)
+    }
+
+    fn high_priority_send(&self, parcel: Parcel<A>) -> Result<(), Error> {
         self.hp_msg_tx
             .send(parcel)
             .map_err(|_| Error::msg("can't send a high-priority service message"))
+    }
+
+    async fn normal_priority_send(&self, envelope: Envelope<A>) -> Result<(), Error> {
+        self.msg_tx
+            .send(envelope)
+            .await
+            // TODO: Improve that
+            .map_err(|err| Error::msg(err.to_string()))
+    }
+
+    pub async fn send_event(&self, handler: impl Handler<A>) -> Result<(), Error> {
+        let priority = handler.priority();
+        let envelope = Envelope::from_handler(handler);
+        match priority {
+            Priority::Normal => self.normal_priority_send(envelope).await,
+            Priority::Instant => {
+                let parcel = Parcel::from_envelope(envelope);
+                self.high_priority_send(parcel)
+            }
+        }
     }
 
     /// Interacts with an `Actor` and waits for the result of the `Interaction`.
@@ -195,7 +215,7 @@ impl<A: Actor> Address<A> {
         T: Actor,
     {
         let parcel = Parcel::new(Operation::Forward, Interrupt::new());
-        self.unpack_parcel(parcel)
+        self.high_priority_send(parcel)
     }
 
     /// Attaches a `Stream` of event to an `Actor`.

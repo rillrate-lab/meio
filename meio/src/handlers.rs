@@ -46,6 +46,13 @@ impl<A: Actor> Parcel<A> {
             envelope: Envelope::instant(input),
         }
     }
+
+    pub(crate) fn from_envelope(envelope: Envelope<A>) -> Self {
+        Self {
+            operation: Operation::Forward,
+            envelope,
+        }
+    }
 }
 
 pub(crate) struct Envelope<A: Actor> {
@@ -65,6 +72,12 @@ impl<A: Actor> Envelope<A> {
         ctx: &mut Context<A>,
     ) -> Result<(), Error> {
         self.handler.handle(actor, ctx).await
+    }
+
+    pub(crate) fn from_handler(handler: impl Handler<A>) -> Self {
+        Self {
+            handler: Box::new(handler),
+        }
     }
 
     // TODO: Is it posiible to use `handle` method directly and drop this one?
@@ -114,6 +127,7 @@ pub(crate) enum Operation {
 }
 
 /// The priority of the sendig event.
+#[derive(Debug, Clone, Copy)]
 pub enum Priority {
     /// Normal priority queue
     Normal,
@@ -129,8 +143,10 @@ impl Default for Priority {
 
 /// Internal `Handler` type that used by `Actor`'s routine to execute
 /// `ActionHandler` or `InteractionHandler`.
+///
+/// It has `'static` lifetime, because every handler is boxed when sent to an `Actor`.
 #[async_trait]
-trait Handler<A: Actor>: Send {
+pub trait Handler<A: Actor>: Send + 'static {
     /// Returns priority of a handler.
     fn priority(&self) -> Priority {
         Priority::Normal
