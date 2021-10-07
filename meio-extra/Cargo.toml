@@ -1,7 +1,7 @@
 [package]
 publish = false
 name = "meio-extra"
-version = "0.95.2"
+version = "0.96.0"
 authors = ["Denis Kolodin <deniskolodin@gmail.com>"]
 edition = "2018"
 repository = "https://github.com/rillrate/meio-extra"
@@ -16,4 +16,4 @@ description = "Example of extending meio"
 [dependencies]
 anyhow = "1.0.44"
 async-trait = "0.1.51"
-meio = { version = "0.95.2", path = "../meio" }
+meio = { version = "0.96.0", path = "../meio" }
