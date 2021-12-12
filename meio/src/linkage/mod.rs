@@ -3,8 +3,8 @@
 // TODO: Improve imports here (use them directly and prelude only)
 
 mod address;
-pub use address::Address;
-pub(crate) use address::{AddressJoint, AddressPair};
+pub(crate) use address::AddressJoint;
+pub use address::{Address, AddressPair};
 
 mod recipient;
 pub use recipient::{ActionRecipient, InteractionRecipient};

@@ -167,8 +167,7 @@ impl<A: Actor> Context<A> {
     }
 
     /// Starts and binds an `Actor`.
-    /// Don't use it directly!!! USE `Interaction` instead and async to guarantee it's exist.
-    fn spawn_actor_with_addr<T>(&mut self, actor: T, pair: AddressPair<T>, group: A::GroupBy)
+    pub fn spawn_actor_with_addr<T>(&mut self, actor: T, pair: AddressPair<T>, group: A::GroupBy)
     where
         T: Actor + StartedBy<A> + InterruptedBy<A>,
         A: Eliminated<T>,
@@ -184,7 +183,7 @@ impl<A: Actor> Context<A> {
         T: Actor + StartedBy<A> + InterruptedBy<A>,
         A: Eliminated<T>,
     {
-        let pair = AddressPair::new_for(&actor);
+        let pair = AddressPair::new();
         let address = pair.address().clone();
         self.spawn_actor_with_addr(actor, pair, group);
         address

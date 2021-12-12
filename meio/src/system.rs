@@ -36,7 +36,7 @@ impl System {
     where
         A: Actor + StartedBy<Self>,
     {
-        let pair = AddressPair::new_for(&actor);
+        let pair = AddressPair::new();
         let address = pair.address().clone();
         crate::actor_runtime::spawn(actor, Option::<Address<Self>>::None, pair);
         address

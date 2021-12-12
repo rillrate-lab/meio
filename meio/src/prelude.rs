@@ -8,7 +8,7 @@ pub use crate::handlers::{
 };
 pub use crate::ids::{Id, IdOf};
 pub use crate::linkage::{
-    ActionRecipient, Address, Distributor, InteractionRecipient, TaskDistributor,
+    ActionRecipient, Address, AddressPair, Distributor, InteractionRecipient, TaskDistributor,
 };
 pub use crate::lite_runtime::{
     LiteTask, StopReceiver, StopSender, StopSignal, Tag, TaskAddress, TaskError,

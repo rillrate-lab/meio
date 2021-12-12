@@ -20,20 +20,15 @@ use std::time::Instant;
 use tokio::sync::mpsc;
 
 /// Pre-created `Address` that can be used in spawning an actor.
-pub(crate) struct AddressPair<A: Actor> {
+pub struct AddressPair<A: Actor> {
     pub(crate) joint: AddressJoint<A>,
     pub(crate) address: Address<A>,
 }
 
 impl<A: Actor> AddressPair<A> {
-    /// Creates an `AddressPair` for the actor.
-    pub(crate) fn new_for(_actor: &A) -> Self {
-        let id = Id::unique();
-        Self::new_with_id(id)
-    }
-
     /// Create a new independent pair
-    pub fn new_with_id(id: Id) -> Self {
+    pub fn new() -> Self {
+        let id = Id::unique();
         let (hp_msg_tx, hp_msg_rx) = mpsc::unbounded_channel();
         let (msg_tx, msg_rx) = mpsc::unbounded_channel();
         let (join_tx, join_rx) = watch::channel(Status::Alive);
