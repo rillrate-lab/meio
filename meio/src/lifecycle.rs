@@ -9,18 +9,10 @@ use anyhow::Error;
 use std::collections::{HashMap, HashSet};
 use std::marker::PhantomData;
 
+#[derive(Debug, Default)]
 struct Stage {
     terminating: bool,
     ids: HashSet<Id>,
-}
-
-impl Default for Stage {
-    fn default() -> Self {
-        Self {
-            terminating: false,
-            ids: HashSet::new(),
-        }
-    }
 }
 
 impl Stage {
