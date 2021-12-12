@@ -1,12 +1,11 @@
-//! `meio` - lightweight async actor framework for Rust.
-//! The main benefit of this framework is that gives you
-//! tiny extension over `tokio` with full control.
+//! `meio` - is the lightweight asynchronous actor framework for Rust.
+//! It extends `tokio` runtime to bring actor benefits to it.
 //!
-//! It's designed for professional applications where you
-//! can't have strong restrictions and have keep flexibility.
+//! The framework is designed for business applications where
+//! developers need a flexible code base and pluggable actors.
 //!
-//! Also this crate has zero-cost runtime. It just calls
-//! `async` method of your type.
+//! It also has a fast runtime that calls async methods of plain
+//! structs in an isolated asynchronous task.
 
 #![warn(missing_docs)]
 #![recursion_limit = "512"]
@@ -22,12 +21,11 @@ mod lite_runtime;
 #[cfg(not(feature = "wasm"))]
 pub mod signal;
 pub mod system;
-pub mod task;
+pub mod tasks;
 #[cfg(not(feature = "wasm"))]
 pub mod thread;
 
-mod prelude;
-pub use prelude::*;
+pub mod prelude;
 
 // %%%%%%%%%%%%%%%%%%%%%% TESTS %%%%%%%%%%%%%%%%%%%%%
 
@@ -96,8 +94,8 @@ mod tests {
         impl Action for LinkSignal {}
 
         impl MyLink {
-            pub async fn send_signal(&mut self) -> Result<(), Error> {
-                self.address.act(LinkSignal).await
+            pub fn send_signal(&mut self) -> Result<(), Error> {
+                self.address.act(LinkSignal)
             }
         }
 
@@ -117,6 +115,10 @@ mod tests {
     #[async_trait]
     impl Actor for MyActor {
         type GroupBy = ();
+
+        fn log_target(&self) -> &str {
+            "MyActor"
+        }
     }
 
     #[async_trait]
@@ -210,7 +212,7 @@ mod tests {
     async fn start_and_terminate() -> Result<(), Error> {
         env_logger::try_init().ok();
         let mut address = System::spawn(MyActor);
-        address.act(MsgOne).await?;
+        address.act(MsgOne)?;
         let res = address.interact(MsgTwo).recv().await?;
         assert_eq!(res, 1);
         System::interrupt(&mut address)?;
@@ -223,7 +225,7 @@ mod tests {
         env_logger::try_init().ok();
         let mut address = System::spawn(MyActor);
         let action_recipient = address.action_recipient();
-        action_recipient.clone().act(MsgOne).await?;
+        action_recipient.clone().act(MsgOne)?;
         let interaction_recipient = address.interaction_recipient();
         let res = interaction_recipient
             .clone()
@@ -265,7 +267,7 @@ mod tests {
         env_logger::try_init().ok();
         let address = System::spawn(MyActor);
         let mut link: link::MyLink = address.link();
-        link.send_signal().await?;
+        link.send_signal()?;
         let mut alternative_link: link::MyAlternativeLink = address.link();
         System::interrupt(&mut alternative_link)?;
         address.join().await;
@@ -296,8 +298,8 @@ mod tests {
     impl Actor for ActorSingle {
         type GroupBy = ();
 
-        fn name(&self) -> String {
-            format!("Actor-{}", self.0)
+        fn log_target(&self) -> &str {
+            "ActorSingle"
         }
     }
 
@@ -352,14 +354,59 @@ mod tests {
 
     impl Actor for ActorMany {
         type GroupBy = ();
+
+        fn log_target(&self) -> &str {
+            "ActorMany"
+        }
     }
 
+    // To run use: `cargo test -- --include-ignored`
     #[ignore] // Expensive!
     #[tokio::test]
     async fn test_million_actors() -> Result<(), Error> {
         let address = System::spawn(ActorMany::default());
         address.join().await;
         Ok(())
+    }
+
+    struct TaskSpawner;
+
+    impl Actor for TaskSpawner {
+        type GroupBy = ();
+
+        fn log_target(&self) -> &str {
+            "TaskSpawner"
+        }
+    }
+
+    #[tokio::test]
+    async fn test_async_closure() -> Result<(), Error> {
+        let address = System::spawn(TaskSpawner);
+        address.join().await;
+        Ok(())
+    }
+
+    #[async_trait]
+    impl StartedBy<System> for TaskSpawner {
+        async fn handle(&mut self, ctx: &mut Context<Self>) -> Result<(), Error> {
+            ctx.spawn_task(FnTask(async move { Ok(8) }), (), ());
+            Ok(())
+        }
+    }
+
+    #[async_trait]
+    impl FnTaskEliminated<u8, ()> for TaskSpawner {
+        async fn handle(
+            &mut self,
+            _id: Id,
+            _tag: (),
+            result: Result<u8, TaskError>,
+            ctx: &mut Context<Self>,
+        ) -> Result<(), Error> {
+            assert_eq!(result?, 8);
+            ctx.shutdown();
+            Ok(())
+        }
     }
 
     /* TODO: Not ready yet

@@ -2,7 +2,7 @@ use anyhow::Error;
 use futures::channel::mpsc;
 use futures::stream::Fuse;
 use futures::{select, Sink, SinkExt, Stream, StreamExt};
-use meio::{Action, ActionHandler, Actor, Address, StopReceiver};
+use meio::prelude::{Action, ActionHandler, Actor, Address, StopReceiver};
 use meio_protocol::{ProtocolCodec, ProtocolData};
 use serde::ser::StdError;
 use std::fmt::Debug;
@@ -14,29 +14,44 @@ pub struct WsIncoming<T: ProtocolData>(pub T);
 
 impl<T: ProtocolData> Action for WsIncoming<T> {}
 
+/// The reason of connection termination.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TermReason {
+    /// The connection was interrupted.
     Interrupted,
+    /// The connection was closed (properly).
     Closed,
 }
 
 impl TermReason {
+    /// Was the handler interrupted?
     pub fn is_interrupted(&self) -> bool {
         *self == Self::Interrupted
     }
 }
 
+/// The abstract error for WebSockets.
 pub trait WsError: Debug + StdError + Sync + Send + 'static {}
 
 impl WsError for TungError {}
 
+/// The abstract `WebSocket` message.
+///
+/// The trait provides generic metods to `Talker`s to work with messages.
 pub trait WsMessage: Debug + Sized {
+    /// Creates a message instance from a binary data.
     fn binary(data: Vec<u8>) -> Self;
+    /// Is it the ping message?
     fn is_ping(&self) -> bool;
+    /// Is it the ping message?
     fn is_pong(&self) -> bool;
+    /// Is it the text message?
     fn is_text(&self) -> bool;
+    /// Is it the binary message?
     fn is_binary(&self) -> bool;
+    /// Is it the closing signal message?
     fn is_close(&self) -> bool;
+    /// Convert the message into bytes.
     fn into_bytes(self) -> Vec<u8>;
 }
 
@@ -77,6 +92,7 @@ pub trait TalkerCompatible {
 }
 
 pub struct Talker<T: TalkerCompatible> {
+    log_target: String,
     address: Address<T::Actor>,
     connection: Fuse<T::WebSocket>,
     rx: mpsc::UnboundedReceiver<T::Outgoing>,
@@ -88,12 +104,15 @@ pub struct Talker<T: TalkerCompatible> {
 
 impl<T: TalkerCompatible> Talker<T> {
     pub fn new(
+        base_log_target: &str,
         address: Address<T::Actor>,
         connection: T::WebSocket,
         rx: mpsc::UnboundedReceiver<T::Outgoing>,
         stop: StopReceiver,
     ) -> Self {
+        let log_target = format!("{}::Talker", base_log_target);
         Self {
+            log_target,
             address,
             connection: connection.fuse(),
             rx,
@@ -122,22 +141,22 @@ impl<T: TalkerCompatible> Talker<T> {
                     if let Some(msg) = msg {
                         if msg.is_text() || msg.is_binary() {
                             let decoded = T::Codec::decode(&msg.into_bytes())?;
-                            log::trace!("MEIO-WS-RECV: {:?}", decoded);
+                            log::trace!(target: &self.log_target, "MEIO-WS-RECV: {:?}", decoded);
                             let msg = WsIncoming(decoded);
-                            self.address.act(msg).await?;
+                            self.address.act(msg)?;
                         } else if msg.is_ping() || msg.is_pong() {
                             // Ignore Ping and Pong messages
                         } else if msg.is_close() {
-                            log::trace!("Close message received. Draining the channel...");
+                            log::trace!(target: &self.log_target, "Close message received. Draining the channel...");
                             // Start draining that will close the connection.
                             // No more messages expected. The receiver can be safely closed.
                             self.rx.close();
                         } else {
-                            log::warn!("Unhandled WebSocket message: {:?}", msg);
+                            log::warn!(target: &self.log_target, "Unhandled WebSocket message: {:?}", msg);
                         }
                     } else {
                         // The connection was closed, further interaction doesn't make sense
-                        log::trace!("Connection phisically closed.");
+                        log::trace!(target: &self.log_target, "Connection phisically closed.");
                         self.connection_drained = true;
                         if self.is_done() {
                             break;
@@ -146,13 +165,13 @@ impl<T: TalkerCompatible> Talker<T> {
                 }
                 response = self.rx.next() => {
                     if let Some(msg) = response {
-                        log::trace!("MEIO-WS-SEND: {:?}", msg);
+                        log::trace!(target: &self.log_target, "MEIO-WS-SEND: {:?}", msg);
                         let encoded = T::Codec::encode(&msg)?;
                         let message = T::Message::binary(encoded);
                         self.connection.send(message).await?;
                     } else {
-                        log::trace!("Channel with outgoing data closed. Terminating a session with the client.");
-                        log::trace!("Sending close notification to the client.");
+                        log::trace!(target: &self.log_target, "Channel with outgoing data closed. Terminating a session with the client.");
+                        log::trace!(target: &self.log_target, "Sending close notification to the client.");
                         self.connection.close().await?;
                         self.rx_drained = true;
                         if self.is_done() {

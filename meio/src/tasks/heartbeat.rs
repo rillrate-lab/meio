@@ -71,11 +71,15 @@ impl Action for Tick {}
 impl LiteTask for HeartBeat {
     type Output = ();
 
+    fn log_target(&self) -> &str {
+        "HeartBeat"
+    }
+
     async fn repeatable_routine(&mut self) -> Result<Option<Self::Output>, Error> {
         // IMPORTANT: Don't use `schedule` to avoid late beats: when the task was canceled,
         // but teh scheduled messages still remained in the actor's queue.
         let tick = Tick(Instant::now());
-        self.recipient.act(tick).await?;
+        self.recipient.act(tick)?;
         // StopSender can be used to interrupt it
         Ok(None)
     }

@@ -9,7 +9,7 @@ use std::thread;
 /// Keeps the control handle to the spawned runtime.
 #[derive(Debug)]
 pub struct ScopedRuntime {
-    name: String,
+    log_target: String,
     sender: Option<term::Sender>,
 }
 
@@ -26,11 +26,11 @@ impl Drop for ScopedRuntime {
     fn drop(&mut self) {
         if let Some(sender) = self.sender.take() {
             if sender.notifier_tx.send(()).is_err() {
-                log::error!("Can't send termination signal to the {}", self.name);
+                log::error!(target: &self.log_target, "Can't send termination signal to the scope");
                 return;
             }
             if sender.blocker.lock().is_err() {
-                log::error!("Can't wait for termination of the {}", self.name);
+                log::error!(target: &self.log_target, "Can't wait for termination of the scope");
             }
         }
     }
@@ -49,17 +49,20 @@ pub fn spawn<T>(actor: T) -> Result<ScopedRuntime, Error>
 where
     T: Actor + StartedBy<System> + InterruptedBy<System>,
 {
-    let name = format!("thread-{}", actor.name());
+    let log_target = actor.log_target().to_owned();
+    let name = format!("ScopedThread[{}]", log_target);
     let (term_tx, term_rx) = term::channel();
     thread::Builder::new().name(name.clone()).spawn(move || {
+        let on_start = name.clone();
+        let on_stop = name.clone();
         let runtime = tokio::runtime::Builder::new_multi_thread()
             .thread_name("meio-pool")
             .worker_threads(1)
-            .on_thread_start(|| {
-                log::info!("New meio worker thread spawned");
+            .on_thread_start(move || {
+                log::info!(target: &on_start, "New meio worker thread spawned");
             })
-            .on_thread_stop(|| {
-                log::info!("The meio worker thread retired");
+            .on_thread_stop(move || {
+                log::info!(target: &on_stop, "The meio worker thread retired");
             })
             .enable_all()
             .build()?;
@@ -67,7 +70,7 @@ where
         runtime.block_on(routine)
     })?;
     Ok(ScopedRuntime {
-        name,
+        log_target,
         sender: Some(term_tx),
     })
 }

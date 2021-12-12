@@ -1,18 +1,22 @@
-//! Contains typed and generic id types.
+//! Typed and generic id types.
 
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::sync::Arc;
+use uuid::Uuid;
 
-/// Unique Id of Actor's runtime that used to identify
-/// all senders for that actor.
+/// Generic ID of `Actor`'s runtime.
+///
+/// It used used to identify all senders for that actor.
 #[derive(Clone)]
-pub struct Id(Arc<String>);
+pub struct Id(Arc<Uuid>);
 
 impl Id {
-    pub(crate) fn new(name: String) -> Self {
-        Self(Arc::new(name))
+    /// Only the framework can instantiate it.
+    pub fn unique() -> Self {
+        let uuid = Uuid::new_v4();
+        Self(Arc::new(uuid))
     }
 }
 
@@ -24,7 +28,7 @@ impl fmt::Display for Id {
 
 impl fmt::Debug for Id {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple(self.0.as_ref()).finish()
+        write!(f, "Id({})", self.0)
     }
 }
 
@@ -42,13 +46,17 @@ impl Hash for Id {
     }
 }
 
+/*
 impl AsRef<str> for Id {
     fn as_ref(&self) -> &str {
         self.0.as_ref()
     }
 }
+*/
 
-/// Typed if of the task or actor.
+/// Typed ID of the `LiteTask` or `Actor`.
+///
+/// It can be simply converted into a generic `Id`.
 pub struct IdOf<T> {
     id: Id,
     _origin: PhantomData<T>,
@@ -75,6 +83,7 @@ impl<T> fmt::Debug for IdOf<T> {
 }
 
 impl<T> IdOf<T> {
+    /// The instance can be created by the framework only.
     pub(crate) fn new(id: Id) -> Self {
         Self {
             id,

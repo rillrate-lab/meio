@@ -7,7 +7,7 @@ use crate::forwarders::AttachStream;
 use crate::handlers::{
     Action, ActionHandler, Consumer, Envelope, Handler, InstantAction, InstantActionHandler,
     Interact, Interaction, InteractionHandler, InteractionTask, InterruptedBy, Operation, Parcel,
-    Priority, Scheduled, ScheduledItem, StreamAcceptor,
+    Priority, Scheduled, ScheduledItem, StreamAcceptor, TerminateBy, TerminatedBy,
 };
 use crate::ids::{Id, IdOf};
 use crate::lifecycle::Interrupt;
@@ -19,6 +19,54 @@ use std::hash::{Hash, Hasher};
 use std::time::Instant;
 use tokio::sync::mpsc;
 
+/// Pre-created `Address` that can be used in spawning an actor.
+pub(crate) struct AddressPair<A: Actor> {
+    pub(crate) joint: AddressJoint<A>,
+    pub(crate) address: Address<A>,
+}
+
+impl<A: Actor> AddressPair<A> {
+    /// Creates an `AddressPair` for the actor.
+    pub(crate) fn new_for(_actor: &A) -> Self {
+        let id = Id::unique();
+        Self::new_with_id(id)
+    }
+
+    /// Create a new independent pair
+    pub fn new_with_id(id: Id) -> Self {
+        let (hp_msg_tx, hp_msg_rx) = mpsc::unbounded_channel();
+        let (msg_tx, msg_rx) = mpsc::unbounded_channel();
+        let (join_tx, join_rx) = watch::channel(Status::Alive);
+        let joint = AddressJoint {
+            msg_rx,
+            hp_msg_rx,
+            join_tx,
+        };
+        let address = Address {
+            id,
+            hp_msg_tx,
+            msg_tx,
+            join_rx,
+        };
+        Self { joint, address }
+    }
+
+    /// Gets address of the pair.
+    pub fn address(&self) -> &Address<A> {
+        &self.address
+    }
+}
+
+/// Receiver for data sent by `Address`.
+pub(crate) struct AddressJoint<A: Actor> {
+    /// `Receiver` that have to be used to receive incoming messages.
+    pub msg_rx: mpsc::UnboundedReceiver<Envelope<A>>,
+    /// High-priority receiver
+    pub hp_msg_rx: mpsc::UnboundedReceiver<Parcel<A>>,
+    /// Sends a signal when the `Actor` completely stopped.
+    pub join_tx: watch::Sender<Status>,
+}
+
 /// `Address` to send messages to `Actor`.
 ///
 /// Can be compared each other to identify senders to
@@ -29,7 +77,7 @@ pub struct Address<A: Actor> {
     /// High-priority messages sender
     hp_msg_tx: mpsc::UnboundedSender<Parcel<A>>,
     /// Ordinary priority messages sender
-    msg_tx: mpsc::Sender<Envelope<A>>,
+    msg_tx: mpsc::UnboundedSender<Envelope<A>>,
     join_rx: watch::Receiver<Status>,
 }
 
@@ -66,20 +114,6 @@ impl<A: Actor> Hash for Address<A> {
 }
 
 impl<A: Actor> Address<A> {
-    pub(crate) fn new(
-        id: Id,
-        hp_msg_tx: mpsc::UnboundedSender<Parcel<A>>,
-        msg_tx: mpsc::Sender<Envelope<A>>,
-        join_rx: watch::Receiver<Status>,
-    ) -> Self {
-        Self {
-            id,
-            hp_msg_tx,
-            msg_tx,
-            join_rx,
-        }
-    }
-
     /// Returns a typed id of the `Actor`.
     pub fn id(&self) -> IdOf<A> {
         IdOf::new(self.id.clone())
@@ -90,26 +124,13 @@ impl<A: Actor> Address<A> {
     }
 
     /// Just sends an `Action` to the `Actor`.
-    pub async fn act<I>(&mut self, input: I) -> Result<(), Error>
+    pub fn act<I>(&self, input: I) -> Result<(), Error>
     where
         I: Action,
         A: ActionHandler<I>,
     {
         let envelope = Envelope::new(input);
-        self.normal_priority_send(envelope).await
-    }
-
-    /// Sends an `Action` by blockign the current thread.
-    pub fn blocking_act<I>(&mut self, input: I) -> Result<(), Error>
-    where
-        I: Action,
-        A: ActionHandler<I>,
-    {
-        let envelope = Envelope::new(input);
-        self.msg_tx
-            .blocking_send(envelope)
-            // TODO: Improve that
-            .map_err(|err| Error::msg(err.to_string()))
+        self.normal_priority_send(envelope)
     }
 
     /// Just sends an `Action` to the `Actor`.
@@ -148,20 +169,19 @@ impl<A: Actor> Address<A> {
             .map_err(|_| Error::msg("can't send a high-priority service message"))
     }
 
-    async fn normal_priority_send(&self, envelope: Envelope<A>) -> Result<(), Error> {
+    fn normal_priority_send(&self, envelope: Envelope<A>) -> Result<(), Error> {
         self.msg_tx
             .send(envelope)
-            .await
             // TODO: Improve that
             .map_err(|err| Error::msg(err.to_string()))
     }
 
     /// Send `Handler` as an event
-    pub async fn send_event(&self, handler: impl Handler<A>) -> Result<(), Error> {
+    pub fn send_event(&self, handler: impl Handler<A>) -> Result<(), Error> {
         let priority = handler.priority();
         let envelope = Envelope::from_handler(handler);
         match priority {
-            Priority::Normal => self.normal_priority_send(envelope).await,
+            Priority::Normal => self.normal_priority_send(envelope),
             Priority::Instant => {
                 let parcel = Parcel::from_envelope(envelope);
                 self.high_priority_send(parcel)
@@ -217,6 +237,17 @@ impl<A: Actor> Address<A> {
     {
         let parcel = Parcel::new(Operation::Forward, Interrupt::new());
         self.high_priority_send(parcel)
+    }
+
+    /// Send termination signal to the actor through the normal priority queue.
+    pub fn terminate_by<T>(&self) -> Result<(), Error>
+    where
+        A: TerminatedBy<T>,
+        T: 'static,
+    {
+        let input = TerminateBy::new();
+        let envelope = Envelope::new(input);
+        self.normal_priority_send(envelope)
     }
 
     /// Attaches a `Stream` of event to an `Actor`.

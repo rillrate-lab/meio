@@ -12,13 +12,16 @@
 //! ```
 //! # use anyhow::Error;
 //! # use async_trait::async_trait;
-//! # use meio::{Actor, Context, IdOf, TaskEliminated, TaskError, LiteTask};
+//! # use meio::prelude::{Actor, Context, IdOf, TaskEliminated, TaskError, LiteTask};
+//!
 //! trait SpecificTask: LiteTask {}
 //!
 //! struct MyActor {}
 //!
 //! impl Actor for MyActor {
 //!     type GroupBy = ();
+//!
+//!     fn log_target(&self) -> &str { "MyActor" }
 //! }
 //!
 //! #[async_trait]
@@ -35,15 +38,14 @@
 //! }
 //! ```
 
-use crate::compat::watch;
 use crate::forwarders::StreamForwarder;
 use crate::handlers::{
     Consumer, Eliminated, Envelope, Interaction, InteractionDone, InteractionTask, InterruptedBy,
-    Operation, Parcel, StartedBy, TaskEliminated,
+    Operation, StartedBy, TaskEliminated,
 };
 use crate::ids::{Id, IdOf};
 use crate::lifecycle::{Awake, Done, LifecycleNotifier, LifetimeTracker};
-use crate::linkage::Address;
+use crate::linkage::{Address, AddressJoint, AddressPair};
 use crate::lite_runtime::{self, LiteTask, Tag, TaskAddress};
 use anyhow::Error;
 use async_trait::async_trait;
@@ -51,8 +53,6 @@ use futures::stream::{pending, FusedStream};
 use futures::{select_biased, FutureExt, Stream, StreamExt};
 use std::hash::Hash;
 use thiserror::Error;
-use tokio::sync::mpsc;
-use uuid::Uuid;
 
 #[derive(Debug, Error)]
 enum Reason {
@@ -60,7 +60,17 @@ enum Reason {
     Terminating,
 }
 
-const MESSAGES_CHANNEL_DEPTH: usize = 32;
+/// Declares sequence of groups termination.
+pub trait TerminationSequence: Sized {
+    /// Returns a termination sequence.
+    fn termination_sequence() -> Vec<Self>;
+}
+
+impl TerminationSequence for () {
+    fn termination_sequence() -> Vec<Self> {
+        vec![()]
+    }
+}
 
 /// The main trait. Your structs have to implement it to
 /// be compatible with `ActorRuntime` and `Address` system.
@@ -69,14 +79,10 @@ const MESSAGES_CHANNEL_DEPTH: usize = 32;
 #[async_trait]
 pub trait Actor: Sized + Send + 'static {
     /// Specifies how to group child actors.
-    type GroupBy: Clone + Send + Eq + Hash;
+    type GroupBy: TerminationSequence + Clone + Send + Eq + Hash;
 
-    /// Returns unique name of the `Actor`.
-    /// Uses `Uuid` by default.
-    fn name(&self) -> String {
-        let uuid = Uuid::new_v4();
-        format!("Actor:{}({})", std::any::type_name::<Self>(), uuid)
-    }
+    /// The log target for the `Actor`.
+    fn log_target(&self) -> &str;
 
     #[doc(hidden)] // Not ready yet
     /// Called when `Action` queue drained (no more messages will be sent).
@@ -110,21 +116,12 @@ impl Status {
 /// Spawns `Actor` in `ActorRuntime`.
 // TODO: No `Option`! Use `static Address<System>` instead.
 // It can be possible when `Controller` and `Operator` will be removed.
-pub(crate) fn spawn<A, S>(
-    actor: A,
-    supervisor: Option<Address<S>>,
-    custom_name: Option<String>,
-) -> Address<A>
+pub(crate) fn spawn<A, S>(actor: A, supervisor: Option<Address<S>>, address_pair: AddressPair<A>)
 where
     A: Actor + StartedBy<S>,
     S: Actor + Eliminated<A>,
 {
-    let actor_name = custom_name.unwrap_or_else(|| actor.name());
-    let id = Id::new(actor_name);
-    let (hp_msg_tx, hp_msg_rx) = mpsc::unbounded_channel();
-    let (msg_tx, msg_rx) = mpsc::channel(MESSAGES_CHANNEL_DEPTH);
-    let (join_tx, join_rx) = watch::channel(Status::Alive);
-    let address = Address::new(id, hp_msg_tx, msg_tx, join_rx);
+    let AddressPair { joint, address } = address_pair;
     let id: Id = address.id().into();
     // There is `Envelope` here, because it will be processed at start and
     // will never been sent to prevent other messages come before the `Awake`.
@@ -150,12 +147,9 @@ where
         context,
         awake_envelope: Some(awake_envelope),
         done_notifier,
-        msg_rx,
-        hp_msg_rx,
-        join_tx,
+        joint,
     };
     crate::compat::spawn_async(runtime.entrypoint());
-    address
 }
 
 /// `Context` of a `ActorRuntime` that contains `Address` and `Receiver`.
@@ -173,14 +167,26 @@ impl<A: Actor> Context<A> {
     }
 
     /// Starts and binds an `Actor`.
+    /// Don't use it directly!!! USE `Interaction` instead and async to guarantee it's exist.
+    fn spawn_actor_with_addr<T>(&mut self, actor: T, pair: AddressPair<T>, group: A::GroupBy)
+    where
+        T: Actor + StartedBy<A> + InterruptedBy<A>,
+        A: Eliminated<T>,
+    {
+        let address = pair.address().clone();
+        spawn(actor, Some(self.address.clone()), pair);
+        self.lifetime_tracker.insert(address, group);
+    }
+
+    /// Starts and binds an `Actor`.
     pub fn spawn_actor<T>(&mut self, actor: T, group: A::GroupBy) -> Address<T>
     where
         T: Actor + StartedBy<A> + InterruptedBy<A>,
         A: Eliminated<T>,
     {
-        let custom_name = None;
-        let address = spawn(actor, Some(self.address.clone()), custom_name);
-        self.lifetime_tracker.insert(address.clone(), group);
+        let pair = AddressPair::new_for(&actor);
+        let address = pair.address().clone();
+        self.spawn_actor_with_addr(actor, pair, group);
         address
     }
 
@@ -191,8 +197,7 @@ impl<A: Actor> Context<A> {
         A: TaskEliminated<T, M>,
         M: Tag,
     {
-        let custom_name = None;
-        let stopper = lite_runtime::spawn(task, tag, Some(self.address.clone()), custom_name);
+        let stopper = lite_runtime::spawn(task, tag, Some(self.address.clone()));
         self.lifetime_tracker.insert_task(stopper.clone(), group);
         stopper
     }
@@ -270,7 +275,9 @@ impl<A: Actor> Context<A> {
     }
 
     /// Increases the priority of the `Actor`'s type.
-    pub fn termination_sequence(&mut self, sequence: Vec<A::GroupBy>) {
+    ///
+    /// Used internally before `StartedBy` call.
+    fn termination_sequence(&mut self, sequence: Vec<A::GroupBy>) {
         self.lifetime_tracker.termination_sequence(sequence);
     }
 }
@@ -282,22 +289,19 @@ pub struct ActorRuntime<A: Actor> {
     context: Context<A>,
     awake_envelope: Option<Envelope<A>>,
     done_notifier: Box<dyn LifecycleNotifier<Done<A>>>,
-    /// `Receiver` that have to be used to receive incoming messages.
-    msg_rx: mpsc::Receiver<Envelope<A>>,
-    /// High-priority receiver
-    hp_msg_rx: mpsc::UnboundedReceiver<Parcel<A>>,
-    /// Sends a signal when the `Actor` completely stopped.
-    join_tx: watch::Sender<Status>,
+    joint: AddressJoint<A>,
 }
 
 impl<A: Actor> ActorRuntime<A> {
     /// The `entrypoint` of the `ActorRuntime` that calls `routine` method.
     async fn entrypoint(mut self) {
-        log::info!("Actor started: {:?}", self.id);
+        log::info!(target: self.actor.log_target(), "Actor started: {}", self.id);
         let mut awake_envelope = self
             .awake_envelope
             .take()
             .expect("awake envelope has to be set in spawn method!");
+        let term_seq = A::GroupBy::termination_sequence();
+        self.context.termination_sequence(term_seq);
         let awake_res = awake_envelope
             .handle(&mut self.actor, &mut self.context)
             .await;
@@ -307,24 +311,26 @@ impl<A: Actor> ActorRuntime<A> {
             }
             Err(err) => {
                 log::error!(
+                    target: self.actor.log_target(),
                     "Can't call awake notification handler of the actor {:?}: {}",
                     self.id,
                     err
                 );
             }
         }
-        log::info!("Actor finished: {:?}", self.id);
+        log::info!(target: self.actor.log_target(), "Actor finished: {}", self.id);
         let done_event = Done::new(self.id.clone());
         if let Err(err) = self.done_notifier.notify(done_event) {
             log::error!(
+                target: self.actor.log_target(),
                 "Can't send done notification from the actor {:?}: {}",
                 self.id,
                 err
             );
         }
-        if !self.join_tx.is_closed() {
-            if let Err(_err) = self.join_tx.send(Status::Stop) {
-                log::error!("Can't release joiners of {:?}", self.id);
+        if !self.joint.join_tx.is_closed() {
+            if let Err(_err) = self.joint.join_tx.send(Status::Stop) {
+                log::error!(target: self.actor.log_target(), "Can't release joiners of {}", self.id);
             }
         }
     }
@@ -345,7 +351,7 @@ impl<A: Actor> ActorRuntime<A> {
                     &mut pendel
                 };
             select_biased! {
-                hp_envelope = self.hp_msg_rx.recv().fuse() => {
+                hp_envelope = self.joint.hp_msg_rx.recv().fuse() => {
                     if let Some(hp_env) = hp_envelope {
                         let envelope = hp_env.envelope;
                         let process_envelope;
@@ -363,14 +369,14 @@ impl<A: Actor> ActorRuntime<A> {
                             }
                             Operation::Schedule { deadline } => {
                                 scheduled_queue.get_mut().insert_at(envelope, deadline);
-                                log::trace!("Scheduled events: {}", scheduled_queue.get_ref().len());
+                                log::trace!(target: self.actor.log_target(), "Scheduled events: {}", scheduled_queue.get_ref().len());
                                 process_envelope = None;
                             }
                         }
                         if let Some(mut envelope) = process_envelope {
                             let handle_res = envelope.handle(&mut self.actor, &mut self.context).await;
                             if let Err(err) = handle_res {
-                                log::error!("Handler for {:?} (high-priority) failed: {}", self.id, err);
+                                log::error!(target: self.actor.log_target(), "Handler for {} (high-priority) failed: {}", self.id, err);
                             }
                         }
                     } else {
@@ -378,9 +384,9 @@ impl<A: Actor> ActorRuntime<A> {
                         // background. Than don't terminate actors without `Addresses`, because
                         // it still has controllers.
                         // Background tasks = something spawned that `Actors` waits for finishing.
-                        log::trace!("Messages stream of {:?} (high-priority) drained.", self.id);
+                        log::trace!(target: self.actor.log_target(), "Messages stream of {} (high-priority) drained.", self.id);
                         if let Err(err) = self.actor.instant_queue_drained(&mut self.context).await {
-                            log::error!("Queue (high-priority) drained handler {:?} failed: {}", self.id, err);
+                            log::error!(target: self.actor.log_target(), "Queue (high-priority) drained handler {} failed: {}", self.id, err);
                         }
                     }
                 }
@@ -388,38 +394,38 @@ impl<A: Actor> ActorRuntime<A> {
                     if let Some(delayed_envelope) = opt_delayed_envelope {
                         match delayed_envelope {
                             Ok(expired) => {
-                                log::trace!("Execute scheduled event. Remained: {}", scheduled_queue.get_ref().len());
+                                log::trace!(target: self.actor.log_target(), "Execute scheduled event. Remained: {}", scheduled_queue.get_ref().len());
                                 let mut envelope = expired.into_inner();
                                 let handle_res = envelope.handle(&mut self.actor, &mut self.context).await;
                                 if let Err(err) = handle_res {
-                                    log::error!("Handler for {:?} (scheduled) failed: {}", self.id, err);
+                                    log::error!(target: self.actor.log_target(), "Handler for {} (scheduled) failed: {}", self.id, err);
                                 }
                             }
                             Err(err) => {
-                                log::error!("Failed scheduled execution for {:?}: {}", self.id, err);
+                                log::error!(target: self.actor.log_target(), "Failed scheduled execution for {}: {}", self.id, err);
                             }
                         }
                     } else {
-                        log::error!("Delay queue of {} closed.", self.id);
+                        log::error!(target: self.actor.log_target(), "Delay queue of {} closed.", self.id);
                         if let Err(err) = self.actor.instant_queue_drained(&mut self.context).await {
-                            log::error!("Queue (high-priority) drained handler {:?} failed: {}", self.id, err);
+                            log::error!(target: self.actor.log_target(), "Queue (high-priority) drained handler {} failed: {}", self.id, err);
                         }
                     }
                 }
-                lp_envelope = self.msg_rx.recv().fuse() => {
+                lp_envelope = self.joint.msg_rx.recv().fuse() => {
                     if let Some(mut envelope) = lp_envelope {
                         let handle_res = envelope.handle(&mut self.actor, &mut self.context).await;
                         if let Err(err) = handle_res {
-                            log::error!("Handler for {:?} failed: {}", self.id, err);
+                            log::error!(target: self.actor.log_target(), "Handler for {} failed: {}", self.id, err);
                         }
                     } else {
                         // Even if all `Address` dropped `Actor` can do something useful on
                         // background. Than don't terminate actors without `Addresses`, because
                         // it still has controllers.
                         // Background tasks = something spawned that `Actors` waits for finishing.
-                        log::trace!("Messages stream of {:?} drained.", self.id);
+                        log::trace!(target: self.actor.log_target(), "Messages stream of {} drained.", self.id);
                         if let Err(err) = self.actor.queue_drained(&mut self.context).await {
-                            log::error!("Queue drained handler {:?} failed: {}", self.id, err);
+                            log::error!(target: self.actor.log_target(), "Queue drained handler {} failed: {}", self.id, err);
                         }
                     }
                 }
@@ -427,7 +433,7 @@ impl<A: Actor> ActorRuntime<A> {
             /*
             let inspection_res = self.actor.inspection(&mut self.context).await;
             if let Err(err) = inspection_res {
-                log::error!("Inspection of {:?} failed: {}", self.id, err);
+                log::error!(target: self.actor.log_target(), "Inspection of {:?} failed: {}", self.id, err);
             }
             */
         }

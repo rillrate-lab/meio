@@ -8,15 +8,13 @@ use crate::actor_runtime::Actor;
 use crate::handlers::{Action, ActionHandler, Interact, Interaction, InteractionTask};
 use crate::ids::Id;
 use anyhow::Error;
-use async_trait::async_trait;
 use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
 
 /// Abstract `Address` to the `Actor` that can handle a specific message type.
-#[async_trait]
 pub trait ActionRecipient<T: Action>: Debug + Send + 'static {
     /// Send an `Action` to an `Actor`.
-    async fn act(&mut self, msg: T) -> Result<(), Error>;
+    fn act(&mut self, msg: T) -> Result<(), Error>;
 
     /// Returns a reference to `Id` of an `Address` inside.
     #[doc(hidden)]
@@ -49,14 +47,13 @@ impl<T: Action> Hash for Box<dyn ActionRecipient<T>> {
     }
 }
 
-#[async_trait]
 impl<T, A> ActionRecipient<T> for Address<A>
 where
     T: Action,
     A: Actor + ActionHandler<T>,
 {
-    async fn act(&mut self, msg: T) -> Result<(), Error> {
-        Address::act(self, msg).await
+    fn act(&mut self, msg: T) -> Result<(), Error> {
+        Address::act(self, msg)
     }
 
     fn id_ref(&self) -> &Id {

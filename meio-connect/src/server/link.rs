@@ -1,41 +1,36 @@
-use super::actor::Route;
-use super::HttpServer;
+//! The link to interact with a server instance.
+
+use super::{
+    route::{BoxedRoute, Route},
+    HttpServer, HttpServerLink,
+};
 use anyhow::Error;
-use derive_more::From;
-use meio::{Action, Address, Interaction, InteractionTask};
-use std::net::SocketAddr;
-
-#[derive(Debug, Clone, From)]
-pub struct HttpServerLink {
-    address: Address<HttpServer>,
-}
-
-pub(super) struct AddRoute {
-    pub route: Box<dyn Route>,
-}
-
-impl Action for AddRoute {}
+use async_trait::async_trait;
+use meio::prelude::{Action, ActionHandler, Context};
 
 impl HttpServerLink {
-    pub async fn add_route<T>(&mut self, route: T) -> Result<(), Error>
+    /// Adds a route to the `HttpServer`.
+    pub fn add_route<T>(&mut self, route: T) -> Result<(), Error>
     where
         T: Route,
     {
         let msg = AddRoute {
             route: Box::new(route),
         };
-        self.address.act(msg).await
+        self.address.act(msg)
     }
 }
 
-pub struct WaitForAddress;
-
-impl Interaction for WaitForAddress {
-    type Output = SocketAddr;
+struct AddRoute {
+    pub route: BoxedRoute,
 }
 
-impl HttpServerLink {
-    pub fn wait_for_address(&self) -> InteractionTask<WaitForAddress> {
-        self.address.interact(WaitForAddress)
+impl Action for AddRoute {}
+
+#[async_trait]
+impl ActionHandler<AddRoute> for HttpServer {
+    async fn handle(&mut self, msg: AddRoute, _ctx: &mut Context<Self>) -> Result<(), Error> {
+        self.routing_table.insert_route(msg.route).await;
+        Ok(())
     }
 }

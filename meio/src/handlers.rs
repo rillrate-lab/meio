@@ -1,6 +1,8 @@
-//! This module contains the `Envelope` that allow
-//! to call methods of actors related to a sepcific
-//! imcoming message.
+//! Handler traits for incoming messages.
+//!
+//! This module contains the `Envelope` that allows
+//! calling methods of actors related to a specific
+//! incoming message.
 
 use crate::actor_runtime::{Actor, Context};
 use crate::forwarders::StreamForwarder;
@@ -14,6 +16,7 @@ use futures::channel::oneshot;
 use futures::Stream;
 use std::convert::identity;
 use std::fmt;
+use std::marker::PhantomData;
 use std::time::Instant;
 
 /// `Parcel` packs any message for an `Actor`
@@ -303,7 +306,7 @@ impl<I: Interaction> InteractionTask<I> {
         T: ActionHandler<Interact<I>>,
     {
         Self {
-            recipient: address.action_recipient(),
+            recipient: Box::new(address.clone()),
             request,
         }
     }
@@ -316,7 +319,7 @@ impl<I: Interaction> InteractionTask<I> {
             request: self.request,
             responder,
         };
-        self.recipient.act(input).await?;
+        self.recipient.act(input)?;
         rx.await.map_err(Error::from).and_then(identity)
     }
 }
@@ -327,6 +330,10 @@ where
     I: Interaction,
 {
     type Output = I::Output;
+
+    fn log_target(&self) -> &str {
+        "InteractionTask"
+    }
 
     async fn interruptable_routine(mut self) -> Result<Self::Output, Error> {
         self.recv().await
@@ -377,6 +384,43 @@ where
         ctx: &mut Context<Self>,
     ) -> Result<(), Error> {
         InterruptedBy::handle(self, ctx).await
+    }
+}
+
+/// Termination signal handler for handling signals to terminatate the actor.
+#[async_trait]
+pub trait TerminatedBy<T>: Actor {
+    /// The termination handling method.
+    async fn handle(&mut self, ctx: &mut Context<Self>) -> Result<(), Error>;
+}
+
+/// An event for termination.
+pub struct TerminateBy<T> {
+    _ref: PhantomData<T>,
+}
+
+impl<T: 'static> Action for TerminateBy<T> {}
+
+unsafe impl<T> Send for TerminateBy<T> {}
+
+impl<T> TerminateBy<T> {
+    pub(crate) fn new() -> Self {
+        Self { _ref: PhantomData }
+    }
+}
+
+#[async_trait]
+impl<A, T> ActionHandler<TerminateBy<T>> for A
+where
+    A: TerminatedBy<T>,
+    T: 'static,
+{
+    async fn handle(
+        &mut self,
+        _input: TerminateBy<T>,
+        ctx: &mut Context<Self>,
+    ) -> Result<(), Error> {
+        TerminatedBy::handle(self, ctx).await
     }
 }
 

@@ -3,7 +3,7 @@
 use crate::actor_runtime::{Actor, Context};
 use crate::handlers::{Eliminated, InterruptedBy, StartedBy};
 use crate::ids::IdOf;
-use crate::linkage::Address;
+use crate::linkage::{Address, AddressPair};
 #[cfg(not(feature = "wasm"))]
 use crate::signal;
 use anyhow::Error;
@@ -16,6 +16,10 @@ pub enum System {}
 
 impl Actor for System {
     type GroupBy = ();
+
+    fn log_target(&self) -> &str {
+        "System"
+    }
 }
 
 #[async_trait]
@@ -32,8 +36,10 @@ impl System {
     where
         A: Actor + StartedBy<Self>,
     {
-        let custom_name = None;
-        crate::actor_runtime::spawn(actor, Option::<Address<Self>>::None, custom_name)
+        let pair = AddressPair::new_for(&actor);
+        let address = pair.address().clone();
+        crate::actor_runtime::spawn(actor, Option::<Address<Self>>::None, pair);
+        address
     }
 
     /// Spawns an `Actor` and wait for its termination (normally or by `SIGINT` interruption).
@@ -65,6 +71,7 @@ impl System {
         loop {
             select! {
                 _interrupt = signals.select_next_some() => {
+                    log::trace!("Ctrl-C received");
                     if first_attempt {
                         first_attempt = false;
                         address.interrupt_by()?;
@@ -73,6 +80,7 @@ impl System {
                     }
                 }
                 _done = joiner => {
+                    log::trace!("Actor spawned by System done: {:?}", address);
                     break;
                 }
             }

@@ -15,7 +15,6 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use thiserror::Error;
-use uuid::Uuid;
 
 /// Custom tag for `LiteTask`.
 /// Attached to a runtime.
@@ -31,12 +30,8 @@ pub trait LiteTask: Sized + Send + 'static {
     /// The result of a finished task.
     type Output: Send;
 
-    /// Returns unique name of the `LiteTask`.
-    /// Uses `Uuid` by default.
-    fn name(&self) -> String {
-        let uuid = Uuid::new_v4();
-        format!("Task:{}({})", std::any::type_name::<Self>(), uuid)
-    }
+    /// The log target for the `LiteTask`.
+    fn log_target(&self) -> &str;
 
     /// Routine of the task that can contain loops.
     /// It can taks into accout provided receiver to implement graceful interruption.
@@ -66,7 +61,7 @@ pub trait LiteTask: Sized + Send + 'static {
                     self.routine_wait(last_attempt, true).await;
                 }
                 Err(err) => {
-                    log::error!("Routine {} failed: {}", self.name(), err);
+                    log::error!(target: self.log_target(), "Routine failed: {}", err);
                     self.routine_wait(last_attempt, false).await;
                 }
             }
@@ -93,19 +88,13 @@ pub trait LiteTask: Sized + Send + 'static {
     }
 }
 
-pub(crate) fn spawn<T, S, M>(
-    task: T,
-    tag: M,
-    supervisor: Option<Address<S>>,
-    custom_name: Option<String>,
-) -> TaskAddress<T>
+pub(crate) fn spawn<T, S, M>(task: T, tag: M, supervisor: Option<Address<S>>) -> TaskAddress<T>
 where
     T: LiteTask,
     S: Actor + TaskEliminated<T, M>,
     M: Tag,
 {
-    let task_name = custom_name.unwrap_or_else(|| task.name());
-    let id = Id::new(task_name);
+    let id = Id::unique();
     let (stop_sender, stop_receiver) = make_stop_channel(id.clone());
     let id_of = IdOf::<T>::new(id.clone());
     let done_notifier = {
@@ -309,7 +298,8 @@ struct LiteRuntime<T: LiteTask, M: Tag> {
 
 impl<T: LiteTask, M: Tag> LiteRuntime<T, M> {
     async fn entrypoint(mut self) {
-        log::info!("Task started: {:?}", self.id);
+        let log_target = self.task.log_target().to_owned();
+        log::info!(target: &log_target, "Task started: {}", self.id);
         let res = self
             .task
             .routine(self.stop_receiver)
@@ -318,15 +308,16 @@ impl<T: LiteTask, M: Tag> LiteRuntime<T, M> {
         if let Err(err) = res.as_ref() {
             if !err.is_interrupted() {
                 // Can't downcast. It was a real error.
-                log::error!("Task failed: {:?}: {}", self.id, err);
+                log::error!(target: &log_target, "Task failed: {}: {}", self.id, err);
             }
         }
-        log::info!("Task finished: {:?}", self.id);
+        log::info!(target: &log_target, "Task finished: {}", self.id);
         // TODO: Add result to it
         let task_done = TaskDone::new(self.id.clone(), self.tag, res);
         if let Err(err) = self.done_notifier.notify(task_done) {
             log::error!(
-                "Can't send done notification from the task {:?}: {}",
+                target: &log_target,
+                "Can't send done notification from the task {}: {}",
                 self.id,
                 err
             );

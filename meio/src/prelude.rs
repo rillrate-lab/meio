@@ -1,10 +1,10 @@
 //! Meio prelude module.
 
-pub use crate::actor_runtime::{Actor, Context, Status};
+pub use crate::actor_runtime::{Actor, Context, Status, TerminationSequence};
 pub use crate::handlers::{
     Action, ActionHandler, Consumer, Eliminated, InstantAction, InstantActionHandler, Interact,
     Interaction, InteractionDone, InteractionHandler, InteractionResponder, InteractionTask,
-    InterruptedBy, Parcel, Scheduled, StartedBy, StreamAcceptor, TaskEliminated,
+    InterruptedBy, Parcel, Scheduled, StartedBy, StreamAcceptor, TaskEliminated, TerminatedBy,
 };
 pub use crate::ids::{Id, IdOf};
 pub use crate::linkage::{
@@ -16,4 +16,7 @@ pub use crate::lite_runtime::{
 #[cfg(not(feature = "wasm"))]
 pub use crate::signal;
 pub use crate::system::System;
-pub use crate::task;
+pub use crate::tasks::{
+    fn_task::{FnTask, FnTaskEliminated},
+    heartbeat,
+};

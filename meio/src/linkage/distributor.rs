@@ -42,19 +42,12 @@ where
 
     /// Sends action to all in parallel.
     pub async fn act_all(&mut self, action: T) -> Result<(), Error> {
-        let futs = self
-            .recipients
+        self.recipients
             .values_mut()
-            .map(|recipient| recipient.act(action.clone()));
-        let err = futures::future::join_all(futs)
-            .await
-            .into_iter()
-            .find(Result::is_err);
-        if let Some(Err(err)) = err {
-            Err(err)
-        } else {
-            Ok(())
-        }
+            .map(|recipient| recipient.act(action.clone()))
+            .find(Result::is_err)
+            .transpose()
+            .map(drop)
     }
 
     /// Size of the set of recipients.
